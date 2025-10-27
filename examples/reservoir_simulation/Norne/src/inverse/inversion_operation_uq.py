@@ -1214,7 +1214,6 @@ def copy_files(source_dir, dest_dir):
 
 def find_first_numeric_row(df):
     """Return first row index where all values are numeric, else None."""
-    """Find the first row in the DataFrame where all data is numeric."""
     for i in range(len(df)):
         if df.iloc[i].apply(np.isreal).all():
             return i
