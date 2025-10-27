@@ -394,7 +394,7 @@ def run_history_matching_loop(
         if not isinstance(CDd, torch.Tensor):
             CDd = torch.as_tensor(CDd, dtype=torch.float32, device=device)
         yyy = 0.5 * (Dd - simDatafinal).T @ torch.linalg.inv(CDd) @ (Dd - simDatafinal)
-        yyy = 0.5 * (Dd - simDatafinal).T @ torch.linalg.inv(CDd) @ (Dd - simDatafinal)
+        #yyy = 0.5 * (Dd - simDatafinal).T @ torch.linalg.inv(CDd) @ (Dd - simDatafinal)
         yyy = torch.mean(yyy, dim=1).to(device)  # Compute mean along dim=1
         yyy = torch.nan_to_num(yyy, nan=0.0).reshape(-1, 1)  # Remove NaNs and reshape
         alpha_star = torch.mean(yyy)  # No need for dim=0
