@@ -1240,7 +1240,7 @@ def Black_oil_peacemann(
             kro = (KROW / (1 - swa)) * (KROG / (1 - sga)) * soa
         else:
             krw, kro, krg = StoneIIModel(paramz, device, gas, water)
-        krw, kro, krg = StoneIIModel(paramz, device, gas, water)
+        #krw, kro, krg = StoneIIModel(paramz, device, gas, water)
         krw = replace_with_mean(krw)
         kro = replace_with_mean(kro)
         krg = replace_with_mean(krg)
@@ -1354,7 +1354,7 @@ def normalize_tensors_adjusted2(tensor):
             torch.normal(mean=0.1, std=0.01, size=tensor.size(), device=tensor.device),
             min=0.1,
         )
-        tensor = tensor * 0.9 + perturbation  # ✅ Out-of-place
+        tensor = tensor * 0.9 + perturbation  
     else:
         perturbation = torch.clamp(
             torch.normal(mean=0.1, std=0.01, size=tensor.size(), device=tensor.device),
