@@ -64,7 +64,6 @@ from datetime import timedelta
 
 # 🔧 Third-party Libraries
 import numpy as np
-import numpy.matlib
 import scipy.io as sio
 import torch
 import hydra
@@ -147,7 +146,7 @@ def main(cfg: DictConfig) -> None:
         shutil.rmtree(to_absolute_path("../RESULTS/FORWARD_RESULTS_BATCH"))
         os.makedirs(to_absolute_path("../RESULTS/FORWARD_RESULTS_BATCH"), exist_ok=True)
     oldfolder = os.getcwd()
-    os.chdir(oldfolder)
+    #os.chdir(oldfolder)
 
     Trainmoe = "MoE"
     logger.info("-----------------------------------------------------------------")
@@ -232,8 +231,8 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
     N_ens = int(mat["N_ens"])
     steppi_indices = mat["steppi_indices"].flatten()
     effective = mat["effective"]
-    steppi = int(mat["steppi"])
-    steppi_indices = mat["steppi_indices"].flatten()
+    #steppi = int(mat["steppi"])
+    #steppi_indices = mat["steppi_indices"].flatten()
     target_min = 0.01
     target_max = 1
     input_variables = cfg.custom.input_properties
@@ -338,7 +337,7 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
     logger.info("|-----------------------------------------------------------------|")
     start_time_plots1 = time.time()
     Run_simulator(path_out, oldfolder2, string_simulation_command)
-    elapsed_time_secs = (time.time() - start_time_plots1) / 2
+    elapsed_time_secs = (time.time() - start_time_plots1) #/ 2
     msg = "Reservoir simulation with FLOW  took: %s secs (Wall clock time)" % timedelta(
         seconds=round(elapsed_time_secs)
     )
