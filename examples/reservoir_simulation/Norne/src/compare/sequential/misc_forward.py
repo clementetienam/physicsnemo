@@ -53,7 +53,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import numpy.linalg as LA
-import numpy.matlib
+#import numpy.matlib
 from scipy.stats import rankdata, norm
 from scipy import interpolate
 import torch
@@ -622,6 +622,8 @@ def best_fit(X, Y):
     n = len(X)  # or len(Y)
     numer = sum([xi * yi for xi, yi in zip(X, Y)]) - n * xbar * ybar
     denum = sum([xi**2 for xi in X]) - n * xbar**2
+    close_to_zero = denum.abs() < 1e-10
+    denum[close_to_zero] = 1.0 
     b = numer / denum
     a = ybar - b * xbar
     logger = setup_logging()
