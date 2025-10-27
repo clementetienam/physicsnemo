@@ -50,7 +50,7 @@ from glob import glob
 
 # 🔧 Third-party Libraries
 import numpy as np
-import numpy.matlib
+#import numpy.matlib
 import numpy.ma as ma
 import pandas as pd
 import torch
@@ -249,20 +249,15 @@ def add_gnoise(Ytrue, SIGMA, SQ=None):
                 try:
                     RTSIGMA = np.linalg.cholesky(SIGMA).T
                 except np.linalg.LinAlgError:
-                    logger = setup_logging()
-                    logger.warning("Problem with Cholesky factorization")
+                    #logger = setup_logging()
+                    #logger.warning("Problem with Cholesky factorization")
                     RTSIGMA = np.sqrtm(SIGMA).real
-                    logger.info("Finally - we got a square root!")
+                    #logger.info("Finally - we got a square root!")
 
                 error = RTSIGMA @ np.random.randn(*Ytrue.shape)
 
         # Add the noise:
         Y = Ytrue + error.flatten()
-
-    except Exception as e:
-        logger = setup_logging()
-        logger.error("Error in AddGnoise")
-        raise e
 
     return Y, RTSIGMA
 
