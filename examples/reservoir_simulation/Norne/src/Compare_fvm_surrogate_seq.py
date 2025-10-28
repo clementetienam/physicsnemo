@@ -209,7 +209,6 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
     os.makedirs(to_absolute_path(folderr), exist_ok=True)
     absolute_path = os.path.abspath(folderr)
     logger.info(f"Resolved path: {absolute_path}")
-    os.makedirs(folderr, exist_ok=True)
     logger.info(f"Directory created: {folderr}")
     degg = 3
     num_cores = multiprocessing.cpu_count()
@@ -245,8 +244,6 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
     N_ens = int(mat["N_ens"])
     steppi_indices = mat["steppi_indices"].flatten()
     effective = mat["effective"]
-    steppi = int(mat["steppi"])
-    steppi_indices = mat["steppi_indices"].flatten()
     target_min = 0.01
     target_max = 1
     input_variables = cfg.custom.input_properties
@@ -851,10 +848,11 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 cfg.custom.model_Distributed,
                 device,
                 excel,
-                "SWAT",
+                "SOIL",
             )
             models["oil"] = fno_supervised_oil
     os.chdir(oldfolder)
+    effective_abi_new = effective_abi
     logger.info("********************Model Loaded*************************************")
     start_time_plots2 = time.time()
     simout = Forward_model_ensemble(
@@ -894,7 +892,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
         cfg,
         N_pr,
         lenwels,
-        effective_abi,
+        effective_abi_new,
         awater,
         agas,
         aoil,
