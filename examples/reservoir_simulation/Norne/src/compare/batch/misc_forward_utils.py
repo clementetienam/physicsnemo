@@ -594,6 +594,7 @@ def Get_data_FFNN(
     ouut = np.zeros((N, steppi, lenwels * N_pr))
     innn = np.zeros((N, steppi, (4 * N_pr) + 2))
     producer_well_names = [well[-1] for well in producer_wells]
+    logger = setup_logging()
     for i in range(N):
         folder = to_absolute_path("../RUNS/Realisation" + str(i))
         os.chdir(folder)
@@ -614,11 +615,9 @@ def Get_data_FFNN(
             start_row = find_first_numeric_row(filtered_df)
             if start_row is not None:
                 numeric_df = filtered_df.iloc[start_row:]
-                result_array = numeric_df.to_numpy()
-                logger = setup_logging()
+                result_array = numeric_df.to_numpy()                
                 logger.info(f"Numeric data from {namey} processed successfully.")
             else:
-                logger = setup_logging()
                 logger.info(f"No numeric rows found in the DataFrame for {namey}.")
                 result_array = None
             all_arrays.append(result_array)
