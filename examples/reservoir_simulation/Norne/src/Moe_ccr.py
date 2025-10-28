@@ -1065,7 +1065,7 @@ def main(cfg: DictConfig) -> None:
     inputsz = range(Y.shape[1])
 
     num_cores = multiprocessing.cpu_count()
-    njobs = max(1, (num_cores // 4) - 1)  # Ensure at least 1 job
+    #njobs = max(1, (num_cores // 4) - 1)  # Ensure at least 1 job
 
     use_elbow = int(cfg.custom.Number_of_experts)
     experts = int(cfg.custom.Type_of_experts)
