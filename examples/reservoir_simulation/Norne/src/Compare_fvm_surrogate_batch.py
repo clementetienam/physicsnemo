@@ -356,7 +356,7 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
     Time = []
     permeability = np.zeros((N, 1, nx, ny, nz))
     porosity = np.zeros((N, 1, nx, ny, nz))
-    actnumm = np.zeros((N, 1, nx, ny, nz))
+    #actnumm = np.zeros((N, 1, nx, ny, nz))
     folder = path_out
     return_values = Geta_all(
         folder,
