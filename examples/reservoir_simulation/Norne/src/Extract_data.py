@@ -589,58 +589,53 @@ def main(cfg: DictConfig) -> None:
     logger.info("CPU Info:")
     for k, v in cpu_info.items():
         logger.info(f"\t{k}: {v}")
-    if cfg.custom.fno_type == "FNO":
-        directories_to_check = [
-            "__pycache__/",
-            "outputs/",
-        ]
-    else:
-        directories_to_check = [
-            "__pycache__/",
-            "outputs/",
-        ]
-        check_and_remove_dirs(directories_to_check, cfg.custom.file_response)
+
+    directories_to_check = [
+        "__pycache__/",
+        "outputs/",
+    ]
+    check_and_remove_dirs(directories_to_check, cfg.custom.file_response)
+    logger.info(
+        "|-----------------------------------------------------------------|"
+    )
+
+    # Initialize distributed manager
+    DistributedManager.initialize()
+    dist = DistributedManager()
+    if "RANK" not in os.environ:
+        os.environ["RANK"] = str(dist.rank)
+    if "LOCAL_RANK" not in os.environ:
+        os.environ["LOCAL_RANK"] = str(dist.rank % torch.cuda.device_count())
+
+    # Assign GPU or CPU
+    if torch.cuda.is_available():
+        gpu_count = torch.cuda.device_count()
+        device_id = dist.rank % gpu_count  # Map rank to available GPUs
+        torch.cuda.set_device(device_id)
         logger.info(
-            "|-----------------------------------------------------------------|"
+            f"Process {dist.rank} is using GPU {device_id}: {torch.cuda.get_device_name(device_id)}"
         )
+    else:
+        logger.info(f"Process {dist.rank} is using CPU")
+    initialize_mlflow(
+        experiment_name="PhyNeMo-Reservoir Modelling",
+        experiment_desc="PhyNeMo launch development",
+        run_name="Reservoir forward modelling with OPM",
+        run_desc="Reservoir forward modelling data extraction",
+        user_name="Clement Etienam",
+        mode="offline",
+    )
 
-        # Initialize distributed manager
-        DistributedManager.initialize()
-        dist = DistributedManager()
-        if "RANK" not in os.environ:
-            os.environ["RANK"] = str(dist.rank)
-        if "LOCAL_RANK" not in os.environ:
-            os.environ["LOCAL_RANK"] = str(dist.rank % torch.cuda.device_count())
-
-        # Assign GPU or CPU
-        if torch.cuda.is_available():
-            gpu_count = torch.cuda.device_count()
-            device_id = dist.rank % gpu_count  # Map rank to available GPUs
-            torch.cuda.set_device(device_id)
-            logger.info(
-                f"Process {dist.rank} is using GPU {device_id}: {torch.cuda.get_device_name(device_id)}"
-            )
-        else:
-            logger.info(f"Process {dist.rank} is using CPU")
-        initialize_mlflow(
-            experiment_name="PhyNeMo-Reservoir Modelling",
-            experiment_desc="PhyNeMo launch development",
-            run_name="Reservoir forward modelling",
-            run_desc="Reservoir forward modelling training",
-            user_name="Clement Etienam",
-            mode="offline",
-        )
-
-        # General python logger
-        logger = PythonLogger(name="PhyNeMo Reservoir_Characterisation")
-        LaunchLogger.initialize(use_mlflow=cfg.use_mlflow)  # PhyNeMo launch logger
+    # General python logger
+    logger = PythonLogger(name="PhyNeMo Reservoir_Characterisation")
+    LaunchLogger.initialize(use_mlflow=cfg.use_mlflow)  # PhyNeMo launch logger
 
     if dist.rank == 0:
         logger.info(
             "|-----------------------------------------------------------------|"
         )
         logger.info(
-            "|                DATA EXTRACTION MODULE :                         |"
+            "|                DATA EXTRACTION MODULE:                          |"
         )
         logger.info(
             "|-----------------------------------------------------------------|"
@@ -648,24 +643,23 @@ def main(cfg: DictConfig) -> None:
     oldfolder = os.getcwd()
     os.chdir(oldfolder)
 
-    if cfg.custom.interest == "Yes":
-        folders_to_create = ["../RUNS", "../PACKETS"]
+    folders_to_create = ["../RUNS", "../PACKETS"]
 
-        # bb = os.path.isfile(to_absolute_path('../PACKETS/conversions.mat'))
-        if dist.rank == 0:
-            if os.path.isfile(to_absolute_path("../PACKETS/conversions.mat")):
-                os.remove(to_absolute_path("../PACKETS/conversions.mat"))
-            for folder in folders_to_create:
-                absolute_path = to_absolute_path(folder)
-                lock_path = (
-                    absolute_path + ".lock"
-                )  # Use a lock file for synchronization
-                with FileLock(lock_path):  # Only one process will create the directory
-                    if os.path.exists(absolute_path):
-                        logger.info(f"Directory already exists: {absolute_path}")
-                    else:
-                        os.makedirs(absolute_path, exist_ok=True)
-                        logger.info(f"Created directory: {absolute_path}")
+    # bb = os.path.isfile(to_absolute_path('../PACKETS/conversions.mat'))
+    if dist.rank == 0:
+        if os.path.isfile(to_absolute_path("../PACKETS/conversions.mat")):
+            os.remove(to_absolute_path("../PACKETS/conversions.mat"))
+        for folder in folders_to_create:
+            absolute_path = to_absolute_path(folder)
+            lock_path = (
+                absolute_path + ".lock"
+            )  # Use a lock file for synchronization
+            with FileLock(lock_path):  # Only one process will create the directory
+                if os.path.exists(absolute_path):
+                    logger.info(f"Directory already exists: {absolute_path}")
+                else:
+                    os.makedirs(absolute_path, exist_ok=True)
+                    logger.info(f"Created directory: {absolute_path}")
     if dist.rank == 0:
         logger.info(
             "|-----------------------------------------------------------------|"
@@ -1215,16 +1209,18 @@ def main(cfg: DictConfig) -> None:
             maxP = np.max(pressure)
             maxP = max(maxP1, maxP)
 
-            # change this     5000
             presstemp = cfg.custom.PROPS.P1 * np.ones(
                 (N, steppi, nx, ny, nz), dtype=np.float32
             )
             pressultimate = np.concatenate((presstemp, pressure), axis=0)
 
             meanPp, stdPp = safe_mean_std(pressultimate)
-        meanSgp, stdSgp = safe_mean_std(Sgas)
-        meanSop, stdSop = safe_mean_std(Soil)
-        meanSwp, stdSwp = safe_mean_std(Swater)
+        if "SGAS" in output_variables:
+            meanSgp, stdSgp = safe_mean_std(Sgas)
+        if "SOIL" in output_variables:
+            meanSop, stdSop = safe_mean_std(Soil)
+        if "SWAT" in output_variables:
+            meanSwp, stdSwp = safe_mean_std(Swater)
 
         # if dist.rank ==0:
 
