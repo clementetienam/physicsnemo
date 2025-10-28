@@ -547,12 +547,16 @@ def linear_interp(x, xp, fp):
         torch.searchsorted(contiguous_xp, x) - 1, 0, len(contiguous_xp) - 2
     )
     denominators = contiguous_xp[left_indices + 1] - contiguous_xp[left_indices]
-    close_to_zero = denominators.abs() < 1e-10
-    denominators[close_to_zero] = 1.0  # or any non-zero value to avoid NaN
+    
     interpolated_value = (
         ((fp[left_indices + 1] - fp[left_indices]) / denominators)
         * (x - contiguous_xp[left_indices])
     ) + fp[left_indices]
+    
+    # Return left endpoint value when denominator is near zero
+    close_to_zero = denominators.abs() < 1e-10
+    interpolated_value[close_to_zero] = fp[left_indices][close_to_zero]
+    
     return interpolated_value
 
 
