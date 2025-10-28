@@ -68,7 +68,7 @@ from compare.sequential.misc_plotting_utils import (
 from compare.sequential.misc_operations import (
     ProgressBar,
     ShowBar,
-    Plot_RSM_percentile,
+    plot_rsm_percentile,
 )
 
 from compare.sequential.misc_model import (
@@ -76,7 +76,7 @@ from compare.sequential.misc_model import (
 )
 
 from compare.sequential.misc_forward import (
-    write_RSM,
+    write_rsm,
 )
 
 from compare.sequential.misc_forward_enact import (
@@ -530,12 +530,12 @@ def compare_and_analyze_results(
         loop=0,
     )
     print("Saving prediction in CSV file")
-    write_RSM(ouut_peacemann[0, :, :], Time_vector, "PhyNeMo", well_names, N_pr)
-    write_RSM(out_fcn_true[0, :, :], Time_vector, "Flow", well_names, N_pr)
+    write_rsm(ouut_peacemann[0, :, :], Time_vector, "PhyNeMo", well_names, N_pr)
+    write_rsm(out_fcn_true[0, :, :], Time_vector, "Flow", well_names, N_pr)
     CCRhard = ouut_peacemann[0, :, :]
     Truedata = out_fcn_true[0, :, :]
     print("Plotting well responses and accuracies")
-    Plot_RSM_percentile(
+    plot_rsm_percentile(
         ouut_peacemann[0, :, :], out_fcn_true[0, :, :], Time_vector, well_names, N_pr
     )
     os.chdir(to_absolute_path(oldfolder))
@@ -795,10 +795,10 @@ def compare_and_analyze_results(
     ShowBar(progressBar)
     time.sleep(1)
     print("Saving prediction in CSV file")
-    write_RSM(ouut_peacemann[0, :, :], Time_vector, "PhyNeMo", well_names, N_pr)
-    write_RSM(out_fcn_true[0, :, :], Time_vector, "Flow", well_names, N_pr)
+    write_rsm(ouut_peacemann[0, :, :], Time_vector, "PhyNeMo", well_names, N_pr)
+    write_rsm(out_fcn_true[0, :, :], Time_vector, "Flow", well_names, N_pr)
     print("Plotting well responses and accuracies")
-    Plot_RSM_percentile(
+    plot_rsm_percentile(
         ouut_peacemann[0, :, :], out_fcn_true[0, :, :], Time_vector, well_names, N_pr
     )
     FNOpred = ouut_peacemann[0, :, :]
