@@ -35,7 +35,6 @@ from scipy.linalg import norm
 
 # Numerical Computing
 import numpy as np
-import numpy.matlib
 import numpy.ma as ma
 import pandas as pd
 import scipy.linalg as sla
@@ -72,8 +71,7 @@ def setup_logging() -> logging.Logger:
 logger = setup_logging()
 
 
-# def simulation_data_types():
-"""Return common Eclipse/Flow dictionaries for parsing keywords."""
+
 type_dict = {
     b"INTE": "i",
     b"CHAR": "8s",
@@ -654,7 +652,7 @@ class EclBinaryParser(object):
         all_pointers = pd.concat(
             [self._get_static_pointers(), self._get_dynamic_pointers()]
         )
-        all_pointers = all_pointers.fillna(method="ffill", axis=1).astype("int32").T
+        all_pointers = all_pointers.ffill(axis=1).astype("int32").T
         all_pointers.columns = [byte2str(column) for column in all_pointers.columns]
         all_pointers = self.get_seqnum_dates().join(all_pointers)
         return all_pointers
@@ -884,7 +882,7 @@ def ProgressBar2(Total, Progress):
             return "100%"
         return "{:.0f}%".format(round(Progress * 100, 0))
     except Exception as e:
-        logger.error(f"Error in is_available: {e}")
+        logger.error(f"Error in ProgressBar2: {e}")
         return "ERROR"
 
 
@@ -1378,7 +1376,7 @@ def Reservoir_simulation(
     pressure = np.stack(pressure, axis=0)
     swat = np.stack(swat, axis=0)
     # soil = np.stack(soil, axis=0)
-    soil = abs(1 - abs(swat + sgas))
+    soil = abs(1 - (swat + sgas))
     sgas = sgas[steppi_indices - 1, :, :, :]
     swat = swat[steppi_indices - 1, :, :, :]
     pressure = pressure[steppi_indices - 1, :, :, :]
