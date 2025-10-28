@@ -248,9 +248,9 @@ def process_final_results(
     controljj = {}
     if "PERM" in input_variables:
         controljj["PERM"] = np.reshape(meann["PERM"], (-1, 1), "F")
-    if "PERM" in input_variables:
+    if "PORO" in input_variables:
         controljj["PORO"] = np.reshape(meann["PORO"], (-1, 1), "F")
-    if "PERM" in input_variables:
+    if "FAULT" in input_variables:
         controljj["FAULT"] = np.reshape(meann["FAULT"], (-1, 1), "F")
     ensemblepy = ensemble_pytorch(
         ensemble,
