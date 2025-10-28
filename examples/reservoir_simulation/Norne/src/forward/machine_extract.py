@@ -272,7 +272,7 @@ def safe_rmtree(path, retries=3, delay=1):
     for attempt in range(retries):
         try:
             if os.path.exists(path):
-                shutil.rmtree(path, ignore_errors=True)
+                shutil.rmtree(path)
                 logger = setup_logging()
                 logger.info(f"Removed folder: {path}")
             else:
@@ -396,26 +396,6 @@ def remove_ddp(model):
         if isinstance(model, torch.nn.parallel.DistributedDataParallel)
         else model
     )
-
-
-def broadcast_read(obj):
-    """
-    Broadcasts a dictionary (or any object) from rank 0 to all processes.
-    Uses GLOO backend for non-tensor broadcasting.
-    """
-    world_size = torch.distributed.get_world_size()
-    if world_size > 1:
-        # ✅ Do NOT reinitialize the process group
-        if torch.distributed.get_backend() != "gloo":
-            logger = setup_logging()
-            logger.warning(
-                f"Warning: broadcast_object_list should use GLOO, but found {torch.distributed.get_backend()}"
-            )
-        obj_list = [obj]  # Place object inside a list
-        torch.distributed.broadcast_object_list(obj_list, src=0)  # ✅ Broadcast
-        return obj_list[0]  # Extract received object
-    else:
-        return obj  # No need to broadcast if single GPU
 
 
 def check_and_remove_dirs(directories, response, logger):
