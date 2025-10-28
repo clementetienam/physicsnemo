@@ -1201,8 +1201,8 @@ def Black_oil_peacemann(
     lenwels,
 ):
     in_var = input_var["X"].clone()
-    out_var = input_var["Y"].clone()  # ✅ Clone to prevent in-place modification
-    out_var = out_var.clamp(1e-6, 1)  # ✅ Now, this won't modify the original tensor
+    out_var = input_var["Y"].clone()  
+    out_var = out_var.clamp(1e-6, 1)  
     in_var = in_var.clamp(1e-6, 1)
     skin = 0
     rwell = 200
@@ -1240,7 +1240,6 @@ def Black_oil_peacemann(
             kro = (KROW / (1 - swa)) * (KROG / (1 - sga)) * soa
         else:
             krw, kro, krg = StoneIIModel(paramz, device, gas, water)
-        #krw, kro, krg = StoneIIModel(paramz, device, gas, water)
         krw = replace_with_mean(krw)
         kro = replace_with_mean(kro)
         krg = replace_with_mean(krg)
@@ -1362,5 +1361,4 @@ def normalize_tensors_adjusted2(tensor):
         )
         tensor = torch.zeros_like(tensor) + perturbation  # ✅ Out-of-place
     normalized_dict = tensor
-    del min_val, max_val, perturbation  # Free memory of intermediate variables
     return normalized_dict
