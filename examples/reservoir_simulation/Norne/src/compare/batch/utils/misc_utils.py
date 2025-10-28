@@ -797,7 +797,7 @@ def compare_and_analyze_results(
     for k in range(N_pr):
         plt.subplot(5, 5, int(k + 1))
         plt.plot(timezz, True_mat[:, k], color="red", lw="2", label="Flow")
-        if cfg.custom.fno_type == "FNO":
+        if cfg.custom.fno_type == "PINO":
             plt.plot(timezz, P10[:, k], color="blue", lw="2", label="PINO -CCR(hard)")
             plt.plot(timezz, P90[:, k], color="orange", lw="2", label="PINO - FNO")
         else:
