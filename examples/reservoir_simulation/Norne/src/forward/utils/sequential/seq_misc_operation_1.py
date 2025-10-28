@@ -315,7 +315,7 @@ def load_and_setup_training_data(
                 cQw[kk, mv, i, :, :] = X_data1["Qw"][kk, mv, :, :, i]
                 cQg[kk, mv, i, :, :] = X_data1["Qg"][kk, mv, :, :, i]
                 cQo[kk, mv, i, :, :] = X_data1["Qo"][kk, mv, :, :, i]
-            cactnum[0, 0, i, :, :] = X_data1["actnum"][0, 0, :, :, i]
+                cactnum[0, 0, i, :, :] = X_data1["actnum"][0, 0, :, :, i]
             cTime[kk, :, :, :, :] = time_values[mv] * np.ones(
                 (steppi, nz, nx, ny), dtype=np.float32
             )
