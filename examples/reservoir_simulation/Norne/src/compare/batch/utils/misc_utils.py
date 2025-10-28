@@ -606,14 +606,12 @@ def compare_and_analyze_results(
     source_path = to_absolute_path(os.path.join(source_directory, filename))
     destination_path = to_absolute_path(os.path.join(destination_directory, filename))
     shutil.copy(source_path, destination_path)
+    
     filename = "R2L2.png"
     source_path = to_absolute_path(os.path.join(source_directory, filename))
     destination_path = to_absolute_path(os.path.join(destination_directory, filename))
     shutil.copy(source_path, destination_path)
-    filename = "Evolution.gif"
-    source_path = to_absolute_path(os.path.join(source_directory, filename))
-    destination_path = to_absolute_path(os.path.join(destination_directory, filename))
-    shutil.copy(source_path, destination_path)
+    
     start_time_plots2 = time.time()
     simout = Forward_model_ensemble(
         Ne,
