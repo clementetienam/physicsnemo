@@ -232,7 +232,7 @@ def getoptimumk(X, i, training_master, oldfolder):
     Kss = range(1, 10)
 
     for k in Kss:
-        kmeanModel = KMeans(n_clusters=k).fit(X)
+        kmeanModel = KMeans(n_clusters=k)
         kmeanModel.fit(X)
         distortions.append(
             sum(np.min(cdist(X, kmeanModel.cluster_centers_, "euclidean"), axis=1))
@@ -266,7 +266,7 @@ def getoptimumkcost(X, i, training_master, oldfolder):
     Kss = range(1, 10)
 
     for k in Kss:
-        kmeanModel = MiniBatchKMeans(n_clusters=k).fit(X)
+        kmeanModel = MiniBatchKMeans(n_clusters=k)
         kmeanModel.fit(X)
         distortions.append(
             sum(np.min(cdist(X, kmeanModel.cluster_centers_, "euclidean"), axis=1))
@@ -289,7 +289,7 @@ def getoptimumkcost(X, i, training_master, oldfolder):
     os.chdir(training_master)
     plt.savefig("machine_Energy__%d.jpg" % (i + 1))
     os.chdir(oldfolder)
-    plt.show()
+    #plt.show()
     return kuse
 
 
@@ -426,9 +426,10 @@ def startit(
     )
 
     bigs = clust
-    return bigs
     setup_logging().info("")
     setup_logging().info("Finished training machine %d" % (i + 1))
+    return bigs
+
 
 
 def endit(i, testt, training_master, oldfolder, pred_type, degg, big, experts, device):
@@ -497,7 +498,7 @@ def CCR_Machine(
     y = outputtj
     numruth = len(X[0])
 
-    y_traind = y
+    #y_traind = y
     scaler1a = MinMaxScaler(feature_range=(0, 1))
     (scaler1a.fit(X))
     X = scaler1a.transform(X)
@@ -542,8 +543,7 @@ def CCR_Machine(
         with open(filename1, "wb") as file1:
             pickle.dump(clf, file1)
 
-        with open(filename1, "rb") as file2:
-            loaded_model = pickle.load(file2)
+        loaded_model = clf#pickle.load(file2)
         labelDA = loaded_model.predict(X)
         labelDA = np.reshape((labelDA), (-1, 1), "F")
         os.chdir(oldfolder)
@@ -707,7 +707,7 @@ def fit_Gp(X, y, device, itery, percentage=50.0):
 
         loss = loss.mean()  # Ensure loss is a scalar
         # print(f"Epoch {epoch + 1}/{itery}, Loss: {loss.item()}")  # ✅ Print loss
-        loss.backward(retain_graph=True)  # Keep the graph intact
+        loss.backward  # Keep the graph intact
         optimizer.step()
         scheduler.step()
 
@@ -880,8 +880,8 @@ def PREDICTION_CCR__MACHINE(
 
             if a00.shape[0] != 0:
                 with torch.no_grad():
-                    for i in range(0, a00.shape[0], batch_size):
-                        batch = a00[i : i + batch_size]  # Take a batch of inputs
+                    for ii in range(0, a00.shape[0], batch_size):
+                        batch = a00[ii : ii + batch_size]  # Take a batch of inputs
 
                         prediction = model(batch)  # Forward pass
                         pred = prediction.mean.detach().cpu().numpy()
@@ -1065,8 +1065,7 @@ def main(cfg: DictConfig) -> None:
     inputsz = range(Y.shape[1])
 
     num_cores = multiprocessing.cpu_count()
-    njobs = (num_cores // 4) - 1
-    num_cores = njobs
+    njobs = max(1, (num_cores // 4) - 1)  # Ensure at least 1 job
 
     use_elbow = int(cfg.custom.Number_of_experts)
     experts = int(cfg.custom.Type_of_experts)
