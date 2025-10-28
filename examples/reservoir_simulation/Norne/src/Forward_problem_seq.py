@@ -1144,11 +1144,15 @@ def main(cfg: DictConfig) -> None:
     training_step_metrics = {}
     val_step_metrics = {}
 
-    best_pressure = copy.deepcopy(surrogate_pressure)
-    best_gas = copy.deepcopy(surrogate_gas)
+    if "PRESSURE" in output_variables:
+        best_pressure = copy.deepcopy(surrogate_pressure)
+    if "SGAS" in output_variables:
+        best_gas = copy.deepcopy(surrogate_gas)
     best_peacemann = copy.deepcopy(surrogate_peacemann)
-    best_saturation = copy.deepcopy(surrogate_saturation)
-    best_oil = copy.deepcopy(surrogate_oil)
+    if "SWAT" in output_variables:
+        best_saturation = copy.deepcopy(surrogate_saturation)
+    if "SOIL" in output_variables:
+        best_oil = copy.deepcopy(surrogate_oil)    
     start_time = time.time()
     run_training_loop(
         dist,
