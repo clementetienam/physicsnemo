@@ -1220,18 +1220,6 @@ def main(cfg: DictConfig) -> None:
         if "SWAT" in output_variables:
             meanSwp, stdSwp = safe_mean_std(Swater)
 
-        # if dist.rank ==0:
-
-        logger.info(
-            "-----------------------------------------------------------------------"
-        )
-        logger.info(f"Pressure - Mean: {meanPp:.4f}, Standard Deviation: {stdPp:.4f}")
-        logger.info(f"Sgas - Mean: {meanSgp:.4f}, Standard Deviation: {stdSgp:.4f}")
-        logger.info(f"Soil - Mean: {meanSop:.4f}, Standard Deviation: {stdSop:.4f}")
-        logger.info(f"Swater - Mean: {meanSwp:.4f}, Standard Deviation: {stdSwp:.4f}")
-        logger.info(
-            "-----------------------------------------------------------------------"
-        )
 
         if "PRESSURE" in output_variables:
             minP, maxP, pressurex = scale_command_pressure(pressure, maxP)  # pressure
