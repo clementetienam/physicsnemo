@@ -42,6 +42,7 @@ Usage:
 import os
 import time
 import math
+import glob
 import shutil
 import logging
 import warnings
@@ -51,7 +52,6 @@ import re
 
 # 🔧 Third-party Libraries
 import numpy as np
-import numpy.matlib
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
@@ -62,7 +62,6 @@ from cpuinfo import get_cpu_info
 from hydra.utils import to_absolute_path
 from compare.sequential.misc_plotting_utils import (
     simulation_data_types,
-    setup_logging,
     Get_Time,
 )
 
@@ -85,9 +84,6 @@ from compare.sequential.misc_forward_enact import (
 )
 
 
-logger = setup_logging()
-warnings.filterwarnings("ignore")
-
 
 def setup_logging() -> logging.Logger:
     """Configure and return the main logger."""
@@ -102,7 +98,8 @@ def setup_logging() -> logging.Logger:
         logger.setLevel(logging.INFO)
     return logger
 
-
+logger = setup_logging()
+warnings.filterwarnings("ignore")
 # Sorting function for row-major order
 def sort_key(path):
     # Extract row and column indices from the filename using regex
@@ -517,7 +514,7 @@ def compare_and_analyze_results(
     plt.clf()
     plt.close()
     print("Now - Creating GIF")
-    import glob
+    
 
     frames = []
     imgs = sorted(glob.glob("*Dynamic*"), key=sort_key)
@@ -622,6 +619,7 @@ def compare_and_analyze_results(
     destination_path = to_absolute_path(os.path.join(destination_directory, filename))
     shutil.copy(source_path, destination_path)
     start_time_plots2 = time.time()
+    effective_abi_yes = effective_abi
     simout = Forward_model_ensemble(
         Ne,
         inn,
@@ -659,7 +657,7 @@ def compare_and_analyze_results(
         cfg,
         N_pr,
         lenwels,
-        effective_abi,
+        effective_abi_yes,
         awater,
         agas,
         aoil,
