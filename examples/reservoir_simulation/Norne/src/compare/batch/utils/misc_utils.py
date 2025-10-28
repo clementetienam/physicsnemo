@@ -85,7 +85,7 @@ from compare.batch.misc_plotting_utils import (
 from compare.batch.misc_operations import (
     ProgressBar,
     ShowBar,
-    Plot_RSM_percentile,
+    plot_rsm_percentile,
 )
 
 from compare.batch.misc_model import (
@@ -93,7 +93,7 @@ from compare.batch.misc_model import (
 )
 
 from compare.batch.misc_forward import (
-    write_RSM,
+    write_rsm,
 )
 
 from compare.batch.misc_forward_enact import (
