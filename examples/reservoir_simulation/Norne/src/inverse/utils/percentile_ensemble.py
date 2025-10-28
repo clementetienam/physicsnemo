@@ -49,7 +49,7 @@ from inverse.inversion_operation_surrogate import (
     Forward_model_ensemble,
 )
 from inverse.inversion_operation_gather import (
-    Plot_RSM_percentile,
+    plot_rsm_percentile,
 )
 from inverse.inversion_operation_misc import (
     Plot_PhyNeMo,
@@ -242,7 +242,7 @@ def plot_percentile_models(
         gas_percentile = simout["SGAS"]
     os.chdir("../RESULTS/HM_RESULTS/PERCENTILE")
     if dist.rank == 0:
-        Plot_RSM_percentile(yzout, True_mat, Time_unie1, N_pr, well_names)
+        plot_rsm_percentile(yzout, True_mat, Time_unie1, N_pr, well_names)
     X_data11 = {
         "PERM_Reali": ensembleout["PERM"],
         "FAULT_Reali": ensembleout["FAULT"],
