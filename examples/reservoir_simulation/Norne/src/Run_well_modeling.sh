@@ -108,8 +108,8 @@ echo "2 - Well Optimisation and Placement"
 read -r OPERATION_CHOICE
 
 # Validate choice is 1, 2, or 3
-if ! [[ "$OPERATION_CHOICE" =~ ^[1-3]$ ]]; then
-  echo "❌ Error: Invalid choice. Please enter 1, 2, or 3."
+if ! [[ "$OPERATION_CHOICE" =~ ^[1-2]$ ]]; then
+  echo "❌ Error: Invalid choice. Please enter 1, or 2."
   exit 1
 fi
 echo "✅ You selected option $OPERATION_CHOICE."
