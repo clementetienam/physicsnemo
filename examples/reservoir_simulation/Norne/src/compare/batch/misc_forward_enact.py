@@ -839,8 +839,8 @@ def PREDICTION_CCR__MACHINE(
             predictions = []
             if a00.shape[0] != 0:
                 with torch.no_grad():
-                    for i in range(0, a00.shape[0], batch_size):
-                        batch = a00[i : i + batch_size]  # Take a batch of inputs
+                    for batch_idx in range(0, a00.shape[0], batch_size):
+                        batch = a00[batch_idx : batch_idx + batch_size]  # Take a batch of inputs
                         prediction = model(batch)  # Forward pass
                         pred = prediction.mean.detach().cpu().numpy()
                         predictions.append(pred)  # Store batch predictions
