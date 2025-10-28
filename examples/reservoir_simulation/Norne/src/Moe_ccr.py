@@ -543,7 +543,7 @@ def CCR_Machine(
         with open(filename1, "wb") as file1:
             pickle.dump(clf, file1)
 
-        loaded_model = clf#pickle.load(file2)
+        loaded_model = clf
         labelDA = loaded_model.predict(X)
         labelDA = np.reshape((labelDA), (-1, 1), "F")
         os.chdir(oldfolder)
