@@ -63,7 +63,6 @@ import gzip
 import scipy.io as sio
 import numpy as np
 import numpy.linalg
-import numpy.matlib
 from omegaconf import DictConfig
 from cpuinfo import get_cpu_info
 from filelock import FileLock
