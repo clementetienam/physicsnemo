@@ -758,7 +758,7 @@ def fit_Gp1(X, y, device, itery, percentage=50.0):
         loss = -mll(output, y)
 
         loss = loss.mean()  # Ensure loss is a scalar
-        print(f"Epoch {epoch + 1}/{itery}, Loss: {loss.item()}")  # ✅ Print loss
+        #print(f"Epoch {epoch + 1}/{itery}, Loss: {loss.item()}")  # ✅ Print loss
         loss.backward()  # Keep the graph intact
         optimizer.step()
         scheduler.step()
@@ -1136,7 +1136,6 @@ def main(cfg: DictConfig) -> None:
     outputpredenergy = np.hstack(clemes)
 
     logger.info(" ")
-    print(max_out_fcn)
 
     C = []
     for k in range(lenwels):
