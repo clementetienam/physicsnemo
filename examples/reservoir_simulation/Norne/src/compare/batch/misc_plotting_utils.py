@@ -588,7 +588,7 @@ def assign_faults(well_indices, nx, ny, nz, well_amount, data):
 
 def Get_fault(filename):
     with open(filename, "r") as file:
-        injector_gas = set()  # Set to collect gas injector well names
+        fault_names = set()  # Set to collect gas injector well names
         start_collecting_welspecs = False
         for line in file:
             stripped_line = line.strip()
@@ -603,8 +603,8 @@ def Get_fault(filename):
             if start_collecting_welspecs:
                 parts = stripped_line.split()
                 fault_name = parts[0].strip("'")
-                injector_gas.add((fault_name))
-    return sorted(injector_gas)
+                fault_names.add((fault_name))
+    return sorted(fault_names)
 
 
 def read_faults(filename, well_names):
