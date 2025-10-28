@@ -1131,11 +1131,11 @@ def Forward_model_ensemble(
         ouut_p = convert_backs(ouut_p, max_out_fcn2, N_pr, lenwels)
         ouut_p[ouut_p <= 0] = 0
     sim = []
+    logger = setup_logging()
     for zz in range(ouut_p.shape[0]):
         lista = []
         for k in range(lenwels):
-            rescaled_tensorr = ouut_p[:, :, k * N_pr : (k + 1) * N_pr]
-            logger = setup_logging()
+            rescaled_tensorr = ouut_p[:, :, k * N_pr : (k + 1) * N_pr]            
             logger.info(f"Rescaled tensor shape: {rescaled_tensorr.shape}")
             lista.append(rescaled_tensorr)
         lista = np.hstack(lista)
