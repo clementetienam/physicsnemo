@@ -578,7 +578,7 @@ def interp_torch(cuda, reference_matrix1, reference_matrix2, tensor1):
     return processed_chunks
 
 
-def write_RSM(data, Time, Name, well_names, N_pr):
+def write_rsm(data, Time, Name, well_names, N_pr):
     groups = ["WOPR(bbl/day)", "WWPR(bbl/day)", "WGPR(scf/day)"]
     columns = well_names  # ['L1', 'L2', 'L3', 'LU1', 'LU2',
     headers = pd.MultiIndex.from_product([groups, columns])
