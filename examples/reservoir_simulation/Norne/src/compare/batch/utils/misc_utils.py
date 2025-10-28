@@ -510,8 +510,6 @@ def compare_and_analyze_results(
     plt.clf()
     plt.close()
     logger.info("Now - Creating GIF")
-    
-
     frames = []
     imgs = sorted(glob.glob("*Dynamic*"), key=sort_key)
     for i in imgs:
