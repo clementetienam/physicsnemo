@@ -945,7 +945,7 @@ def load_and_setup_training_data(
         SCHEDULER["PRESSURE"] = scheduler_pressure
     if "SGAS" in output_variables:
         MODELS["SGAS"] = surrogate_gas
-        SCHEDULER["SGAS"] = scheduler_pressure
+        SCHEDULER["SGAS"] = scheduler_gas
     if "SWAT" in output_variables:
         MODELS["SATURATION"] = surrogate_saturation
         SCHEDULER["SATURATION"] = scheduler_saturation
