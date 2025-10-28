@@ -30,8 +30,6 @@ from omegaconf import DictConfig
 import gzip
 import scipy.io as sio
 import numpy as np
-import numpy.linalg
-import numpy.matlib
 import multiprocessing
 from shutil import rmtree
 from cpuinfo import get_cpu_info
