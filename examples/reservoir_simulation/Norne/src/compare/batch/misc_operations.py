@@ -513,7 +513,7 @@ def Add_marker(plt, XX, YY, locc):
             )
 
 
-def Plot_RSM_percentile(pertoutt, True_mat, timezz, well_names, N_pr):
+def plot_rsm_percentile(pertoutt, True_mat, timezz, well_names, N_pr):
     columns = well_names  # ['L1', 'L2', 'L3', 'LU1', 'LU2',
     P10 = pertoutt
 
