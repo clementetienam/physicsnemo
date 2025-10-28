@@ -568,7 +568,7 @@ def run_training_loop(
                         best_peacemann,
                         best_oil,
                     )
-                   if "PRESSURE" in output_variables:
+                    if "PRESSURE" in output_variables:
                         best_pressure = copy.deepcopy(surrogate_pressure)
                     if "SGAS" in output_variables:
                         best_gas = copy.deepcopy(surrogate_gas)
