@@ -84,8 +84,8 @@ def Plot_PhyNeMo(
 ):
     # matplotlib.use('Agg')
     Pressz = np.reshape(Truee, (nx, ny, nz), "F")
-    avg_2d = np.mean(Pressz, axis=2)
-    avg_2d[avg_2d == 0] = np.nan
+    #avg_2d = np.mean(Pressz, axis=2)
+    #avg_2d[avg_2d == 0] = np.nan
     maxii = max(Pressz.ravel())
     minii = min(Pressz.ravel())
     Pressz = Pressz / maxii
