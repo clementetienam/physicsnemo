@@ -169,133 +169,26 @@ def initialize_environment() -> tuple[bool, int, logging.Logger]:
     return gpu_available, operation_mode, logger
 
 
-def setup_directories(cfg: DictConfig, dist: Any, logger: logging.Logger) -> None:
-    """Setup and clean directories for the training process."""
-    if cfg.custom.fno_type == "FNO":
-        directories_to_check = [
-            "checkpoints",
-            "__pycache__/",
-            "../RUNS",
-            "outputs/",
-            "../MODELS/FNO/checkpoints_pressure",
-            "../MODELS/FNO/checkpoints_saturation",
-            "../MODELS/FNO/checkpoints_oil",
-            "../MODELS/FNO/checkpoints_gas",
-            "../MODELS/FNO/checkpoints_peacemann",
-        ]
-    else:
-        directories_to_check = [
-            "checkpoints_seq",
-            "__pycache__/",
-            "../RUNS",
-            "outputs/",
-            "../MODELS/PINO/checkpoints_pressure",
-            "../MODELS/PINO/checkpoints_saturation",
-            "../MODELS/PINO/checkpoints_oil",
-            "../MODELS/PINO/checkpoints_gas",
-            "../MODELS/PINO/checkpoints_peacemann",
-        ]
-
-    check_and_remove_dirs(directories_to_check, cfg.custom.file_response, logger)
-    logger.info("|-----------------------------------------------------------------|")
-
-
-def create_model_directories(cfg: DictConfig, logger: logging.Logger) -> None:
-    """Create model checkpoint directories."""
-    if cfg.custom.fno_type == "FNO":
-        folders_to_create = [
-            "../MODELS/FNO/checkpoints_pressure",
-            "../MODELS/FNO/checkpoints_saturation",
-            "../MODELS/FNO/checkpoints_oil",
-            "../MODELS/FNO/checkpoints_gas",
-            "../MODELS/FNO/checkpoints_peacemann",
-        ]
-    else:
-        folders_to_create = [
-            "../MODELS/PINO/checkpoints_pressure",
-            "../MODELS/PINO/checkpoints_saturation",
-            "../MODELS/PINO/checkpoints_oil",
-            "../MODELS/PINO/checkpoints_gas",
-            "../MODELS/PINO/checkpoints_peacemann",
-        ]
-
-    for folder in folders_to_create:
-        absolute_path = to_absolute_path(folder)
-        lock_path = absolute_path + ".lock"
-        with FileLock(lock_path):
-            if Path(absolute_path).exists():
-                logger.info(f"Directory already exists: {absolute_path}")
-            else:
-                os.makedirs(absolute_path, exist_ok=True)
-                logger.info(f"Created directory: {absolute_path}")
-    logger.info("|-----------------------------------------------------------------|")
-
-
 @hydra.main(version_base="1.2", config_path="conf", config_name="DECK_CONFIG")
 def main(cfg: DictConfig) -> None:
     """Main function for batch forward problem solving."""
     # Initialize environment
     gpu_available, operation_mode, logger = initialize_environment()
+    sequences = ["pressure", "saturation", "oil", "gas", "peacemann"]
+    model_type = "FNO" if cfg.custom.fno_type == "FNO" else "PINO"
+    model_paths = [f"../MODELS/{model_type}/checkpoints_{seq}" for seq in sequences]
     if cfg.custom.model_Distributed == 1:
         dist, logger = InitializeLoggers(cfg)
         if dist.rank == 0:
-            if cfg.custom.fno_type == "FNO":
-                directories_to_check = [
-                    "checkpoints",
-                    "__pycache__/",
-                    "../RUNS",
-                    "outputs/",
-                    "../MODELS/FNO/checkpoints_pressure",
-                    "../MODELS/FNO/checkpoints_saturation",
-                    "../MODELS/FNO/checkpoints_oil",
-                    "../MODELS/FNO/checkpoints_gas",
-                    "../MODELS/FNO/checkpoints_peacemann",
-                ]
-            else:
-                directories_to_check = [
-                    "checkpoints_seq",
-                    "__pycache__/",
-                    "../RUNS",
-                    "outputs/",
-                    "../MODELS/PINO/checkpoints_pressure",
-                    "../MODELS/PINO/checkpoints_saturation",
-                    "../MODELS/PINO/checkpoints_oil",
-                    "../MODELS/PINO/checkpoints_gas",
-                    "../MODELS/PINO/checkpoints_peacemann",
-                ]
-            check_and_remove_dirs(
-                directories_to_check, cfg.custom.file_response, logger
-            )
-            logger.info(
-                "|-----------------------------------------------------------------|"
-            )
+            checkpoint_dir = "checkpoints" if cfg.custom.fno_type == "FNO" else "checkpoints_seq"
+            base_dirs = ["__pycache__/", "../RUNS", "outputs/"]
+            directories_to_check = [checkpoint_dir] + base_dirs + model_paths
+            check_and_remove_dirs(directories_to_check, cfg.custom.file_response, logger)
+            logger.info("|-----------------------------------------------------------------|")
     else:
-        if cfg.custom.fno_type == "FNO":
-            directories_to_check = [
-                "checkpoints",
-                "__pycache__/",
-                "../RUNS",
-                "outputs/",
-                "mlruns",
-                "../MODELS/FNO/checkpoints_pressure",
-                "../MODELS/FNO/checkpoints_saturation",
-                "../MODELS/FNO/checkpoints_oil",
-                "../MODELS/FNO/checkpoints_gas",
-                "../MODELS/FNO/checkpoints_peacemann",
-            ]
-        else:
-            directories_to_check = [
-                "checkpoints",
-                "__pycache__/",
-                "../RUNS",
-                "outputs/",
-                "mlruns",
-                "../MODELS/PINO/checkpoints_pressure",
-                "../MODELS/PINO/checkpoints_saturation",
-                "../MODELS/PINO/checkpoints_oil",
-                "../MODELS/PINO/checkpoints_gas",
-                "../MODELS/PINO/checkpoints_peacemann",
-            ]
+        checkpoint_dir = "checkpoints"
+        base_dirs = ["__pycache__/", "../RUNS", "outputs/", "mlruns"]
+        directories_to_check = [checkpoint_dir] + base_dirs + model_paths
         check_and_remove_dirs(directories_to_check, cfg.custom.file_response, logger)
         logger.info(
             "|-----------------------------------------------------------------|"
@@ -318,7 +211,7 @@ def main(cfg: DictConfig) -> None:
         initialize_mlflow(
             experiment_name="PhyNeMo-Reservoir Batch Modelling",
             experiment_desc="PhyNeMo launch development",
-            run_name="Reservoir bacth forward modelling",
+            run_name="Reservoir batch forward modelling",
             run_desc="Reservoir batch forward modelling training",
             user_name="Clement Etienam",
             mode="offline",
@@ -341,7 +234,7 @@ def main(cfg: DictConfig) -> None:
                 "|-----------------------------------------------------------------|"
             )
             logger.info(
-                "|                     MULTI GPU USAGE MODEL :                     |"
+                "|                     MULTI GPU USAGE MODEL:                     |"
             )
             logger.info(
                 "|-----------------------------------------------------------------|"
@@ -351,20 +244,11 @@ def main(cfg: DictConfig) -> None:
                 "|-----------------------------------------------------------------|"
             )
             logger.info(
-                "|                     SINGLE GPU USAGE MODEL :                    |"
+                "|                     SINGLE GPU USAGE MODEL:                    |"
             )
             logger.info(
                 "|-----------------------------------------------------------------|"
             )
-        logger.info(
-            "|-----------------------------------------------------------------|"
-        )
-        logger.info(
-            "|                 TRAIN THE MODEL                                 |"
-        )
-        logger.info(
-            "|-----------------------------------------------------------------|"
-        )
     oldfolder = os.getcwd()
     os.chdir(oldfolder)
     Relperm = int(cfg.custom.Relperm)
