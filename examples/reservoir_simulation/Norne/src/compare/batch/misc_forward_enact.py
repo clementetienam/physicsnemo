@@ -955,7 +955,7 @@ def Forward_model_ensemble(
             else:
                 chunk_size = nz_current
                 num_chunks = 1
-
+            pad_size = 0
             for chunk_idx in range(num_chunks):
                 start_idx = chunk_idx * chunk_size
                 end_idx = min(start_idx + chunk_size, nz_current)
