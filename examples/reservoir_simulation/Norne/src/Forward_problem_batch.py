@@ -237,16 +237,6 @@ def main(cfg: DictConfig) -> None:
     """Main function for batch forward problem solving."""
     # Initialize environment
     gpu_available, operation_mode, logger = initialize_environment()
-
-    # Initialize simulation data types
-    (
-        type_dict,
-        ecl_extensions,
-        dynamic_props,
-        ecl_vectors,
-        static_props,
-        SUPPORTED_DATA_TYPES,
-    ) = simulation_data_types()
     if cfg.custom.model_Distributed == 1:
         dist, logger = InitializeLoggers(cfg)
         if dist.rank == 0:
@@ -498,26 +488,20 @@ def main(cfg: DictConfig) -> None:
     BW = float(cfg.custom.PROPS.BW)
     UW = float(cfg.custom.PROPS.UW)
     UO = float(cfg.custom.PROPS.UO)
-    SWI = cp.float32(cfg.custom.PROPS.SWI)
-    SWR = cp.float32(cfg.custom.PROPS.SWR)
-    CFO = cp.float32(cfg.custom.PROPS.CFO)
-    p_atm = cp.float32(float(cfg.custom.PROPS.PATM))
-    p_bub = cp.float32(float(cfg.custom.PROPS.PB))
+    SWI = np.float32(cfg.custom.PROPS.SWI)
+    SWR = np.float32(cfg.custom.PROPS.SWR)
+    CFO = np.float32(cfg.custom.PROPS.CFO)
+    p_atm = np.float32(float(cfg.custom.PROPS.PATM))
+    p_bub = np.float32(float(cfg.custom.PROPS.PB))
 
     DZ = torch.tensor(100).to(device)
     RE = torch.tensor(0.2 * 100).to(device)
     Truee1 = np.genfromtxt(Path(source_dir) / "rossmary.GRDECL", dtype="float")
-    Trueea = np.reshape(Truee1.T, (nx, ny, nz), "F")
-    Trueea = np.reshape(Trueea, (-1, 1), "F")
-    Trueea = Trueea * effective.reshape(-1, 1)
     if dist.rank == 0:
         navail = multiprocessing.cpu_count()
         logger.info(f"Available CPU cores: {navail}")
-    njobs = max(1, multiprocessing.cpu_count() // 5)  # Ensure at least 1 core is used
-    if dist.rank == 0:
-        logger.info(f"Using {njobs} cores for parallel processing.")
     sourc_dir = cfg.custom.file_location
-    source_dir = to_absolute_path(sourc_dir)  # ('../Necessaryy')
+    #source_dir = to_absolute_path(sourc_dir)  # ('../Necessaryy')
 
     gass, producers, injectors = read_compdats2(
         to_absolute_path(cfg.custom.COMPLETIONS_DATA),
