@@ -880,8 +880,8 @@ def PREDICTION_CCR__MACHINE(
 
             if a00.shape[0] != 0:
                 with torch.no_grad():
-                    for ii in range(0, a00.shape[0], batch_size):
-                        batch = a00[ii : ii + batch_size]  # Take a batch of inputs
+                    for batch_idx in range(0, a00.shape[0], batch_size):
+                        batch = a00[batch_idx : batch_idx + batch_size]
 
                         prediction = model(batch)  # Forward pass
                         pred = prediction.mean.detach().cpu().numpy()
