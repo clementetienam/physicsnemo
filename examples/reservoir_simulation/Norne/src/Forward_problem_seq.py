@@ -200,6 +200,7 @@ def main(cfg: DictConfig) -> None:
             )
     else:
         base_dirs = ["__pycache__/", "../RUNS", "outputs/", "mlruns"]
+        directories_to_check = [checkpoint_dir] + base_dirs + model_paths
         check_and_remove_dirs(directories_to_check, cfg.custom.file_response, logger)
         logger.info(
             "|-----------------------------------------------------------------|"
