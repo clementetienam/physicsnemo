@@ -79,8 +79,8 @@ from inverse.inversion_operation_ensemble import (
     ensemble_pytorch,
 )
 from inverse.inversion_operation_gather import (
-    Plot_RSM,
-    Plot_RSM_singleT,
+    plot_rsm,
+    plot_rsm_singleT,
     Add_marker2,
 )
 
@@ -342,7 +342,7 @@ def run_history_matching_loop(
         if iteration_count == 0:
             os.chdir(to_absolute_path("../RESULTS/HM_RESULTS"))
             if dist.rank == 0:
-                Plot_RSM(
+                plot_rsm(
                     predMatrix,
                     True_mat,
                     "Initial.png",
@@ -358,7 +358,7 @@ def run_history_matching_loop(
         True_mat[True_mat <= 0] = 0
         os.chdir(to_absolute_path("../RESULTS/HM_RESULTS"))
         if dist.rank == 0:
-            Plot_RSM_singleT(True_mat, Time_unie1, N_pr, well_names)
+            plot_rsm_singleT(True_mat, Time_unie1, N_pr, well_names)
         os.chdir(oldfolder)
         jesuni = []
         for k in range(lenwels):
