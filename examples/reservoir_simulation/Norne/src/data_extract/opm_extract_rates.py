@@ -52,6 +52,7 @@ import logging
 import warnings
 from omegaconf import DictConfig
 import re
+import stat
 import shutil
 import numpy as np
 import numpy.linalg
@@ -1703,7 +1704,11 @@ def safe_mean_std(data):
     if np.isinf(std):
         std = None
     return mean, std
-
+    
+def remove_readonly(func, path, _):
+    """Clear the readonly bit and reattempt the removal"""
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 def safe_rmtree(path, retries=3, delay=1):
     for attempt in range(retries):
@@ -1771,8 +1776,12 @@ def InitializeLoggers(cfg: DictConfig) -> Tuple[DistributedManager, PythonLogger
 
             if os.path.exists(tracking_dir):
                 logger.info(f"Removing existing directory: {tracking_dir}")
-                os.system(f"rm -rf {tracking_dir}")  # Force delete using shell command
-                # shutil.rmtree(tracking_dir)  # Remove directory and all contents
+                try:
+                    shutil.rmtree(tracking_dir, onerror=remove_readonly)
+                    logger.info(f"Successfully removed directory: {tracking_dir}")
+                except Exception as e:
+                    logger.error(f"Failed to remove directory {tracking_dir}: {e}")
+                    raise
             else:
                 os.makedirs(tracking_dir, exist_ok=True)
             os.environ["MLFLOW_TRACKING_URI"] = f"file://{tracking_dir}"
