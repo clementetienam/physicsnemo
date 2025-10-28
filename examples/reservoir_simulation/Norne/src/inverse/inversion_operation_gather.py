@@ -591,7 +591,7 @@ def Getporosity_ensemble(ini_ensemble, machine_map, N_ens):
     return ini_ensemble
 
 
-def Plot_RSM_percentile(pertoutt, True_mat, timezz, N_pr, well_names):
+def plot_rsm_percentile(pertoutt, True_mat, timezz, N_pr, well_names):
     columns = well_names  # ['L1', 'L2', 'L3', 'LU1', 'LU2',
     P10 = pertoutt[0]
     P50 = pertoutt[1]
@@ -730,7 +730,7 @@ def Plot_RSM_percentile(pertoutt, True_mat, timezz, N_pr, well_names):
     plt.close()
 
 
-def Plot_RSM_percentile_model(pertoutt, True_mat, timezz, N_pr, well_names):
+def plot_rsm_percentile_model(pertoutt, True_mat, timezz, N_pr, well_names):
     columns = well_names  # ['L1', 'L2', 'L3', 'LU1', 'LU2',
     P10 = pertoutt
     plt.figure(figsize=(40, 40))
@@ -777,7 +777,7 @@ def Plot_RSM_percentile_model(pertoutt, True_mat, timezz, N_pr, well_names):
     plt.close()
 
 
-def Plot_RSM_single(True_mat, timezz, N_pr, well_names):
+def plot_rsm_single(True_mat, timezz, N_pr, well_names):
     True_mat = True_mat[0]
     columns = well_names  # ['L1', 'L2', 'L3', 'LU1', 'LU2',
     plt.figure(figsize=(40, 40))
@@ -821,7 +821,7 @@ def Plot_RSM_single(True_mat, timezz, N_pr, well_names):
     plt.close()
 
 
-def Plot_RSM_singleT(True_mat, timezz, N_pr, well_names):
+def plot_rsm_singleT(True_mat, timezz, N_pr, well_names):
     columns = well_names  # ['L1', 'L2', 'L3', 'LU1', 'LU2',
     plt.figure(figsize=(40, 40))
     for k in range(N_pr):
@@ -917,7 +917,7 @@ def plot_rsm(
     plt.close()
 
 
-def Plot_RSM(predMatrix, True_mat, Namesz, Ne, timezz, N_pr, well_names):
+def plot_rsm(predMatrix, True_mat, Namesz, Ne, timezz, N_pr, well_names):
     variable_names = well_names  # ['L1', 'L2', 'L3', 'LU1',
     oil_ylabels = ["$Q_{oil}(bbl/day)$"] * N_pr
     water_ylabels = ["$Q_{water}(bbl/day)$"] * N_pr
