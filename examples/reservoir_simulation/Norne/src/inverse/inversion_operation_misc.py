@@ -27,7 +27,6 @@ import logging
 import warnings
 from collections import OrderedDict
 import numpy as np
-import numpy.matlib
 import pandas as pd
 import scipy.ndimage.morphology as spndmo
 import torch
@@ -1157,7 +1156,7 @@ class FNOModel(Module):
             decoder_layer_size=decoder_layer_size,
             dimension=dimension,
             latent_channels=latent_channels,
-            num_fno_layers=num_layers,
+            num_fno_layers=num_fno_layers,
             padding=padding,
             num_fno_modes=num_fno_modes,
         ).to(torch.device(device))  # Explicit device conversion
