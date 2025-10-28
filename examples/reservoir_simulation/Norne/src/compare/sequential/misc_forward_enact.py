@@ -1137,9 +1137,6 @@ def Forward_model_ensemble(
                 sgbefore = sguse[None, None, :, :, :]
 
             # Clean up
-            for var in ["pafter", "swafter", "soafter", "sgafter"]:
-                if var in locals():
-                    del locals()[var]
 
             if (
                 torch.cuda.is_available()
