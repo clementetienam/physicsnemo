@@ -76,7 +76,7 @@ def setup_logging() -> logging.Logger:
     return logger
 
 
-def Split_Matrix(matrix, sizee):
+def split_matrix(matrix, sizee):
     x_split = np.split(matrix, sizee, axis=0)
     return x_split
 
@@ -520,12 +520,25 @@ SUPPORTED_DATA_TYPES = {
     "C008": (8, "8s", 105),
 }
 
-
-def Remove_folder(N_ens, straa):
-    for jj in range(N_ens):
-        folderr = straa + str(jj)
-        rmtree(folderr)
-
+def remove_folders(N_ens, base_name):
+    """
+    Remove multiple folders with error handling.
+    
+    Args:
+        N_ens: Number of folders to remove
+        base_name: Base name for folders (folders will be base_name0, base_name1, etc.)
+    """
+    logger = setup_logging()
+    for j in range(N_ens):
+        folder_path = base_name + str(j)
+        try:
+            if os.path.exists(folder_path):
+                rmtree(folder_path)
+                logger.info(f"Successfully removed {folder_path}")
+            else:
+                logger.info(f"Folder {folder_path} does not exist, skipping")
+        except OSError as e:
+            print(f"Error removing {folder_path}: {e}")
 
 def linear_interp(x, xp, fp):
     contiguous_xp = xp.contiguous()
@@ -556,11 +569,10 @@ def interp_torch(cuda, reference_matrix1, reference_matrix2, tensor1):
             chunks[start_idx], reference_matrix1, reference_matrix2
         )
         processed_chunks.append(interpolated_chunk)
-    torch.cuda.empty_cache()
     return processed_chunks
 
 
-def write_RSM(data, Time, Name, well_names, N_pr):
+def write_rsm(data, Time, Name, well_names, N_pr):
     groups = ["WOPR(bbl/day)", "WWPR(bbl/day)", "WGPR(scf/day)"]
     columns = well_names  # ['L1', 'L2', 'L3', 'LU1', 'LU2',
     headers = pd.MultiIndex.from_product([groups, columns])
@@ -631,7 +643,7 @@ def best_fit(X, Y):
     return a, b
 
 
-def Performance_plot_cost(CCR, Trued, stringg, training_master, oldfolder):
+def performance_plot_cost(CCR, Trued, stringg, training_master, oldfolder):
     CoDview = np.zeros((1, Trued.shape[1]))
     R2view = np.zeros((1, Trued.shape[1]))
     plt.figure(figsize=(40, 40))
