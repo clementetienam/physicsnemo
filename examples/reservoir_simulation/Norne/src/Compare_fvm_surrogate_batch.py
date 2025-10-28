@@ -146,7 +146,7 @@ def main(cfg: DictConfig) -> None:
         shutil.rmtree(to_absolute_path("../RESULTS/FORWARD_RESULTS_BATCH"))
         os.makedirs(to_absolute_path("../RESULTS/FORWARD_RESULTS_BATCH"), exist_ok=True)
     oldfolder = os.getcwd()
-    #os.chdir(oldfolder)
+
 
     Trainmoe = "MoE"
     logger.info("-----------------------------------------------------------------")
@@ -356,7 +356,7 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
     Time = []
     permeability = np.zeros((N, 1, nx, ny, nz))
     porosity = np.zeros((N, 1, nx, ny, nz))
-    #actnumm = np.zeros((N, 1, nx, ny, nz))
+    actnumm = np.zeros((N, 1, nx, ny, nz))
     folder = path_out
     return_values = Geta_all(
         folder,
