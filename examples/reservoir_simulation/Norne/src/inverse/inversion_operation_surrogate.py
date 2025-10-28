@@ -477,11 +477,6 @@ def Forward_model_ensemble(
                 if "SGAS" in output_variables and modelG is not None:
                     Sgas[mv, :, start_idx:end_idx, :, :] = ouut_sg1
 
-                # Clean up chunk variables
-                for var in ["ouut_p1", "ouut_s1", "ouut_sg1", "ouut_so1"]:
-                    if var in locals():
-                        del locals()[var]
-
             # Clean up after each sample
             del temp, input_tensor
             if (
