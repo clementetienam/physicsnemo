@@ -286,7 +286,11 @@ def Plot_RSM_singleT(True_mat, timezz, N_pr, well_names):
 
 
 def scale_array(arr):
-    """Scale array magnitude to ~3 digits and return scaled array and factor."""
+    """
+    Scale array magnitude to ~3 digits and return scaled array and factor.
+    bool1=1 → scaled down, bool1=2 → scaled up
+    """
+    
     max_val = np.max(np.abs(arr))
     if max_val == 0:
         return arr, 1  # No scaling needed for an array of zeroes
