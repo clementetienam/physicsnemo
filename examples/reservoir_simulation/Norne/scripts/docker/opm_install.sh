@@ -75,7 +75,7 @@ sudo apt-get install -y doxygen ghostscript \
   texlive-latex-recommended gnuplot
 
 # Dependencies without MPI (removed mpi-default-dev)
-apt-get install -y libsuitesparse-dev \
+sudo apt-get install -y libsuitesparse-dev \
   libboost-all-dev libtrilinos-zoltan-dev libfmt-dev libcjson-dev
   
 # DUNE core modules
