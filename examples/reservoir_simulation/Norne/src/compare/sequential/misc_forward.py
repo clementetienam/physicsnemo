@@ -538,7 +538,7 @@ def remove_folders(N_ens, base_name):
             else:
                 logger.info(f"Folder {folder_path} does not exist, skipping")
         except OSError as e:
-            print(f"Error removing {folder_path}: {e}")
+            logger.info(f"Error removing {folder_path}: {e}")
 
 def linear_interp(x, xp, fp):
     contiguous_xp = xp.contiguous()
