@@ -634,7 +634,7 @@ def best_fit(X, Y):
     n = len(X)  # or len(Y)
     numer = sum([xi * yi for xi, yi in zip(X, Y)]) - n * xbar * ybar
     denum = sum([xi**2 for xi in X]) - n * xbar**2
-    close_to_zero = denum.abs() < 1e-10
+    close_to_zero = abs(denum) < 1e-10
     denum[close_to_zero] = 1.0 
     b = numer / denum
     a = ybar - b * xbar
