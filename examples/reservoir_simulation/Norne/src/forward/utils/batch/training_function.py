@@ -568,11 +568,15 @@ def run_training_loop(
                         best_peacemann,
                         best_oil,
                     )
-                    best_pressure = copy.deepcopy(surrogate_pressure)
-                    best_gas = copy.deepcopy(surrogate_gas)
+                   if "PRESSURE" in output_variables:
+                        best_pressure = copy.deepcopy(surrogate_pressure)
+                    if "SGAS" in output_variables:
+                        best_gas = copy.deepcopy(surrogate_gas)
+                    if "SWAT" in output_variables:
+                        best_saturation = copy.deepcopy(surrogate_saturation)
+                    if "SOIL" in output_variables:
+                        best_oil = copy.deepcopy(surrogate_oil)
                     best_peacemann = copy.deepcopy(surrogate_peacemann)
-                    best_saturation = copy.deepcopy(surrogate_saturation)
-                    best_oil = copy.deepcopy(surrogate_oil)
                 else:
                     forward_model_log["model NOT saved"] = 0
                     forward_model_log["current_best_cost"] = best_cost
