@@ -303,8 +303,8 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
     logger.info(str(well_namesw))
     columns = well_names
     compdat_data = read_compdats(filename, well_names)
-    #compdat_datag = read_compdats(filename, well_namesg)
-    #compdat_dataw = read_compdats(filename, well_namesw)
+    compdat_datag = read_compdats(filename, well_namesg)
+    compdat_dataw = read_compdats(filename, well_namesw)
     filenamea = os.path.basename(cfg.custom.DECK)
     filenameui = os.path.splitext(filenamea)[0]
     if cfg.custom["numerical_solver"] == "flow":
