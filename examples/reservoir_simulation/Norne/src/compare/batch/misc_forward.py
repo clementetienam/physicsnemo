@@ -73,26 +73,24 @@ from shutil import rmtree
 # 📦 Local Modules
 from scipy.stats import rankdata, norm
 import numpy.linalg as LA
-# from compare.batch.misc_forward_enact import (
-# convert_backs,
-# )
+
 
 
 def Split_Matrix(matrix, sizee):
     x_split = np.split(matrix, sizee, axis=0)
     return x_split
 
-
 def setup_logging() -> logging.Logger:
     """Configure and return the main logger."""
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("Forward problem")
     if not logger.handlers:
         handler = logging.StreamHandler()
         handler.setFormatter(
             logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         )
         logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
+    logger.propagate = False    
     return logger
 
 
