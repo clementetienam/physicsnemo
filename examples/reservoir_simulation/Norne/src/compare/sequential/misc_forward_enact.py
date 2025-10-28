@@ -90,7 +90,7 @@ def setup_logging() -> logging.Logger:
         logger.setLevel(logging.INFO)
     return logger
 
-
+logger = setup_logging()
 type_dict = {
     b"INTE": "i",
     b"CHAR": "8s",
