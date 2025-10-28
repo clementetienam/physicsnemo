@@ -70,7 +70,6 @@ from typing import Dict, Any
 
 # 🔧 Third-party Libraries
 import numpy as np
-#import numpy.matlib
 import scipy.io as sio
 import yaml
 
@@ -295,7 +294,7 @@ def main(cfg: DictConfig) -> None:
     # remove unused min/max vars
     experts = int(cfg.custom.Type_of_experts)
     # len_scale = cfg.custom.geostats.len_scale
-    well_measurements = cfg.custom.well_measurements
+    #well_measurements = cfg.custom.well_measurements
     lenwels = len(well_measurements)
     logger.info(str(lenwels))
     filename = cfg.custom.COMPLETIONS_DATA
@@ -434,12 +433,10 @@ def main(cfg: DictConfig) -> None:
     else:
         TEMPLATEFILE["Ensemble decorrelation"] = "ensemble decorrelation = No"
     if DEFAULT == "Yes":
-        # De_alpha = "Yes"
         if dist.rank == 0:
             logger.info("Using reccomended alpha value")
 
     if DEFAULT == "Yes":
-        # afresh = "pretrained"
         if dist.rank == 0:
             logger.info("Random generated ensemble")
 
