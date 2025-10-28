@@ -76,8 +76,6 @@ import mpslib as mps  # Assuming this is a custom multiprocessing library
 import torch
 from compare.batch.misc_forward_utils import EclBinaryParser
 
-torch.cuda.empty_cache()  # Clears unused memory
-
 
 def is_available():
     """Check if NVIDIA GPU is available using `nvidia-smi`."""
