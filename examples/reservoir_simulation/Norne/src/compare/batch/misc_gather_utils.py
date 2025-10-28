@@ -548,7 +548,7 @@ def Get_fault(filename):
             if start_collecting_welspecs:
                 parts = stripped_line.split()
                 fault_name = parts[0].strip("'")
-                injector_gas.add((fault_name))
+                injector_gas.add(fault_name)
     # injector_gas.sort(key=lambda x: x[2])
     return sorted(injector_gas)
 
