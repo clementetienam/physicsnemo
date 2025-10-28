@@ -45,7 +45,6 @@ import logging
 
 # 🔧 Third-party Libraries
 import numpy as np
-import numpy.matlib
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import matplotlib as mpl
