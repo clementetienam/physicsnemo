@@ -1095,18 +1095,18 @@ def peaks(n):
     [x, y] = np.meshgrid(xp, xp)
     z = np.zeros_like(x).astype(float)
     for i in range(n / 5):
-        x0 = random.random() * n
-        y0 = random.random() * n
-        sdx = random.random() * n / 4.0
+        x0 = np.random.random() * n
+        y0 = np.random.random() * n
+        sdx = np.random.random() * n / 4.0
         sdy = sdx
-        c = random.random() * 2 - 1.0
+        c = np.random.random() * 2 - 1.0
         f = np.exp(
             -(((x - x0) / sdx) ** 2)
             - ((y - y0) / sdy) ** 2
             - ((x - x0) / sdx) * ((y - y0) / sdy) * c
         )
         # f /= f.sum()
-        f *= random.random()
+        f *= np.random.random()
         z += f
     return z
 
