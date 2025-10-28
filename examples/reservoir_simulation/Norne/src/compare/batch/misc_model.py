@@ -62,7 +62,6 @@ from collections import OrderedDict
 
 # 🔧 Third-party Libraries
 import numpy as np
-import numpy.matlib
 import torch
 import matplotlib.pyplot as plt
 import matplotlib.colors
