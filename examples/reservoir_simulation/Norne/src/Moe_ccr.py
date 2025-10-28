@@ -707,7 +707,7 @@ def fit_Gp(X, y, device, itery, percentage=50.0):
 
         loss = loss.mean()  # Ensure loss is a scalar
         # print(f"Epoch {epoch + 1}/{itery}, Loss: {loss.item()}")  # ✅ Print loss
-        loss.backward  # Keep the graph intact
+        loss.backward()  # Keep the graph intact
         optimizer.step()
         scheduler.step()
 
