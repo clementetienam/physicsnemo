@@ -1065,7 +1065,7 @@ def main(cfg: DictConfig) -> None:
     inputsz = range(Y.shape[1])
 
     num_cores = multiprocessing.cpu_count()
-    #njobs = max(1, (num_cores // 4) - 1)  # Ensure at least 1 job
+    njobs = max(1, (num_cores // 4) - 1)  # Ensure at least 1 job
 
     use_elbow = int(cfg.custom.Number_of_experts)
     experts = int(cfg.custom.Type_of_experts)
@@ -1085,7 +1085,7 @@ def main(cfg: DictConfig) -> None:
     os.chdir(trainingmaster)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        bigs = Parallel(n_jobs=num_cores, backend="loky")(
+        bigs = Parallel(n_jobs=njobs, backend="loky")(
             delayed(startit)(
                 ib,
                 outpuut2,
@@ -1118,7 +1118,7 @@ def main(cfg: DictConfig) -> None:
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        clemes = Parallel(n_jobs=num_cores, backend="loky")(
+        clemes = Parallel(n_jobs=njobs, backend="loky")(
             delayed(PREDICTION_CCR__MACHINE)(
                 ib,
                 int(cluster_all[ib, :]),
