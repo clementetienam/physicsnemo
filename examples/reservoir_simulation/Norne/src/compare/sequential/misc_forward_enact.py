@@ -1274,9 +1274,9 @@ def Forward_model_ensemble(
     sim = []
     for zz in range(ouut_p.shape[0]):
         lista = []
+        logger = setup_logging()
         for k in range(lenwels):
             rescaled_tensorr = ouut_p[:, :, k * N_pr : (k + 1) * N_pr]
-            logger = setup_logging()
             logger.info(rescaled_tensorr.shape)
             lista.append(rescaled_tensorr)
         lista = np.hstack(lista)
