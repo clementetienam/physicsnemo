@@ -183,33 +183,15 @@ def main(cfg: DictConfig) -> None:
         static_props,
         SUPPORTED_DATA_TYPES,
     ) = simulation_data_types()
+    sequences = ["pressure", "saturation", "oil", "gas", "peacemann"]
+    model_type = "FNO" if cfg.custom.fno_type == "FNO" else "PINO"
+    model_paths = [f"../MODELS/{model_type}/checkpoints_{seq}_seq" for seq in sequences]
+    checkpoint_dir = "checkpoints_seq"
     if cfg.custom.model_Distributed == 1:
         dist, logger = InitializeLoggers(cfg)
         if dist.rank == 0:
-            if cfg.custom.fno_type == "FNO":
-                directories_to_check = [
-                    "checkpoints",
-                    "__pycache__/",
-                    "../RUNS",
-                    "outputs/",
-                    "../MODELS/FNO/checkpoints_pressure_seq",
-                    "../MODELS/FNO/checkpoints_saturation_seq",
-                    "../MODELS/FNO/checkpoints_oil_seq",
-                    "../MODELS/FNO/checkpoints_gas_seq",
-                    "../MODELS/FNO/checkpoints_peacemann_seq",
-                ]
-            else:
-                directories_to_check = [
-                    "checkpoints_seq",
-                    "__pycache__/",
-                    "../RUNS",
-                    "outputs/",
-                    "../MODELS/PINO/checkpoints_pressure_seq",
-                    "../MODELS/PINO/checkpoints_saturation_seq",
-                    "../MODELS/PINO/checkpoints_oil_seq",
-                    "../MODELS/PINO/checkpoints_gas_seq",
-                    "../MODELS/PINO/checkpoints_peacemann_seq",
-                ]
+            base_dirs = ["__pycache__/", "../RUNS", "outputs/"]
+            directories_to_check = [checkpoint_dir] + base_dirs + model_paths
             check_and_remove_dirs(
                 directories_to_check, cfg.custom.file_response, logger
             )
@@ -217,32 +199,7 @@ def main(cfg: DictConfig) -> None:
                 "|-----------------------------------------------------------------|"
             )
     else:
-        if cfg.custom.fno_type == "FNO":
-            directories_to_check = [
-                "checkpoints",
-                "__pycache__/",
-                "../RUNS",
-                "outputs/",
-                "mlruns",
-                "../MODELS/FNO/checkpoints_pressure_seq",
-                "../MODELS/FNO/checkpoints_saturation_seq",
-                "../MODELS/FNO/checkpoints_oil_seq",
-                "../MODELS/FNO/checkpoints_gas_seq",
-                "../MODELS/FNO/checkpoints_peacemann_seq",
-            ]
-        else:
-            directories_to_check = [
-                "checkpoints",
-                "__pycache__/",
-                "../RUNS",
-                "outputs/",
-                "mlruns",
-                "../MODELS/PINO/checkpoints_pressure_seq",
-                "../MODELS/PINO/checkpoints_saturation_seq",
-                "../MODELS/PINO/checkpoints_oil_seq",
-                "../MODELS/PINO/checkpoints_gas_seq",
-                "../MODELS/PINO/checkpoints_peacemann_seq",
-            ]
+        base_dirs = ["__pycache__/", "../RUNS", "outputs/", "mlruns"]
         check_and_remove_dirs(directories_to_check, cfg.custom.file_response, logger)
         logger.info(
             "|-----------------------------------------------------------------|"
