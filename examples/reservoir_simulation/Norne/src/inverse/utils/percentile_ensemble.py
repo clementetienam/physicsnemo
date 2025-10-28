@@ -254,7 +254,7 @@ def plot_percentile_models(
     }
     if dist.rank == 0:
         joblib.dump(
-            X_data1,
+            X_data11,
             to_absolute_path(
                 "../RESULTS/HM_RESULTS/Posterior_Ensembles_percentile.joblib"
             ),
