@@ -58,7 +58,6 @@ import yaml
 import scipy
 import numpy as np
 import numpy.linalg
-import numpy.matlib
 import pandas as pd
 from pyDOE import lhs
 import numpy.ma as ma
