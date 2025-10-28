@@ -501,7 +501,6 @@ def main(cfg: DictConfig) -> None:
         navail = multiprocessing.cpu_count()
         logger.info(f"Available CPU cores: {navail}")
     sourc_dir = cfg.custom.file_location
-    #source_dir = to_absolute_path(sourc_dir)  # ('../Necessaryy')
 
     gass, producers, injectors = read_compdats2(
         to_absolute_path(cfg.custom.COMPLETIONS_DATA),
