@@ -207,7 +207,6 @@ def main(cfg: DictConfig) -> None:
     oldfolder = os.getcwd()
     #os.chdir(oldfolder)
     gpu_available = is_available()
-    # cur_dir unused
     if dist.rank == 0:
         navail = multiprocessing.cpu_count()
         logger.info(f"Available CPU cores: {navail}")
@@ -223,7 +222,6 @@ def main(cfg: DictConfig) -> None:
     else:
         pass
     TEMPLATEFILE = {}
-    # surrogate unused
     if cfg.custom.fno_type == "PINO":
         TEMPLATEFILE["Surrogate model"] = "PINO"
     else:
