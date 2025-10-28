@@ -238,15 +238,6 @@ def main(cfg: DictConfig) -> None:
     # Initialize environment
     gpu_available, operation_mode, logger = initialize_environment()
 
-    # Set up array backend
-    if gpu_available:
-        try:
-            import cupy as cp
-        except ImportError:
-            import numpy as cp
-    else:
-        import numpy as cp
-
     # Initialize simulation data types
     (
         type_dict,
