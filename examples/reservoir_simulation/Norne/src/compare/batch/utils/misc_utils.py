@@ -71,6 +71,7 @@ from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 from PIL import Image
+import glob
 from cpuinfo import get_cpu_info
 
 # 📦 Local Modules
@@ -509,7 +510,7 @@ def compare_and_analyze_results(
     plt.clf()
     plt.close()
     logger.info("Now - Creating GIF")
-    import glob
+    
 
     frames = []
     imgs = sorted(glob.glob("*Dynamic*"), key=sort_key)
