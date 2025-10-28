@@ -206,7 +206,7 @@ def main(cfg: DictConfig) -> None:
     dist = DistributedManager()
     device = dist.device
     oldfolder = os.getcwd()
-    os.chdir(oldfolder)
+    #os.chdir(oldfolder)
     gpu_available = is_available()
     # cur_dir unused
     if dist.rank == 0:
