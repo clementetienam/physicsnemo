@@ -892,7 +892,7 @@ def plot_variable(timezz, pred_data, true_data, Ne, title, ylabel, ax):
     ax.legend(by_label.values(), by_label.keys())
 
 
-def plot_rsm(
+def plot_rsm_inner(
     timezz, pred_matrix, true_mat, Ne, variable_names, ylabels, file_name, Namesz
 ):
     Nt = pred_matrix[0].shape[0]
@@ -922,7 +922,7 @@ def plot_rsm(predMatrix, True_mat, Namesz, Ne, timezz, N_pr, well_names):
     oil_ylabels = ["$Q_{oil}(bbl/day)$"] * N_pr
     water_ylabels = ["$Q_{water}(bbl/day)$"] * N_pr
     gas_ylabels = ["$Q_{gas}(scf/day)$"] * N_pr
-    plot_rsm(
+    plot_rsm_inner(
         timezz,
         predMatrix[:, :, :N_pr],
         True_mat[:, :N_pr],
@@ -932,7 +932,7 @@ def plot_rsm(predMatrix, True_mat, Namesz, Ne, timezz, N_pr, well_names):
         "Oil",
         Namesz,
     )
-    plot_rsm(
+    plot_rsm_inner(
         timezz,
         predMatrix[:, :, N_pr : 2 * N_pr],
         True_mat[:, N_pr : 2 * N_pr],
@@ -942,7 +942,7 @@ def plot_rsm(predMatrix, True_mat, Namesz, Ne, timezz, N_pr, well_names):
         "Water",
         Namesz,
     )
-    plot_rsm(
+    plot_rsm_inner(
         timezz,
         predMatrix[:, :, 2 * N_pr : 3 * N_pr],
         True_mat[:, 2 * N_pr : 3 * N_pr],
@@ -1029,7 +1029,7 @@ def whiten(X, method="zca"):
     return np.dot(X_centered, W.T)
 
 
-def write_RSM(data, Time, Name, well_names, N_pr):
+def write_rsm(data, Time, Name, well_names, N_pr):
     groups = ["WOPR(bbl/day)", "WWPR(bbl/day)", "WGPR(scf/day)"]
     columns = well_names  # ['L1', 'L2', 'L3', 'LU1', 'LU2',
     headers = pd.MultiIndex.from_product([groups, columns])
