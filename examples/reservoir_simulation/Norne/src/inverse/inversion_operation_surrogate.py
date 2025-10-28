@@ -457,7 +457,7 @@ def Forward_model_ensemble(
                     ouut_so1 = modelO(input_temp)
 
                 # Remove padding if applied
-                if nz_current > 30 and pad_size > 0:
+                if nz_current > cfg.custom.allowable_size and pad_size > 0:
                     if "PRESSURE" in output_variables and modelP is not None:
                         ouut_p1 = ouut_p1[:, :, :current_chunk_size, :, :]
                     if "SGAS" in output_variables and modelG is not None:
