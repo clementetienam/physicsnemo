@@ -80,6 +80,7 @@ from sklearn.cluster import MiniBatchKMeans
 from kneed import KneeLocator
 from pyDOE import lhs
 import mpslib as mps
+import scipy.linalg.norm as norm
 
 # 📦 Local Modules
 from hydra.utils import to_absolute_path
@@ -178,7 +179,7 @@ def NorneInitialEnsemble(nx, ny, nz, ensembleSize=100, randomNumber=1.2345e5):
     A_L = np.array(A_L)
     M_MF = 0.6
     S_MF = norne["multfltStd"]
-    C = [norne["poroRange"], norne["permxRange"], norne["ntgRange"]]
+    C = [norne["poroRange"], norne["permrange"], norne["ntgRange"]]
     C_S = 2
     R1 = norne["poroPermxCorr"]
     ensembleperm = np.zeros((N_F, N))
@@ -206,7 +207,7 @@ def NorneInitialEnsemble(nx, ny, nz, ensembleSize=100, randomNumber=1.2345e5):
         X2 = X2.reshape(-1, 1)
         X = R1 * X1 + np.sqrt(1 - R1**2) * X2
 
-        indices = np.where(A == 1)
+        #indices = np.where(A == 1)
         ensembleperm[indices, i] = (M[1] + S[1] * X[indices]).ravel()
     return ensembleperm, ensembleporo, ensemblefault
 
@@ -249,7 +250,7 @@ def add_gnoise(Ytrue, SIGMA, SQ=None):
             RTSIGMA = SIGMA
             if np.isscalar(SIGMA) or np.ndim(SIGMA) == 1:
                 # SIGMA is a scalar or vector
-                error = RTSIGMA * np.random.randn(1)
+                error = RTSIGMA * np.random.randn(*Ytrue.shape)
             else:
                 error = RTSIGMA @ np.random.randn(RTSIGMA.shape[1], 1)
         else:
@@ -383,7 +384,7 @@ def NorneGeostat(nx, ny, nz):
     norne["permxStd"] = 1
     norne["permxLB"] = 0.1
     norne["permxUB"] = 10
-    norne["permxRange"] = 26
+    norne["permrange"] = 26
 
     # Correlation between layers
 
@@ -696,7 +697,7 @@ def getoptimumk(X):
     Kss = range(1, 10)
 
     for k in Kss:
-        kmeanModel = MiniBatchKMeans(n_clusters=k).fit(X)
+        kmeanModel = MiniBatchKMeans(n_clusters=k)
         kmeanModel.fit(X)
         distortions.append(
             sum(np.min(cdist(X, kmeanModel.cluster_centers_, "euclidean"), axis=1))
@@ -1071,7 +1072,7 @@ def InitialGuess(y, mask_valid):
     k = np.array(z.shape)
     m = np.ceil(k / 10) + 1
     d = []
-    for i in np.xrange(len(k)):
+    for i in np.range(len(k)):
         d.append(np.arange(m[i], k[i]))
     d = np.array(d).astype(int)
     z[d] = 0.0
@@ -1113,7 +1114,7 @@ def peaks(n):
     xp = np.arange(n)
     [x, y] = np.meshgrid(xp, xp)
     z = np.zeros_like(x).astype(float)
-    for i in np.xrange(n / 5):
+    for i in np.range(n / 5):
         x0 = random.random() * n
         y0 = random.random() * n
         sdx = random.random() * n / 4.0
