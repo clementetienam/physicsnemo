@@ -701,7 +701,8 @@ class EclBinaryParser(object):
         all_pointers = pd.concat(
             [self._get_static_pointers(), self._get_dynamic_pointers()]
         )
-        all_pointers = all_pointers.fillna(method="ffill", axis=1).astype("int32").T
+        #all_pointers = all_pointers.fillna(method="ffill", axis=1).astype("int32").T
+        all_pointers = all_pointers.ffill(axis=1).astype("int32").T
         all_pointers.columns = [byte2str(column) for column in all_pointers.columns]
         all_pointers = self.get_seqnum_dates().join(all_pointers)
         return all_pointers
