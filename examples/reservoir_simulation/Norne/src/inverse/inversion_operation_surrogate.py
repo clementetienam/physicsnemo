@@ -63,9 +63,6 @@ from compare.batch.misc_forward_enact import (
 )
 from gpytorch.likelihoods import GaussianLikelihood
 from shutil import rmtree
-# Removed unused imports from inverse.inversion_operation_gather
-# Removed unused imports from inverse.inversion_operation_misc
-
 
 def setup_logging() -> logging.Logger:
     """Configure and return the main logger."""
