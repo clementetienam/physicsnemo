@@ -1265,7 +1265,6 @@ def main(cfg: DictConfig) -> None:
             % timedelta(seconds=round(elapsed_time_secs2))
         )
         logger.info(msg)
-        logger.info(msg)
         logger.info("")
 
 
