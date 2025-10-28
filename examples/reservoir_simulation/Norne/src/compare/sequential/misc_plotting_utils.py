@@ -723,7 +723,7 @@ def historydata(timestep, steppi, steppi_indices):
     WWINJ1 = np.zeros((steppi, 9))
     WGASJ1 = np.zeros((steppi, 4))
     indices = timestep
-    logger = setup_logging()
+    #logger = setup_logging()
     logger.info(" Get the Well Oil Production Rate")
     lines = []
     with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
@@ -825,7 +825,7 @@ def historydata(timestep, steppi, steppi_indices):
     WOIL1[:, 19] = E_3H.ravel()[steppi_indices - 1]
     WOIL1[:, 20] = E_4AH.ravel()[steppi_indices - 1]
     WOIL1[:, 21] = K_3H.ravel()[steppi_indices - 1]
-    logger = setup_logging()
+    #logger = setup_logging()
     logger.info(" Get the Well water Production Rate")
     lines = []
     with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
@@ -927,7 +927,7 @@ def historydata(timestep, steppi, steppi_indices):
     WWATER1[:, 19] = E_3Hw.ravel()[steppi_indices - 1]
     WWATER1[:, 20] = E_4AHw.ravel()[steppi_indices - 1]
     WWATER1[:, 21] = K_3Hw.ravel()[steppi_indices - 1]
-    logger = setup_logging()
+    #logger = setup_logging()
     logger.info(" Get the Well Gas Production Rate")
     lines = []
     with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
@@ -1029,7 +1029,7 @@ def historydata(timestep, steppi, steppi_indices):
     WGAS1[:, 19] = E_3Hg.ravel()[steppi_indices - 1]
     WGAS1[:, 20] = E_4AHg.ravel()[steppi_indices - 1]
     WGAS1[:, 21] = K_3Hg.ravel()[steppi_indices - 1]
-    logger = setup_logging()
+    #logger = setup_logging()
     logger.info(" Get the Well water injection Rate")
     lines = []
     with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
@@ -1063,7 +1063,7 @@ def historydata(timestep, steppi, steppi_indices):
     WWINJ1[:, 6] = F_2Hwin.ravel()[steppi_indices - 1]
     WWINJ1[:, 7] = F_3Hwin.ravel()[steppi_indices - 1]
     WWINJ1[:, 8] = F_4Hwin.ravel()[steppi_indices - 1]
-    logger = setup_logging()
+    #logger = setup_logging()
     logger.info(" Get the Well Gas injection Rate")
     lines = []
     with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
