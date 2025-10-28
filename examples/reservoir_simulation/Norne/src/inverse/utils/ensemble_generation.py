@@ -238,7 +238,7 @@ def historydata(timestep, steppi, steppi_indices, N_pr):
     return DATA, DATA2, new
 
 
-def Plot_RSM_singleT(True_mat, timezz, N_pr, well_names):
+def plot_rsm_singleT(True_mat, timezz, N_pr, well_names):
     """Plot single time series per well with multi-indexed headers."""
     columns = well_names  # ['L1', 'L2', 'L3', 'LU1', 'LU2',
     plt.figure(figsize=(40, 40))
@@ -731,13 +731,13 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
     # True_mat = True_data1
     os.chdir(to_absolute_path("../RESULTS/HM_RESULTS"))
     if dist.rank == 0:
-        Plot_RSM_singleT(True_mat, Time_unie1, N_pr, well_names)
+        plot_rsm_singleT(True_mat, Time_unie1, N_pr, well_names)
     os.chdir(oldfolder)
     True_K = perm_ensembley[:, indii]
     True_mat[True_mat <= 0] = 0
     os.chdir(to_absolute_path("../RESULTS/HM_RESULTS"))
     if dist.rank == 0:
-        Plot_RSM_singleT(True_mat, Time_unie1, N_pr, well_names)
+        plot_rsm_singleT(True_mat, Time_unie1, N_pr, well_names)
     os.chdir(oldfolder)
     quant_big = {}  # ✅ Dictionary to store all wells
     for k in range(lenwels):
@@ -1106,7 +1106,7 @@ def generate_ensemble(
         _, True_data1, True_mat = historydata(timestep, steppi, steppi_indices, N_pr)
         True_mat[True_mat <= 0] = 0
         os.chdir(to_absolute_path("../RESULTS/HM_RESULTS"))
-        Plot_RSM_singleT(True_mat, Time_unie1, N_pr, well_names)
+        plot_rsm_singleT(True_mat, Time_unie1, N_pr, well_names)
         os.chdir(oldfolder)
         jesuni = []
         for k in range(lenwels):
@@ -1157,7 +1157,7 @@ def generate_ensemble(
         _, True_data1, True_mat = historydata(timestep, steppi, steppi_indices, N_pr)
         True_mat[True_mat <= 0] = 0
         os.chdir(to_absolute_path("../RESULTS/HM_RESULTS"))
-        Plot_RSM_singleT(True_mat, Time_unie1, N_pr, well_names)
+        plot_rsm_singleT(True_mat, Time_unie1, N_pr, well_names)
         os.chdir(oldfolder)
         jesuni = []
         for k in range(lenwels):
@@ -1218,7 +1218,7 @@ def generate_ensemble(
         _, True_data1, True_mat = historydata(timestep, steppi, steppi_indices, N_pr)
         True_mat[True_mat <= 0] = 0
         os.chdir(to_absolute_path("../RESULTS/HM_RESULTS"))
-        Plot_RSM_singleT(True_mat, Time_unie1, N_pr, well_names)
+        plot_rsm_singleT(True_mat, Time_unie1, N_pr, well_names)
         os.chdir(oldfolder)
         jesuni = []
         for k in range(lenwels):
