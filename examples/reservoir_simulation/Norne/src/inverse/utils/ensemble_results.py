@@ -90,9 +90,6 @@ def setup_logging() -> logging.Logger:
 logger = setup_logging()
 
 
-# avoid redefining remove_rows; import from surrogate module already
-
-
 def process_final_results(
     input_variables,
     output_variables,
