@@ -82,7 +82,7 @@ def Split_Matrix(matrix, sizee):
 
 def setup_logging() -> logging.Logger:
     """Configure and return the main logger."""
-    logger = logging.getLogger("Forward problem")
+    logger = logging.getLogger(__name__)
     if not logger.handlers:
         handler = logging.StreamHandler()
         handler.setFormatter(
