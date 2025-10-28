@@ -60,7 +60,7 @@ from inverse.inversion_operation_ensemble import (
 from inverse.inversion_operation_gather import (
     plot_rsm,
     plot_rsm_percentile_model,
-    write_RSM,
+    write_rsm,
     Plot_petrophysical,
     plot_rsm_single,
     Plot_mean,
@@ -645,7 +645,7 @@ def process_final_results(
 
         for f3 in glob("*Dynamic*"):
             os.remove(f3)
-        write_RSM(
+        write_rsm(
             yycheck[0, :, : lenwels * N_pr], Time_vector, "PhyNeMo", well_names, N_pr
         )
         plot_rsm_percentile_model(
@@ -893,7 +893,7 @@ def process_final_results(
         for f3 in glob("*Dynamic*"):
             os.remove(f3)
 
-        write_RSM(
+        write_rsm(
             yycheck[0, :, : lenwels * N_pr], Time_vector, "PhyNeMo", well_names, N_pr
         )
         plot_rsm_percentile_model(
@@ -1120,7 +1120,7 @@ def process_final_results(
         for f3 in glob("*Dynamic*"):
             os.remove(f3)
 
-        write_RSM(
+        write_rsm(
             yycheck[0, :, : lenwels * N_pr], Time_vector, "PhyNeMo", well_names, N_pr
         )
         plot_rsm_percentile_model(
