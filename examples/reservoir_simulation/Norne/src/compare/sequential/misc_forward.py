@@ -818,7 +818,7 @@ def get_dyna2(
     for xx in range(steppi):
         for well_nameg, q_idxg in well_name_to_indexg.items():
             entries_for_wellg = [t for t in well_indicesg if t[0] == well_nameg]
-            total_valueg = Q[xx, q_idxg]
+            total_valueg = Qg[xx, q_idxg]
             average_valueg = (
                 total_valueg / len(entries_for_wellg) if entries_for_wellg else 0
             )
