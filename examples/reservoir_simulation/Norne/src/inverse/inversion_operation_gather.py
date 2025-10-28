@@ -189,7 +189,7 @@ def Plot_2DD(
 
 
 def Add_marker2(plt, XX, YY, injectors, producers, gass):
-    n_inj = len(injectors)  # Number of injectors
+    n_inj = len(injectors)  # Number of water injectors
     n_prod = len(producers)  # Number of producers
     n_injg = len(gass)  # Number of gas injectors
     for mm in range(n_inj):
@@ -215,7 +215,7 @@ def Add_marker2(plt, XX, YY, injectors, producers, gass):
             fontsize=12,
         )
     for mm in range(n_injg):
-        usethis = injectors[mm]
+        usethis = gass[mm]
         xloc = int(usethis[0])
         yloc = int(usethis[1])
         discrip = str(usethis[-1])
@@ -1189,7 +1189,7 @@ def place_back(extracted, indices, shape):
     result = torch.ones(shape, dtype=torch.float32) * -1
     for i, index in enumerate(indices):
         result[index, :] = extracted[i]
-    return result.get()
+    return result.cpu().numpy()
 
 
 def Recover_imageV(x, Ne, nx, ny, nz, latent_dim, vae, High_K, mem):
