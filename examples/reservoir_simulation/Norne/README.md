@@ -415,11 +415,11 @@ are some standard parametric regressors.
 
 ## Getting Started:
 - These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. 
-- The code is developed in a Linux enviroment.
+- The code is developed in a Linux environment.
 
 ## Installation - Bare metal / Docker
 
-- From terminal create a new conda enviroment named **MDLO** (check if conda is installed) .
+- From the terminal, create a new conda environment named **MDLO** (check if conda is installed).
 ```bash
 conda create --name MDLO python=3.9
 ```
@@ -431,16 +431,16 @@ conda activate MDLO
 git lfs clone https://github.com/NVIDIA/physicsnemo.git
 ```
 ### Bare-metal
-- From terminal do these sequence of operations to install PhysicsNeMo v24.09: [link](https://github.com/NVIDIA/physicsnemo.git)
+- From terminal, do this sequence of operations to install PhysicsNeMo v24.09: [link](https://github.com/NVIDIA/physicsnemo.git)
 ```bash
 pip install nvidia-physicsnemo          
 ```
-- From terminal, install (missing) dependencies in 'requirements.txt' in the conda enviroment **MDLO**
+- From terminal, install (missing) dependencies in 'requirements.txt' in the conda environment **MDLO**
 - Follow instructions to install CuPy from : [link](https://github.com/cupy/cupy.git)
 
 
 
-### PhysicsNeMo Virtual enviroment
+### PhysicsNeMo Virtual environment
 ```bash
 chmod -R +x scripts
 chmod -R +x src
