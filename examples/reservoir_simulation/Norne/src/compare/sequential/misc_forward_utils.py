@@ -49,7 +49,6 @@ import warnings
 # 🔧 Third-party Libraries
 import numpy as np
 import pandas as pd
-import numpy.matlib
 import torch
 import xgboost as xgb
 from sklearn.cluster import MiniBatchKMeans
@@ -785,7 +784,7 @@ class EclBinaryParser(object):
         all_pointers = pd.concat(
             [self._get_static_pointers(), self._get_dynamic_pointers()]
         )
-        all_pointers = all_pointers.fillna(method="ffill", axis=1).astype("int32").T
+        all_pointers = all_pointers..ffill(axis=1).astype("int32").T
         all_pointers.columns = [byte2str(column) for column in all_pointers.columns]
         all_pointers = self.get_seqnum_dates().join(all_pointers)
         return all_pointers
@@ -1179,7 +1178,7 @@ def fit_Gp(X, y, device, itery, percentage=50.0):
         output = model(X)
         loss = -mll(output, y)
         loss = loss.mean()  # Ensure loss is a scalar
-        loss.backward(retain_graph=True)  # Keep the graph intact
+        loss.backward()  # Keep the graph intact
         optimizer.step()
         scheduler.step()
         del loss  # Free memory
@@ -1281,8 +1280,8 @@ def PREDICTION_CCR__MACHINE(
             predictions = []
             if a00.shape[0] != 0:
                 with torch.no_grad():
-                    for i in range(0, a00.shape[0], batch_size):
-                        batch = a00[i : i + batch_size]  # Take a batch of inputs
+                    for ii in range(0, a00.shape[0], batch_size):
+                        batch = a00[ii : ii + batch_size]  # Take a batch of inputs
                         prediction = model(batch)  # Forward pass
                         pred = prediction.mean.detach().cpu().numpy()
                         predictions.append(pred)  # Store batch predictions
