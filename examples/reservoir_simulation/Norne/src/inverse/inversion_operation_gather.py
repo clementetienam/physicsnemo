@@ -287,7 +287,7 @@ def Add_marker3(plt, XX, YY, injectors, producers, gass):
             fontsize=9,
         )
     for mm in range(n_injg):
-        usethis = injectors[mm]
+        usethis = gass[mm]
         xloc = int(usethis[0])
         yloc = int(usethis[1])
         discrip = str(usethis[-1])
