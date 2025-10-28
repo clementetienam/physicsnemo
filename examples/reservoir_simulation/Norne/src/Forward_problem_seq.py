@@ -168,68 +168,6 @@ def initialize_environment() -> tuple[bool, int, logging.Logger]:
     return gpu_available, operation_mode, logger
 
 
-def setup_directories(cfg: DictConfig, dist: Any, logger: logging.Logger) -> None:
-    """Setup and clean directories for the training process."""
-    if cfg.custom.fno_type == "FNO":
-        directories_to_check = [
-            "checkpoints",
-            "__pycache__/",
-            "../RUNS",
-            "outputs/",
-            "../MODELS/FNO/checkpoints_pressure_seq",
-            "../MODELS/FNO/checkpoints_saturation_seq",
-            "../MODELS/FNO/checkpoints_oil_seq",
-            "../MODELS/FNO/checkpoints_gas_seq",
-            "../MODELS/FNO/checkpoints_peacemann_seq",
-        ]
-    else:
-        directories_to_check = [
-            "checkpoints_seq",
-            "__pycache__/",
-            "../RUNS",
-            "outputs/",
-            "../MODELS/PINO/checkpoints_pressure_seq",
-            "../MODELS/PINO/checkpoints_saturation_seq",
-            "../MODELS/PINO/checkpoints_oil_seq",
-            "../MODELS/PINO/checkpoints_gas_seq",
-            "../MODELS/PINO/checkpoints_peacemann_seq",
-        ]
-
-    check_and_remove_dirs(directories_to_check, cfg.custom.file_response, logger)
-    logger.info("|-----------------------------------------------------------------|")
-
-
-def create_model_directories(cfg: DictConfig, logger: logging.Logger) -> None:
-    """Create model checkpoint directories."""
-    if cfg.custom.fno_type == "FNO":
-        folders_to_create = [
-            "../MODELS/FNO/checkpoints_pressure_seq",
-            "../MODELS/FNO/checkpoints_saturation_seq",
-            "../MODELS/FNO/checkpoints_oil_seq",
-            "../MODELS/FNO/checkpoints_gas_seq",
-            "../MODELS/FNO/checkpoints_peacemann_seq",
-        ]
-    else:
-        folders_to_create = [
-            "../MODELS/PINO/checkpoints_pressure_seq",
-            "../MODELS/PINO/checkpoints_saturation_seq",
-            "../MODELS/PINO/checkpoints_oil_seq",
-            "../MODELS/PINO/checkpoints_gas_seq",
-            "../MODELS/PINO/checkpoints_peacemann_seq",
-        ]
-
-    for folder in folders_to_create:
-        absolute_path = to_absolute_path(folder)
-        lock_path = absolute_path + ".lock"
-        with FileLock(lock_path):
-            if Path(absolute_path).exists():
-                logger.info(f"Directory already exists: {absolute_path}")
-            else:
-                os.makedirs(absolute_path, exist_ok=True)
-                logger.info(f"Created directory: {absolute_path}")
-    logger.info("|-----------------------------------------------------------------|")
-
-
 @hydra.main(version_base="1.2", config_path="conf", config_name="DECK_CONFIG")
 def main(cfg: DictConfig) -> None:
     """Main function for batch forward problem solving."""
