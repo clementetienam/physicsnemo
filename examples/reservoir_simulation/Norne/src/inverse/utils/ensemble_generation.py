@@ -638,7 +638,6 @@ def setup_models_and_data(
             )
             models["oil"] = fno_supervised_oil
     os.chdir(oldfolder)
-    os.chdir(oldfolder)
     if DEFAULT == "Yes":
         Trainmoe = "MoE"  # FNO #MoE
         logger.info("Inference peacemann with Mixture of Experts")
@@ -731,17 +730,6 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
         Plot_RSM_singleT(True_mat, Time_unie1, N_pr, well_names)
     os.chdir(oldfolder)
     True_K = perm_ensembley[:, indii]
-    # True_P = poro_ensembley[:, indii]
-    # True_fault = fault_ensemblepy[:, indii]
-    if dist.rank == 0:
-        pass  # remove unused assignment
-    os.chdir(source_dir)
-    Time = Get_Time(nx, ny, nz, steppi, steppi_indices, 1)
-    Time_unie1 = np.zeros((steppi))
-    for i in range(steppi):
-        Time_unie1[i] = Time[0, i, 0, 0, 0]
-    os.chdir(oldfolder)
-    _, True_data1, True_mat = historydata(timestep, steppi, steppi_indices, N_pr)
     True_mat[True_mat <= 0] = 0
     os.chdir(to_absolute_path("../RESULTS/HM_RESULTS"))
     if dist.rank == 0:
@@ -1284,8 +1272,8 @@ def generate_ensemble(
     outt = honour2(outt, nx, ny, nz, N_ens, High_K1, Low_K1, High_P, Low_P, effec)
     ensemble = outt["PERM"]
     ensemblep = outt["PORO"]
-    ensemble = ensemble  # * effec
-    ensemblep = ensemblep  # * effec
+    ensemble = ensemble 
+    ensemblep = ensemblep 
     Nop = True_data.shape[0]
     ax = np.zeros((Nop, 1))
     for iq in range(Nop):
@@ -1304,10 +1292,7 @@ def generate_ensemble(
         mean, covariance_matrix=Cini
     ).sample((Ne,))
     perturbations = perturbations.T  # Transpose
-    if yet == 0:
-        perturbations = perturbations.detach().cpu().numpy()
-    else:
-        pass
+    perturbations = perturbations.detach().cpu().numpy()
 
     return (
         ensemble,
