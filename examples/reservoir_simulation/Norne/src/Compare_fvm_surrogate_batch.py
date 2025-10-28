@@ -395,11 +395,6 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
     if Soil_true is not None:
         Soil_true = Soil_true[None, :, :, :, :]
     Time = return_values.get("Time")  # Mandatory value
-    # Extract rates for potential future use
-    return_values.get("QG")  # Extract gas rates
-    return_values.get("QW")  # Extract water rates
-    return_values.get("QO")  # Extract oil rates
-    return_values.get("FAULT", None) if "FAULT" in input_variables else None
     Time = np.stack(Time, axis=0)
     Time = Time[None, :, :, :, :]
     effec_abbi = np.zeros((1, 1, nx, ny, nz), dtype=np.float32)
