@@ -706,11 +706,15 @@ def Performance_plot_cost(CCR, Trued, stringg, training_master, oldfolder):
         )
     CoDoverall = (np.sum(CoDview, axis=1)) / Trued.shape[1]
     R2overall = (np.sum(R2view, axis=1)) / Trued.shape[1]
-    os.chdir(training_master)
-    plt.savefig("%s.jpg" % stringg)
-    os.chdir(oldfolder)
+    
+    old_dir = os.getcwd()
+    try:
+        os.chdir(training_master)
+        plt.savefig("%s.jpg" % stringg)
+    finally:
+        os.chdir(old_dir)
+    
     return CoDoverall, R2overall, CoDview, R2view
-
 
 def extract_measurements(ouut_p, well_measurements, N_pr):
     measurement_indices = {
