@@ -254,7 +254,6 @@ def main(cfg: DictConfig) -> None:
     steppi = int(mat["steppi"])
     steppi_indices = mat["steppi_indices"].flatten()
     effective = mat["effective"]
-    # train_interest unused
     target_min = 0.01
     target_max = 1
     nx = cfg.custom.PROPS.nx
