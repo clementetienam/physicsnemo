@@ -50,6 +50,7 @@ Notes
 import os
 import math
 import random
+from glob import glob
 import logging
 import warnings
 import re
@@ -587,7 +588,7 @@ def intial_ensemble(Nx, Ny, Nz, N, permx):
         temp = np.reshape(ensemble[kk], (-1, 1), "F")
         ens.append(temp)
     ensemble = np.hstack(ens)
-    from glob import glob
+    
 
     for f3 in glob("thread*"):
         rmtree(f3)
