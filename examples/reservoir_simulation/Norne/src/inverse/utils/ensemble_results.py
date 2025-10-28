@@ -58,11 +58,11 @@ from inverse.inversion_operation_ensemble import (
     ensemble_pytorch,
 )
 from inverse.inversion_operation_gather import (
-    Plot_RSM,
-    Plot_RSM_percentile_model,
+    plot_rsm,
+    plot_rsm_percentile_model,
     write_RSM,
     Plot_petrophysical,
-    Plot_RSM_single,
+    plot_rsm_single,
     Plot_mean,
     Plot_Histogram_now,
 )
@@ -418,7 +418,7 @@ def process_final_results(
         gas_ensemblea = simout["SGAS"]
     os.chdir("../RESULTS/HM_RESULTS")
     if dist.rank == 0:
-        Plot_RSM(predMatrixa, True_mat, "Final.png", Ne, Time_unie1, N_pr, well_names)
+        plot_rsm(predMatrixa, True_mat, "Final.png", Ne, Time_unie1, N_pr, well_names)
     os.chdir(oldfolder)
     aa, bb, cc = funcGetDataMismatch(simDatafinal, True_data)
     muv = np.argmin(cc)
@@ -549,7 +549,7 @@ def process_final_results(
         gasss = simout["SGAS"]
     os.chdir(to_absolute_path("../RESULTS/HM_RESULTS/ADAPT_REKI"))
     if dist.rank == 0:
-        Plot_RSM_single(yycheck, Time_unie1, N_pr, well_names)
+        plot_rsm_single(yycheck, Time_unie1, N_pr, well_names)
         Plot_petrophysical(
             controlbest["PERM"],
             controlbest["PORO"],
@@ -648,7 +648,7 @@ def process_final_results(
         write_RSM(
             yycheck[0, :, : lenwels * N_pr], Time_vector, "PhyNeMo", well_names, N_pr
         )
-        Plot_RSM_percentile_model(
+        plot_rsm_percentile_model(
             yycheck[0, :, : lenwels * N_pr], True_mat, Time_unie1, N_pr, well_names
         )
     os.chdir(oldfolder)
@@ -799,7 +799,7 @@ def process_final_results(
         gasbest = simout["SGAS"]
     os.chdir(to_absolute_path("../RESULTS/HM_RESULTS/BEST_RESERVOIR_MODEL"))
     if dist.rank == 0:
-        Plot_RSM_single(yycheck, Time_unie1, N_pr, well_names)
+        plot_rsm_single(yycheck, Time_unie1, N_pr, well_names)
         Plot_petrophysical(
             yes_best["PERM"],
             yes_best["PORO"],
@@ -896,7 +896,7 @@ def process_final_results(
         write_RSM(
             yycheck[0, :, : lenwels * N_pr], Time_vector, "PhyNeMo", well_names, N_pr
         )
-        Plot_RSM_percentile_model(
+        plot_rsm_percentile_model(
             yycheck[0, :, : lenwels * N_pr], True_mat, Time_unie1, N_pr, well_names
         )
     os.chdir(oldfolder)
@@ -1026,7 +1026,7 @@ def process_final_results(
         gasbest = simout["SGAS"]
     os.chdir(to_absolute_path("../RESULTS/HM_RESULTS/MEAN_RESERVOIR_MODEL"))
     if dist.rank == 0:
-        Plot_RSM_single(yycheck, Time_unie1, N_pr, well_names)
+        plot_rsm_single(yycheck, Time_unie1, N_pr, well_names)
         Plot_petrophysical(
             yes_mean["PERM"],
             yes_mean["PORO"],
@@ -1123,7 +1123,7 @@ def process_final_results(
         write_RSM(
             yycheck[0, :, : lenwels * N_pr], Time_vector, "PhyNeMo", well_names, N_pr
         )
-        Plot_RSM_percentile_model(
+        plot_rsm_percentile_model(
             yycheck[0, :, : lenwels * N_pr], True_mat, Time_unie1, N_pr, well_names
         )
     os.chdir(oldfolder)
