@@ -735,7 +735,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 cfg.custom.model_Distributed,
                 device,
                 excel,
-                "SWAT",
+                "SOIL",
             )
             models["oil"] = fno_supervised_oil
     else:
