@@ -738,7 +738,7 @@ def fit_Gp(X, y, device, itery, percentage=50.0):
         output = model(X)
         loss = -mll(output, y)
         loss = loss.mean()  # Ensure loss is a scalar
-        loss.backward(retain_graph=True)  # Keep the graph intact
+        loss.backward()  # Keep the graph intact
         optimizer.step()
         scheduler.step()
         del loss  # Free memory
