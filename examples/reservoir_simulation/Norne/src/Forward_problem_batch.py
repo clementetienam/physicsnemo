@@ -177,16 +177,15 @@ def main(cfg: DictConfig) -> None:
     sequences = ["pressure", "saturation", "oil", "gas", "peacemann"]
     model_type = "FNO" if cfg.custom.fno_type == "FNO" else "PINO"
     model_paths = [f"../MODELS/{model_type}/checkpoints_{seq}" for seq in sequences]
+    checkpoint_dir = "checkpoints"
     if cfg.custom.model_Distributed == 1:
         dist, logger = InitializeLoggers(cfg)
-        if dist.rank == 0:
-            checkpoint_dir = "checkpoints" if cfg.custom.fno_type == "FNO" else "checkpoints_seq"
+        if dist.rank == 0:           
             base_dirs = ["__pycache__/", "../RUNS", "outputs/"]
             directories_to_check = [checkpoint_dir] + base_dirs + model_paths
             check_and_remove_dirs(directories_to_check, cfg.custom.file_response, logger)
             logger.info("|-----------------------------------------------------------------|")
     else:
-        checkpoint_dir = "checkpoints"
         base_dirs = ["__pycache__/", "../RUNS", "outputs/", "mlruns"]
         directories_to_check = [checkpoint_dir] + base_dirs + model_paths
         check_and_remove_dirs(directories_to_check, cfg.custom.file_response, logger)
