@@ -599,13 +599,12 @@ def process_dataframe(name, producer_well_names, vectors):
     ]
     filtered_df = df[filtered_columns]
     start_row = find_first_numeric_row(filtered_df)
+    logger = setup_logging()
     if start_row is not None:
         numeric_df = filtered_df.iloc[start_row:]
-        result_array = numeric_df.to_numpy()
-        logger = setup_logging()
+        result_array = numeric_df.to_numpy()      
         logger.info(f"Numeric data from {name} processed successfully.")
     else:
-        logger = setup_logging()
         logger.info(f"No numeric rows found in the DataFrame for {name}.")
         result_array = None
     Time = vectors["TIME"]
