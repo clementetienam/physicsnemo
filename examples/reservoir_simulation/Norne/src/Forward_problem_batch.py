@@ -473,7 +473,7 @@ def main(cfg: DictConfig) -> None:
             "|-----------------------------------------------------------------|"
         )
     params1_swow, params2_swow = train_polynomial_models(SWOW, device)
-    params1_swog, params2_swog = train_polynomial_models(SWOW, device)
+    params1_swog, params2_swog = train_polynomial_models(SWOG, device)
     if dist.rank == 0:
         logger.info(
             "|-----------------------------------------------------------------|"
