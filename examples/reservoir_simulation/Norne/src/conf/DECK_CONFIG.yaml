@@ -219,8 +219,8 @@ custom:
   
   # Distributed Learning Configuration
   model_Distributed: 1        # Multi-GPU (1) or Single-GPU (2)
-  fno_type: "PINO"             # Neural operator type: "FNO" or "PINO"
-  model_saturation: "FNO"     # Saturation model: "FNO" or "GNN"
+  model_type: "FNO"           # model: "FNO" or "TRANSOLVER"
+  fno_type: "FNO"             # Neural operator type: "FNO" -DATA DRIVEN or "PINO" -PHYSICS + DATA DRIVEN  
   allowable_size: 30          # Allowable size of nz accurate with batch FNO architecture
 
   # Model training and solver options
@@ -236,9 +236,9 @@ custom:
   ntest: 1                     # Number of test samples
 
   # Mixture of Experts (MoE) configuration
-  Number_of_experts: 1         # Expert initialization: 1=Elbow method, 2=Constant cluster
-  Type_of_experts: 3          # Expert type: 1=Polynomial, 2=SparseGP, 3=XGBoost
-  iteration_experts: 1000     # Expert optimization iterations
+  Number_of_experts: 2         # Expert initialization: 1=Elbow method, 2=Constant cluster
+  Type_of_experts: 3           # Expert type: 1=Polynomial, 2=SparseGP, 3=XGBoost
+  iteration_experts: 1000      # Expert optimization iterations
 
   # Simulation configuration
   steppi: 10                   # Number of recorded time steps
@@ -246,21 +246,22 @@ custom:
 
   # Graph Neural Network configuration
   num_edges: 5                 # Number of edges per node
-  edge_feature_size: 3        # Edge feature embedding size
+  edge_feature_size: 3         # Edge feature embedding size
 
+  long_rollout: "gaussian"     # Long-horizon helper: "closed" (teacher forcing) or "gaussian" (noise-robust)
 # ======================================================================
 # LOSS FUNCTION WEIGHTS FOR DIFFERENT PHYSICAL PROPERTIES
 # ======================================================================
 loss:
   weights:
-    # Data fitting weights
+    # Data fitting weights(↑ = stronger emphasis) ---
     pressure: 2.0              # Pressure field data fitting
     water_sat: 2.0             # Water saturation data fitting
     oil_sat: 1.0               # Oil saturation data fitting
     gas_sat: 2.0               # Gas saturation data fitting
-    Y: 1.00                    # Peacemann data fitting
+    Y: 1.0                     # Peacemann data fitting
     
-    # Sequential model weights
+    # Sequential model weights(if used) ---
     pafter: 1.0                # Sequential pressure data
     dp: 1.0                    # Sequential delta pressure data
     swafter: 1e-1              # Sequential water saturation data
@@ -270,7 +271,7 @@ loss:
     soafter: 1e-1              # Sequential oil saturation data
     dsoo: 1e-1                 # Sequential delta oil saturation data
     
-    # Physics enforcement weights
+    # Physics enforcement weights (keep small; tune 1e-7–1e-3) ---
     pressured: 1e-6            # Pressure PDE constraint
     pressuredd: 1e-6           # Pressure constraint variant
     oild: 1e-6                 # Oil saturation PDE constraint
@@ -281,12 +282,19 @@ loss:
     saturationdgd: 1e-6        # Gas saturation PDE constraint variant
     gasd: 1e-6                 # Gas PDE closed form
     peacemanned: 1e-6          # Peacemann analytical equation
+    
+  # --- Long-horizon robustness (noise cycle added in training_step) ---
+  noise_std: 0.02               # Gaussian σ added to evolving states (pini/sini/sgini/soini) in [0.01–0.05].
+  noise_cycle_weight: 0.01      # Loss weight for the noisy-cycle pass relative to clean pass (0.5–1.0).
+  noise_prob: 0.5               # Probability of applying noise per batch (0–1). 0.5=stochastic half of the time.
+  noise_rel: 0.05
+  noise_abs: 0.001
 
 # ======================================================================
 # LEARNING RATE SCHEDULER CONFIGURATION
 # ======================================================================
 scheduler:
-  decay_rate: 0.949999988079071  # Learning rate decay rate
+  decay_rate: 0.949999988079071  # Exponential decay factor per `decay_steps`.
   decay_steps: 1000              # Steps between decay
 
 # ======================================================================
@@ -309,14 +317,14 @@ training:
 # ======================================================================
 optimizer:
   weight_decay: 1e-4            # L2 regularization weight decay
-  lr: 2e-3                     # Learning rate
-  gamma: 0.99998708            # Learning rate decay gamma
+  lr: 2e-3                      # Learning rate
+  gamma: 0.99998708             # Learning rate decay gamma
 
 # ======================================================================
 # GLOBAL SYSTEM CONFIGURATION
 # ================================================================================
-cuda_graphs: false             "Enable CUDA graphs" # true or false
-jit: false                     "Enable JIT" # true or false  
+cuda_graphs: false             #"Enable CUDA graphs" # true or false
+jit: false                     #"Enable JIT" # true or false  
 use_mlflow: True               # Enable MLflow experiment tracking # True or False
 use_default: True              # Use default configurations # True or False
 ckpt_path: ./checkpoints       # Checkpoint directory path
