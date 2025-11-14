@@ -316,7 +316,7 @@ def compare_and_analyze_results(
         f"Speedup =  {speedup}X  "
     )
     logger.info(message)
-    os.chdir(to_absolute_path("../Necessaryy"))
+    os.chdir(to_absolute_path("../simulator_data"))
     Time = Get_Time(nx, ny, nz, steppi, steppi_indices, Ne)
     Time_unie = np.zeros((steppi))
     for i in range(steppi):
@@ -754,7 +754,7 @@ def compare_and_analyze_results(
         f"Speedup =  {speedup}X  "
     )
     logger.info(message)
-    os.chdir(to_absolute_path("../Necessaryy"))
+    os.chdir(to_absolute_path("../simulator_data"))
     Time = Get_Time(nx, ny, nz, steppi, steppi_indices, Ne)
     Time_unie = np.zeros((steppi))
     for i in range(steppi):
