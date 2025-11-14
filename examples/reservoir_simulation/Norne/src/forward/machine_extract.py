@@ -326,53 +326,6 @@ def create_transolver_model(
         time_input=time_input,
     )
 
-
-# class CompositeModel(Module):
-    # def __init__(self, MODELS, output_variables):
-        # super().__init__()
-        # self.output_variables = output_variables
-        # if "PRESSURE" in self.output_variables:
-            # self.surrogate_pressure = MODELS["PRESSURE"]  # surrogate_pressure
-        # if "SGAS" in self.output_variables:
-            # self.surrogate_gas = MODELS["SGAS"]  # surrogate_pressure
-        # if "SWAT" in self.output_variables:
-            # self.surrogate_saturation = MODELS["SATURATION"]
-        # if "SOIL" in self.output_variables:
-            # self.surrogate_oil = MODELS["SOIL"]
-
-        # self.surrogate_peacemann = MODELS["PEACEMANN"]
-
-    # def forward(self, input_tensor, mode="both", **kwargs):
-        # """
-        # Forward pass for the composite model.
-        # Parameters:
-        # -----------
-        # input_tensor : torch.Tensor
-            # Input tensor for the model.
-        # mode : str
-            # Which model to use: "pressure", "saturation", or "both".
-        # Returns:
-        # --------
-        # dict
-            # Outputs from the selected model(s).
-        # """
-        # outputs = {}
-        # if mode in ["pressure", "both"]:
-            # outputs["pressure"] = self.surrogate_pressure(input_tensor)
-        # if mode in ["gas", "both"]:
-            # outputs["gas"] = self.surrogate_gas(input_tensor)
-
-        # if mode in ["saturation", "both"]:
-            # outputs["saturation"] = self.surrogate_saturation(input_tensor)
-
-        # if mode in ["oil", "both"]:
-            # outputs["oil"] = self.surrogate_oil(input_tensor)
-
-        # if mode in ["peacemann", "both"]:
-            # outputs["peacemann"] = self.surrogate_peacemann(input_tensor)
-
-        # return outputs
-        
         
 class CompositeModel(Module):
     def __init__(self, MODELS, output_variables, model_type="FNO"):
