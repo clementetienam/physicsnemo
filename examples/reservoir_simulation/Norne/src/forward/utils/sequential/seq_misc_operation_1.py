@@ -65,6 +65,7 @@ import wandb
 # 📦 Local Modules
 from forward.machine_extract import (
     create_fno_model,
+    create_transolver_model,
     CompositeModel,
     CompositeOptimizer,
 )
@@ -208,7 +209,7 @@ def load_and_setup_training_data(
             "---------------------------------------------------------------------"
         )
         logger.info("Load simulated labelled training data")
-    with gzip.open(to_absolute_path("../PACKETS/data_train.pkl.gz"), "rb") as f2:
+    with gzip.open(to_absolute_path("../data/data_train.pkl.gz"), "rb") as f2:
         mat = pickle.load(f2)
     X_data1 = mat
     for key, value in X_data1.items():
@@ -340,9 +341,12 @@ def load_and_setup_training_data(
     Timebefore[1:] = time_values[:-1]
     dT = time_values - Timebefore
     cdT = np.zeros((N_ens, steppi, nz, nx, ny), dtype=np.float32)
+    cT = np.zeros((N_ens, steppi, nz, nx, ny), dtype=np.float32)
+    Time_in = time_values
     for kk in range(N_ens):
         for tt in range(steppi):
             cdT[kk, tt, :, :, :] = dT[tt] * np.ones((nz, nx, ny), dtype=np.float32)
+            cT[kk, tt, :, :, :] = Time_in[tt] * np.ones((nz, nx, ny), dtype=np.float32)
     for kk in range(N_ens):
         for i in range(nz):
             if "permeability" in X_data1:
@@ -391,6 +395,7 @@ def load_and_setup_training_data(
     cQg[cQg == 0] = 0.1
     cQo[cQo == 0] = 0.1
     cdT = cdT / maxT
+    cT = cT / maxT
     neededMx = {
         "Q": torch.from_numpy(cQ[0:1, :, :, :, :]).to(device, torch.float32),
         "Qw": torch.from_numpy(cQw[0:1, :, :, :, :]).to(device, dtype=torch.float32),
@@ -398,8 +403,8 @@ def load_and_setup_training_data(
         "Qo": torch.from_numpy(cQo[0:1, :, :, :, :]).to(device, dtype=torch.float32),
         "dt": torch.from_numpy(cdT[0:1, :, :, :, :]).to(device, dtype=torch.float32),
     }
-    p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15 = [
-        [] for _ in range(15)
+    p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16 = [
+        [] for _ in range(16)
     ]
     for yy in range(N_ens):
         temp1 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # permeability
@@ -417,6 +422,7 @@ def load_and_setup_training_data(
         temp13 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # gas
         temp14 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # oil
         temp15 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # QG
+        temp16 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # Time
         for kk in range(steppi):
             temp1[kk, :, :, :] = cPerm[yy, 0, :, :, :]
             temp2[kk, :, :, :] = cPhi[yy, 0, :, :, :]
@@ -424,6 +430,7 @@ def load_and_setup_training_data(
             temp8[kk, :, :, :] = cQg[yy, kk, :, :, :]
             temp9[kk, :, :, :] = cQw[yy, kk, :, :, :]
             temp10[kk, :, :, :] = cdT[yy, kk, :, :, :]
+            temp16[kk, :, :, :] = cT[yy, kk, :, :, :]
             temp11[kk, :, :, :] = cPress[yy, kk, :, :, :]
             temp12[kk, :, :, :] = cSat[yy, kk, :, :, :]
             temp13[kk, :, :, :] = cSatg[yy, kk, :, :, :]
@@ -454,6 +461,7 @@ def load_and_setup_training_data(
         p13.append(temp13)
         p14.append(temp14)
         p15.append(temp15)
+        p16.append(temp16)
     cPerm = np.concatenate(p1, axis=0)[:, None, :, :, :]
     cPhi = np.concatenate(p2, axis=0)[:, None, :, :, :]
     cPini = np.concatenate(p3, axis=0)[:, None, :, :, :]
@@ -465,6 +473,7 @@ def load_and_setup_training_data(
     cQ = np.concatenate(p15, axis=0)[:, None, :, :, :]
     cQw = np.concatenate(p9, axis=0)[:, None, :, :, :]
     cdT = np.concatenate(p10, axis=0)[:, None, :, :, :]
+    cT = np.concatenate(p16, axis=0)[:, None, :, :, :]
     cPress = np.concatenate(p11, axis=0)[:, None, :, :, :]
     cSat = np.concatenate(p12, axis=0)[:, None, :, :, :]
     cSatg = np.concatenate(p13, axis=0)[:, None, :, :, :]
@@ -485,13 +494,14 @@ def load_and_setup_training_data(
     if "Q" in X_data1:
         data["Q"] = cQ
     if "Fault" in X_data1:
-        data["fault"] = cfault / 100
+        data["fault"] = cfault
     if "Qg" in X_data1:
         data["Qg"] = cQg  # [:, 0:1, :, :, :]
     if "Qw" in X_data1:
         data["Qw"] = cQw  # [:, 0:1, :, :, :]
     if "Time" in X_data1:
         data["dt"] = cdT  # [:, 0:1, :, :, :]
+        data["t"] = cT  # [:, 0:1, :, :, :]
     if "Pressure" in X_data1:
         data["pressure"] = cPress  # * effec_abbi
     if "Water_saturation" in X_data1:
@@ -506,7 +516,7 @@ def load_and_setup_training_data(
         )
         logger.info("Load simulated labelled training data for peacemann")
     with gzip.open(
-        to_absolute_path("../PACKETS/data_train_peaceman.pkl.gz"), "rb"
+        to_absolute_path("../data/data_train_peaceman.pkl.gz"), "rb"
     ) as f:
         mat = pickle.load(f)
     X_data2 = mat
@@ -519,7 +529,7 @@ def load_and_setup_training_data(
             "---------------------------------------------------------------------"
         )
         logger.info("Load simulated labelled test data from .gz file")
-    with gzip.open(to_absolute_path("../PACKETS/data_test.pkl.gz"), "rb") as f:
+    with gzip.open(to_absolute_path("../data/data_test.pkl.gz"), "rb") as f:
         mat = pickle.load(f)
     X_data1t = mat
     for key, value in X_data1t.items():
@@ -643,14 +653,17 @@ def load_and_setup_training_data(
     Timebefore[1:] = time_values[:-1]
     dT = time_values - Timebefore
     cdT = np.zeros((N_ens, steppi, nz, nx, ny), dtype=np.float32)
+    cT = np.zeros((N_ens, steppi, nz, nx, ny), dtype=np.float32)
     for kk in range(N_ens):
         for tt in range(steppi):
             cdT[kk, tt, :, :, :] = dT[tt] * np.ones((nz, nx, ny), dtype=np.float32)
+            cT[kk, tt, :, :, :] = time_values[tt] * np.ones((nz, nx, ny), dtype=np.float32)
     cQ[cQ == 0] = 0.1
     cQw[cQw == 0] = 0.1
     cQg[cQg == 0] = 0.1
     cQo[cQo == 0] = 0.1
     cdT = cdT / maxT
+    cT = cT / maxT
     neededMxt = {
         "Q": torch.from_numpy(cQ[0:1, :, :, :, :]).to(device, torch.float32),
         "Qw": torch.from_numpy(cQw[0:1, :, :, :, :]).to(device, dtype=torch.float32),
@@ -658,8 +671,8 @@ def load_and_setup_training_data(
         "Qo": torch.from_numpy(cQo[0:1, :, :, :, :]).to(device, dtype=torch.float32),
         "dt": torch.from_numpy(cdT[0:1, :, :, :, :]).to(device, dtype=torch.float32),
     }
-    p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15 = [
-        [] for _ in range(15)
+    p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15,p16 = [
+        [] for _ in range(16)
     ]
     for yy in range(N_ens):
         temp1 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # permeability
@@ -672,6 +685,7 @@ def load_and_setup_training_data(
         temp8 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # QG
         temp9 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # Qw
         temp10 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # dT
+        temp16 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # dT
         temp11 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # pressure
         temp12 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # water
         temp13 = np.zeros((steppi, nz, nx, ny), dtype=np.float32)  # gas
@@ -684,6 +698,7 @@ def load_and_setup_training_data(
             temp8[kk, :, :, :] = cQg[yy, kk, :, :, :]
             temp9[kk, :, :, :] = cQw[yy, kk, :, :, :]
             temp10[kk, :, :, :] = cdT[yy, kk, :, :, :]
+            temp16[kk, :, :, :] = cT[yy, kk, :, :, :]
             temp11[kk, :, :, :] = cPress[yy, kk, :, :, :]
             temp12[kk, :, :, :] = cSat[yy, kk, :, :, :]
             temp13[kk, :, :, :] = cSatg[yy, kk, :, :, :]
@@ -709,6 +724,7 @@ def load_and_setup_training_data(
         p8.append(temp8)
         p9.append(temp9)
         p10.append(temp10)
+        p16.append(temp16)
         p11.append(temp11)
         p12.append(temp12)
         p13.append(temp13)
@@ -725,6 +741,7 @@ def load_and_setup_training_data(
     cQ = np.concatenate(p15, axis=0)[:, None, :, :, :]
     cQw = np.concatenate(p9, axis=0)[:, None, :, :, :]
     cdT = np.concatenate(p10, axis=0)[:, None, :, :, :]
+    cT = np.concatenate(p16, axis=0)[:, None, :, :, :]
     cPress = np.concatenate(p11, axis=0)[:, None, :, :, :]
     cSat = np.concatenate(p12, axis=0)[:, None, :, :, :]
     cSatg = np.concatenate(p13, axis=0)[:, None, :, :, :]
@@ -743,7 +760,7 @@ def load_and_setup_training_data(
     if "SOIL" in output_variables:
         data_test["soini"] = cSoini
     if "Fault" in X_data1t:
-        data_test["fault"] = cfault / 100  # * effec_abbi
+        data_test["fault"] = cfault   # * effec_abbi
     if "Q" in X_data1t:
         data_test["Q"] = cQ
     if "Qg" in X_data1t:
@@ -752,6 +769,7 @@ def load_and_setup_training_data(
         data_test["Qw"] = cQw  # [:, 0:1, :, :, :]
     if "Time" in X_data1t:
         data_test["dt"] = cdT  # [:, 0:1, :, :, :]
+        data_test["t"] = cT  # [:, 0:1, :, :, :]
     if "Pressure" in X_data1t:
         data_test["pressure"] = cPress  # * effec_abbi
     if "Water_saturation" in X_data1t:
@@ -765,7 +783,7 @@ def load_and_setup_training_data(
             "---------------------------------------------------------------------"
         )
         logger.info("Load simulated labelled test data for peacemann modelling")
-    with gzip.open(to_absolute_path("../PACKETS/data_test_peaceman.pkl.gz"), "rb") as f:
+    with gzip.open(to_absolute_path("../data/data_test_peaceman.pkl.gz"), "rb") as f:
         mat = pickle.load(f)
     X_data2t = mat
     data2_test = X_data2t
@@ -796,6 +814,7 @@ def load_and_setup_training_data(
         input_keys.append("Qw")
     if "DELTA_TIME" in cfg.custom.input_properties2:
         input_keys.append("dt")
+        input_keys.append("t")
     input_keys_peacemann = []
     input_keys_peacemann.append("X")
     output_keys_peacemann = []
@@ -862,12 +881,9 @@ def load_and_setup_training_data(
             "|-----------------------------------------------------------------|"
         )
     if cfg.custom.model_Distributed == 2:
-        if cfg.custom.model_saturation == "FNO":
-            batch_sizee = cfg.batch_size.grid_fno
-        else:
-            batch_sizee = cfg.batch_size.grid_gnn
+        batch_sizee = cfg.batch_size.grid_fno
     else:
-        if cfg.custom.model_saturation == "FNO":
+        if cfg.custom.model_type == "TRANSOLVER":
             temp = cfg.batch_size.grid_fno
             num_ranks = dist.world_size
             if dist.rank == 0:
@@ -876,8 +892,9 @@ def load_and_setup_training_data(
             batch_sizee = int(temp)
             if batch_sizee < 1:
                 batch_sizee = 1
+            batch_sizee = steppi
         else:
-            batch_sizee = cfg.batch_size.grid_gnn
+            batch_sizee = steppi
     dataset_train = Labelledset(data, dist.device)
     train_sampler = DistributedSampler(
         dataset_train,
@@ -944,73 +961,135 @@ def load_and_setup_training_data(
         logger.info(
             "|-----------------------------------------------------------------|"
         )
-    if "PRESSURE" in output_variables:
-        surrogate_pressure = create_fno_model(
-            len(input_keys),
-            1,
-            len(output_keys_pressure),
+        
+    if cfg.custom.model_type == "FNO":
+        if "PRESSURE" in output_variables:
+            surrogate_pressure = create_fno_model(
+                len(input_keys),
+                1,
+                len(output_keys_pressure),
+                dist.device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
+            )
+        surrogate_peacemann = create_fno_model(
+            2 + (4 * N_pr),
+            lenwels * N_pr,
+            len(output_keys_peacemann),
             dist.device,
-            num_fno_modes=16,
-            latent_channels=32,
+            num_fno_modes=13,
+            latent_channels=64,
             decoder_layer_size=32,
-            padding=22,
+            padding=20,
+            num_fno_layers=5,
             decoder_layers=4,
-            dimension=3,
+            dimension=1,
         )
-    surrogate_peacemann = create_fno_model(
-        2 + (4 * N_pr),
-        lenwels * N_pr,
-        len(output_keys_peacemann),
-        dist.device,
-        num_fno_modes=13,
-        latent_channels=64,
-        decoder_layer_size=32,
-        padding=20,
-        num_fno_layers=5,
-        decoder_layers=4,
-        dimension=1,
-    )
-    if "SGAS" in output_variables:
-        surrogate_gas = create_fno_model(
-            len(input_keys),
-            1,
-            len(output_keys_gas),
-            dist.device,
-            num_fno_modes=16,
-            latent_channels=32,
-            decoder_layer_size=32,
-            padding=22,
-            decoder_layers=4,
-            dimension=3,
-        )
-    if "SWAT" in output_variables:
-        surrogate_saturation = create_fno_model(
-            len(input_keys),
-            1,
-            len(output_keys_saturation),
-            dist.device,
-            num_fno_modes=16,
-            latent_channels=32,
-            decoder_layer_size=32,
-            padding=22,
-            decoder_layers=4,
-            dimension=3,
-        )
+        if "SGAS" in output_variables:
+            surrogate_gas = create_fno_model(
+                len(input_keys),
+                1,
+                len(output_keys_gas),
+                dist.device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
+            )
+        if "SWAT" in output_variables:
+            surrogate_saturation = create_fno_model(
+                len(input_keys),
+                1,
+                len(output_keys_saturation),
+                dist.device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
+            )
 
-    if "SOIL" in output_variables:
-        surrogate_oil = create_fno_model(
-            len(input_keys),
-            1,
-            len(output_keys_oil),
+        if "SOIL" in output_variables:
+            surrogate_oil = create_fno_model(
+                len(input_keys),
+                1,
+                len(output_keys_oil),
+                dist.device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
+            )
+    else:
+        if "PRESSURE" in output_variables:
+            surrogate_pressure = create_transolver_model(
+                functional_dim=len(input_keys),
+                out_dim=len(output_keys_pressure),
+                device=device,
+                n_layers=8,
+                n_hidden=32,
+                n_head=8,
+                structured_shape=(nx, ny),
+                use_te=True,
+            )
+        surrogate_peacemann = create_fno_model(
+            2 + (4 * N_pr),
+            lenwels * N_pr,
+            len(output_keys_peacemann),
             dist.device,
-            num_fno_modes=16,
-            latent_channels=32,
+            num_fno_modes=13,
+            latent_channels=64,
             decoder_layer_size=32,
-            padding=22,
+            padding=20,
+            num_fno_layers=5,
             decoder_layers=4,
-            dimension=3,
+            dimension=1,
         )
-    if cfg.custom.model_saturation == "FNO":
+        if "SGAS" in output_variables:
+            surrogate_gas = create_transolver_model(
+                functional_dim=len(input_keys),
+                out_dim=len(output_keys_gas),
+                device=device,
+                n_layers=8,
+                n_hidden=32,
+                n_head=8,
+                structured_shape=(nx, ny),
+                use_te=True,
+            )
+        if "SWAT" in output_variables:
+            surrogate_saturation = create_transolver_model(
+                functional_dim=len(input_keys),
+                out_dim=len(output_keys_saturation),
+                device=device,
+                n_layers=8,
+                n_hidden=32,
+                n_head=8,
+                structured_shape=(nx, ny),
+                use_te=True,
+            )
+
+        if "SOIL" in output_variables:
+            surrogate_oil = create_transolver_model(
+                functional_dim=len(input_keys),
+                out_dim=len(output_keys_oil),
+                device=device,
+                n_layers=8,
+                n_hidden=32,
+                n_head=8,
+                structured_shape=(nx, ny),
+                use_te=True,
+            )
+            
+    if cfg.custom.model_type == "FNO":
         if cfg.custom.fno_type == "FNO":
             if dist.rank == 0:
                 logger.info(
@@ -1029,6 +1108,29 @@ def load_and_setup_training_data(
                 )
                 logger.info(
                     "|   PRESSURE MODEL = PINO   SATUARATION MODEL = PINO   :            |"
+                )
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+    else:
+        if cfg.custom.fno_type == "FNO":
+            if dist.rank == 0:
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+                logger.info(
+                    "|   PRESSURE MODEL = TRANSOLVER   SATUARATION MODEL = TRANSOLVER   :|"
+                )
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+        else:
+            if dist.rank == 0:
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+                logger.info(
+                    "|   PRESSURE MODEL = PI-TRANSOLVER SATUARATION MODEL = PI-TRANSOLVER   :|"
                 )
                 logger.info(
                     "|-----------------------------------------------------------------|"
@@ -1164,98 +1266,193 @@ def load_and_setup_training_data(
     if "SGAS" in output_variables:
         MODELS_C["gas"] = optimizer_gas
     combined_optimizer = CompositeOptimizer(MODELS_C)
-    if cfg.custom.fno_type == "FNO":
-        # Attempt to load latest checkpoint if one exists
-        if "PRESSURE" in output_variables:
-            loaded_epoch_pressure = load_checkpoint(
-                to_absolute_path("../MODELS/FNO/checkpoints_pressure_seq"),
-                models=surrogate_pressure,
-                optimizer=optimizer_pressure,
-                scheduler=scheduler_pressure,
+    
+    if cfg.custom.model_type == "FNO":
+        if cfg.custom.fno_type == "FNO":
+            # Attempt to load latest checkpoint if one exists
+            if "PRESSURE" in output_variables:
+                loaded_epoch_pressure = load_checkpoint(
+                    to_absolute_path("../MODELS/FNO/checkpoints_pressure_seq"),
+                    models=surrogate_pressure,
+                    optimizer=optimizer_pressure,
+                    scheduler=scheduler_pressure,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_pressure
+            if "SGAS" in output_variables:
+                loaded_epoch_gas = load_checkpoint(
+                    to_absolute_path("../MODELS/FNO/checkpoints_gas_seq"),
+                    models=surrogate_gas,
+                    optimizer=optimizer_gas,
+                    scheduler=scheduler_gas,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_gas
+            if "SWAT" in output_variables:
+                loaded_epoch_saturation = load_checkpoint(
+                    to_absolute_path("../MODELS/FNO/checkpoints_saturation_seq"),
+                    models=surrogate_saturation,
+                    optimizer=optimizer_saturation,
+                    scheduler=scheduler_saturation,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_saturation
+            if "SOIL" in output_variables:
+                loaded_epoch_oil = load_checkpoint(
+                    to_absolute_path("../MODELS/FNO/checkpoints_oil_seq"),
+                    models=surrogate_oil,
+                    optimizer=optimizer_oil,
+                    scheduler=scheduler_oil,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_oil
+            loaded_epoch_peacemann = load_checkpoint(
+                to_absolute_path("../MODELS/FNO/checkpoints_peacemann_seq"),
+                models=surrogate_peacemann,
+                optimizer=optimizer_peacemann,
+                scheduler=scheduler_peacemann,
                 device=dist.device,
             )
-            use_epoch = loaded_epoch_pressure
-        if "SGAS" in output_variables:
-            loaded_epoch_gas = load_checkpoint(
-                to_absolute_path("../MODELS/FNO/checkpoints_gas_seq"),
-                models=surrogate_gas,
-                optimizer=optimizer_gas,
-                scheduler=scheduler_gas,
+            use_epoch = loaded_epoch_peacemann
+        else:
+            # Attempt to load latest checkpoint if one exists
+            if "PRESSURE" in output_variables:
+                loaded_epoch_pressure = load_checkpoint(
+                    to_absolute_path("../MODELS/PINO/checkpoints_pressure_seq"),
+                    models=surrogate_pressure,
+                    optimizer=optimizer_pressure,
+                    scheduler=scheduler_pressure,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_pressure
+            if "SGAS" in output_variables:
+                loaded_epoch_gas = load_checkpoint(
+                    to_absolute_path("../MODELS/PINO/checkpoints_gas_seq"),
+                    models=surrogate_gas,
+                    optimizer=optimizer_gas,
+                    scheduler=scheduler_gas,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_gas
+            if "SWAT" in output_variables:
+                loaded_epoch_saturation = load_checkpoint(
+                    to_absolute_path("../MODELS/PINO/checkpoints_saturation_seq"),
+                    models=surrogate_saturation,
+                    optimizer=optimizer_saturation,
+                    scheduler=scheduler_saturation,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_saturation
+            if "SOIL" in output_variables:
+                loaded_epoch_oil = load_checkpoint(
+                    to_absolute_path("../MODELS/PINO/checkpoints_oil_seq"),
+                    models=surrogate_oil,
+                    optimizer=optimizer_oil,
+                    scheduler=scheduler_oil,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_oil
+            loaded_epoch_peacemann = load_checkpoint(
+                to_absolute_path("../MODELS/PINO/checkpoints_peacemann_seq"),
+                models=surrogate_peacemann,
+                optimizer=optimizer_peacemann,
+                scheduler=scheduler_peacemann,
                 device=dist.device,
             )
-            use_epoch = loaded_epoch_gas
-        if "SWAT" in output_variables:
-            loaded_epoch_saturation = load_checkpoint(
-                to_absolute_path("../MODELS/FNO/checkpoints_saturation_seq"),
-                models=surrogate_saturation,
-                optimizer=optimizer_saturation,
-                scheduler=scheduler_saturation,
+            use_epoch = loaded_epoch_peacemann
+    else:  
+        if cfg.custom.fno_type == "FNO":
+            # Attempt to load latest checkpoint if one exists
+            if "PRESSURE" in output_variables:
+                loaded_epoch_pressure = load_checkpoint(
+                    to_absolute_path("../MODELS/TRANSOLVER/checkpoints_pressure_seq"),
+                    models=surrogate_pressure,
+                    optimizer=optimizer_pressure,
+                    scheduler=scheduler_pressure,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_pressure
+            if "SGAS" in output_variables:
+                loaded_epoch_gas = load_checkpoint(
+                    to_absolute_path("../MODELS/TRANSOLVER/checkpoints_gas_seq"),
+                    models=surrogate_gas,
+                    optimizer=optimizer_gas,
+                    scheduler=scheduler_gas,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_gas
+            if "SWAT" in output_variables:
+                loaded_epoch_saturation = load_checkpoint(
+                    to_absolute_path("../MODELS/TRANSOLVER/checkpoints_saturation_seq"),
+                    models=surrogate_saturation,
+                    optimizer=optimizer_saturation,
+                    scheduler=scheduler_saturation,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_saturation
+            if "SOIL" in output_variables:
+                loaded_epoch_oil = load_checkpoint(
+                    to_absolute_path("../MODELS/TRANSOLVER/checkpoints_oil_seq"),
+                    models=surrogate_oil,
+                    optimizer=optimizer_oil,
+                    scheduler=scheduler_oil,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_oil
+            loaded_epoch_peacemann = load_checkpoint(
+                to_absolute_path("../MODELS/TRANSOLVER/checkpoints_peacemann_seq"),
+                models=surrogate_peacemann,
+                optimizer=optimizer_peacemann,
+                scheduler=scheduler_peacemann,
                 device=dist.device,
             )
-            use_epoch = loaded_epoch_saturation
-        if "SOIL" in output_variables:
-            loaded_epoch_oil = load_checkpoint(
-                to_absolute_path("../MODELS/FNO/checkpoints_oil_seq"),
-                models=surrogate_oil,
-                optimizer=optimizer_oil,
-                scheduler=scheduler_oil,
+            use_epoch = loaded_epoch_peacemann
+        else:
+            # Attempt to load latest checkpoint if one exists
+            if "PRESSURE" in output_variables:
+                loaded_epoch_pressure = load_checkpoint(
+                    to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_pressure_seq"),
+                    models=surrogate_pressure,
+                    optimizer=optimizer_pressure,
+                    scheduler=scheduler_pressure,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_pressure
+            if "SGAS" in output_variables:
+                loaded_epoch_gas = load_checkpoint(
+                    to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_gas_seq"),
+                    models=surrogate_gas,
+                    optimizer=optimizer_gas,
+                    scheduler=scheduler_gas,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_gas
+            if "SWAT" in output_variables:
+                loaded_epoch_saturation = load_checkpoint(
+                    to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_saturation_seq"),
+                    models=surrogate_saturation,
+                    optimizer=optimizer_saturation,
+                    scheduler=scheduler_saturation,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_saturation
+            if "SOIL" in output_variables:
+                loaded_epoch_oil = load_checkpoint(
+                    to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_oil_seq"),
+                    models=surrogate_oil,
+                    optimizer=optimizer_oil,
+                    scheduler=scheduler_oil,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_oil
+            loaded_epoch_peacemann = load_checkpoint(
+                to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_peacemann_seq"),
+                models=surrogate_peacemann,
+                optimizer=optimizer_peacemann,
+                scheduler=scheduler_peacemann,
                 device=dist.device,
             )
-            use_epoch = loaded_epoch_oil
-        loaded_epoch_peacemann = load_checkpoint(
-            to_absolute_path("../MODELS/FNO/checkpoints_peacemann_seq"),
-            models=surrogate_peacemann,
-            optimizer=optimizer_peacemann,
-            scheduler=scheduler_peacemann,
-            device=dist.device,
-        )
-        use_epoch = loaded_epoch_peacemann
-    else:
-        # Attempt to load latest checkpoint if one exists
-        if "PRESSURE" in output_variables:
-            loaded_epoch_pressure = load_checkpoint(
-                to_absolute_path("../MODELS/PINO/checkpoints_pressure_seq"),
-                models=surrogate_pressure,
-                optimizer=optimizer_pressure,
-                scheduler=scheduler_pressure,
-                device=dist.device,
-            )
-            use_epoch = loaded_epoch_pressure
-        if "SGAS" in output_variables:
-            loaded_epoch_gas = load_checkpoint(
-                to_absolute_path("../MODELS/PINO/checkpoints_gas_seq"),
-                models=surrogate_gas,
-                optimizer=optimizer_gas,
-                scheduler=scheduler_gas,
-                device=dist.device,
-            )
-            use_epoch = loaded_epoch_gas
-        if "SWAT" in output_variables:
-            loaded_epoch_saturation = load_checkpoint(
-                to_absolute_path("../MODELS/PINO/checkpoints_saturation_seq"),
-                models=surrogate_saturation,
-                optimizer=optimizer_saturation,
-                scheduler=scheduler_saturation,
-                device=dist.device,
-            )
-            use_epoch = loaded_epoch_saturation
-        if "SOIL" in output_variables:
-            loaded_epoch_oil = load_checkpoint(
-                to_absolute_path("../MODELS/PINO/checkpoints_oil_seq"),
-                models=surrogate_oil,
-                optimizer=optimizer_oil,
-                scheduler=scheduler_oil,
-                device=dist.device,
-            )
-            use_epoch = loaded_epoch_oil
-        loaded_epoch_peacemann = load_checkpoint(
-            to_absolute_path("../MODELS/PINO/checkpoints_peacemann_seq"),
-            models=surrogate_peacemann,
-            optimizer=optimizer_peacemann,
-            scheduler=scheduler_peacemann,
-            device=dist.device,
-        )
-        use_epoch = loaded_epoch_peacemann
+            use_epoch = loaded_epoch_peacemann    
     MODELS = {}
     SCHEDULER = {}
     if "PRESSURE" in output_variables:
@@ -1272,7 +1469,8 @@ def load_and_setup_training_data(
         SCHEDULER["SOIL"] = scheduler_oil
     MODELS["PEACEMANN"] = surrogate_peacemann
     SCHEDULER["PEACEMANN"] = scheduler_peacemann
-    composite_model = CompositeModel(MODELS, output_variables)
+    #composite_model = CompositeModel(MODELS, output_variables)
+    composite_model = CompositeModel(MODELS, output_variables, model_type=cfg.custom.model_type)
 
     training_setup = {
         "data_train": data,  # Training data dictionary
