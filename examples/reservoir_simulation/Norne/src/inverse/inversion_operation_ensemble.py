@@ -774,7 +774,7 @@ be_verbose = False
 
 def Get_Time(nx, ny, nz, steppi, steppi_indices, N):
     try:
-        with gzip.open(to_absolute_path("../PACKETS/data_train.pkl.gz"), "rb") as f2:
+        with gzip.open(to_absolute_path("../data/data_train.pkl.gz"), "rb") as f2:
             mat = pickle.load(f2)
     except (pickle.PickleError, EOFError, FileNotFoundError) as e:
         logger.error(f"Error loading pickle file: {e}")
@@ -782,7 +782,7 @@ def Get_Time(nx, ny, nz, steppi, steppi_indices, N):
     X_data1 = mat
     del mat
     gc.collect()
-    # mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    # mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
     Time = X_data1["Time"]  # * mat ["maxT"]
     np_array2 = np.zeros((Time.shape[1]))
     for mm in range(Time.shape[1]):

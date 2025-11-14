@@ -290,13 +290,13 @@ def NorneGeostat(nx, ny, nz):
     dim = np.array([nx, ny, nz])
     ldim = dim[0] * dim[1]
     norne["dim"] = dim
-    act = read_until_line("../Necessaryy/ACTNUM_0704.prop")
+    act = read_until_line("../simulator_data/ACTNUM_0704.prop")
     act = act.T
     act = np.reshape(act, (-1,), "F")
     norne["actnum"] = act
     meanv = np.zeros(dim[2])
     stdv = np.zeros(dim[2])
-    file_path = "../Necessaryy/porosity.dat"
+    file_path = "../simulator_data/porosity.dat"
     p = read_until_line(file_path)
     p = p[act != 0]
     for nr in range(int(dim[2])):
@@ -314,7 +314,7 @@ def NorneGeostat(nx, ny, nz):
     norne["poroLB"] = 0.1
     norne["poroUB"] = 0.4
     norne["poroRange"] = 26
-    k = read_until_line("../Necessaryy/permx.dat")
+    k = read_until_line("../simulator_data/permx.dat")
     k = np.log(k)
     k = k[act != 0]
     meanv = np.zeros(dim[2])

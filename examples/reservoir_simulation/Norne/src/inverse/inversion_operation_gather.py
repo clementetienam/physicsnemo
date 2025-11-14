@@ -955,7 +955,7 @@ def plot_rsm(predMatrix, True_mat, Namesz, Ne, timezz, N_pr, well_names):
 
 
 def De_correlate_ensemble(nx, ny, nz, Ne, High_K, Low_K, Yet):
-    filename = "../PACKETS/Ganensemble.pkl.gz"
+    filename = "../data/Ganensemble.pkl.gz"
 
     with gzip.open(filename, "rb") as f2:
         try:
