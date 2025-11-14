@@ -67,6 +67,8 @@ from physicsnemo.launch.logging import (
     RankZeroLoggingWrapper,
 )
 from physicsnemo.distributed import DistributedManager
+from physicsnemo.models.transolver import Transolver
+
 
 # 📦 Local Modules
 
@@ -186,51 +188,291 @@ def create_fno_model(
         padding=padding,
         num_fno_modes=num_fno_modes,
     )
+    
 
 
+class TransolverModel(Module):
+    def __init__(
+        self,
+        functional_dim,
+        out_dim,
+        device,
+        embedding_dim=None,
+        n_layers=8,
+        n_hidden=256,
+        dropout=0.0,
+        n_head=8,
+        act="gelu",
+        mlp_ratio=4,
+        slice_num=32,
+        unified_pos=True,
+        ref=8,
+        structured_shape=(46, 112),
+        use_te=True,
+        time_input=False,
+    ):
+        super().__init__()
+        self.transolver = Transolver(
+            functional_dim=functional_dim,
+            out_dim=out_dim,
+            embedding_dim=embedding_dim,
+            n_layers=n_layers,
+            n_hidden=n_hidden,
+            dropout=dropout,
+            n_head=n_head,
+            act=act,
+            mlp_ratio=mlp_ratio,
+            slice_num=slice_num,
+            unified_pos=unified_pos,
+            ref=ref,
+            structured_shape=structured_shape,
+            use_te=use_te,
+            time_input=time_input,
+        ).to(torch.device(device))  # Explicit device conversion
+        self.meta = type("", (), {})()  # Empty object
+        self.meta.name = "transolver_model"
+
+    def forward(self, x):
+        return self.transolver(x)
+
+
+def create_transolver_model(
+    functional_dim,
+    out_dim,
+    device,
+    embedding_dim=None,
+    n_layers=8,
+    n_hidden=16,
+    dropout=0.0,
+    n_head=8,
+    act="gelu",
+    mlp_ratio=4,
+    slice_num=16,
+    unified_pos=True,
+    ref=8,
+    structured_shape=(46, 112),
+    use_te=True,
+    time_input=False,
+):
+    """
+    Create a Transolver model wrapped in a compatible PhyNeMo Module.
+
+    Parameters:
+    -----------
+    functional_dim : int
+        The dimension of the input values, not including any embeddings.
+    out_dim : int
+        The dimension of the output of the model.
+    device : str
+        Device to create the model on ('cpu' or 'cuda').
+    embedding_dim : int | None, optional
+        The spatial dimension of the input data embeddings. Default is None.
+    n_layers : int, optional
+        The number of transformer PhysicsAttention layers. Default is 8.
+    n_hidden : int, optional
+        The hidden dimension of the transformer. Default is 256.
+    dropout : float, optional
+        The dropout rate. Default is 0.0.
+    n_head : int, optional
+        The number of attention heads. Default is 8.
+    act : str, optional
+        The activation function. Default is "gelu".
+    mlp_ratio : int, optional
+        The ratio of hidden dimension in the MLP. Default is 4.
+    slice_num : int, optional
+        The number of slices in the PhysicsAttention layers. Default is 32.
+    unified_pos : bool, optional
+        Whether to use unified positional embeddings. Default is True.
+    ref : int, optional
+        The reference dimension size when using unified positions. Default is 8.
+    structured_shape : tuple, optional
+        The shape of the latent space for structured data. Default is (46, 112).
+    use_te : bool, optional
+        Whether to use transformer engine backend. Default is True.
+    time_input : bool, optional
+        Whether to include time embeddings. Default is False.
+
+    Returns:
+    --------
+    transolver_model : TransolverModel
+        Initialized Transolver model ready for inference or training.
+    """
+    # Validate arguments
+    if n_hidden % n_head != 0:
+        raise ValueError(f"n_hidden ({n_hidden}) must be divisible by n_head ({n_head})")
+    
+    if unified_pos and structured_shape is None:
+        raise ValueError("structured_shape must be provided when unified_pos=True")
+    
+    if structured_shape is not None and len(structured_shape) not in [2, 3]:
+        raise ValueError(f"structured_shape must be 2D or 3D, got {structured_shape}")
+
+    return TransolverModel(
+        functional_dim=functional_dim,
+        out_dim=out_dim,
+        device=device,
+        embedding_dim=embedding_dim,
+        n_layers=n_layers,
+        n_hidden=n_hidden,
+        dropout=dropout,
+        n_head=n_head,
+        act=act,
+        mlp_ratio=mlp_ratio,
+        slice_num=slice_num,
+        unified_pos=unified_pos,
+        ref=ref,
+        structured_shape=structured_shape,
+        use_te=use_te,
+        time_input=time_input,
+    )
+
+
+# class CompositeModel(Module):
+    # def __init__(self, MODELS, output_variables):
+        # super().__init__()
+        # self.output_variables = output_variables
+        # if "PRESSURE" in self.output_variables:
+            # self.surrogate_pressure = MODELS["PRESSURE"]  # surrogate_pressure
+        # if "SGAS" in self.output_variables:
+            # self.surrogate_gas = MODELS["SGAS"]  # surrogate_pressure
+        # if "SWAT" in self.output_variables:
+            # self.surrogate_saturation = MODELS["SATURATION"]
+        # if "SOIL" in self.output_variables:
+            # self.surrogate_oil = MODELS["SOIL"]
+
+        # self.surrogate_peacemann = MODELS["PEACEMANN"]
+
+    # def forward(self, input_tensor, mode="both", **kwargs):
+        # """
+        # Forward pass for the composite model.
+        # Parameters:
+        # -----------
+        # input_tensor : torch.Tensor
+            # Input tensor for the model.
+        # mode : str
+            # Which model to use: "pressure", "saturation", or "both".
+        # Returns:
+        # --------
+        # dict
+            # Outputs from the selected model(s).
+        # """
+        # outputs = {}
+        # if mode in ["pressure", "both"]:
+            # outputs["pressure"] = self.surrogate_pressure(input_tensor)
+        # if mode in ["gas", "both"]:
+            # outputs["gas"] = self.surrogate_gas(input_tensor)
+
+        # if mode in ["saturation", "both"]:
+            # outputs["saturation"] = self.surrogate_saturation(input_tensor)
+
+        # if mode in ["oil", "both"]:
+            # outputs["oil"] = self.surrogate_oil(input_tensor)
+
+        # if mode in ["peacemann", "both"]:
+            # outputs["peacemann"] = self.surrogate_peacemann(input_tensor)
+
+        # return outputs
+        
+        
 class CompositeModel(Module):
-    def __init__(self, MODELS, output_variables):
+    def __init__(self, MODELS, output_variables, model_type="FNO"):
         super().__init__()
         self.output_variables = output_variables
+        self.model_type = model_type  # Main model type for tracking
+        
+        # Store models and their types
+        self.models = {}
+        self.model_types = {}  # Track each model's type individually
+        
         if "PRESSURE" in self.output_variables:
-            self.surrogate_pressure = MODELS["PRESSURE"]  # surrogate_pressure
+            self.surrogate_pressure = MODELS["PRESSURE"]
+            self.models["pressure"] = self.surrogate_pressure
+            self.model_types["pressure"] = model_type  # FNO or Transolver
+            
         if "SGAS" in self.output_variables:
-            self.surrogate_gas = MODELS["SGAS"]  # surrogate_pressure
+            self.surrogate_gas = MODELS["SGAS"]
+            self.models["gas"] = self.surrogate_gas
+            self.model_types["gas"] = model_type
+            
         if "SWAT" in self.output_variables:
             self.surrogate_saturation = MODELS["SATURATION"]
+            self.models["saturation"] = self.surrogate_saturation
+            self.model_types["saturation"] = model_type
+            
         if "SOIL" in self.output_variables:
             self.surrogate_oil = MODELS["SOIL"]
-
+            self.models["oil"] = self.surrogate_oil
+            self.model_types["oil"] = model_type
+            
         self.surrogate_peacemann = MODELS["PEACEMANN"]
+        self.models["peacemann"] = self.surrogate_peacemann
+        self.model_types["peacemann"] = "FNO"  # Peacemann is always FNO
+
+    def _handle_3d_to_2d(self, input_tensor, model, model_key):
+        """Convert 3D input to 2D slices only for Transolver models"""
+        model_type = self.model_types.get(model_key, "FNO")
+        
+        if model_type == "FNO" or input_tensor.dim() != 5:
+            # FNO can handle 3D directly, or input is already 2D
+            return model(input_tensor)
+        else:
+            # Transolver needs 2D input - process each sample and z-slice
+            B, num_channels, nz, nx, ny = input_tensor.shape
+            all_predictions = []
+            
+            for i in range(B):
+                sample = input_tensor[i:i+1]
+                
+                # Reshape to 2D slices
+                x2d = sample.permute(0, 2, 1, 3, 4).contiguous()  # (1, nz, num_channels, nx, ny)
+                x2d = x2d.view(1 * nz, num_channels, nx, ny)      # (nz, num_channels, nx, ny)
+                x2d = x2d.permute(0, 2, 3, 1).contiguous()        # (nz, nx, ny, num_channels)
+
+                # Forward pass
+                pred2d = model(x2d)
+                
+                # Handle output shape
+                if pred2d.dim() == 4 and pred2d.shape[-1] == 1:
+                    pred2d = pred2d.permute(0, 3, 1, 2).contiguous()  # (nz, 1, nx, ny)
+
+                # Reshape back to 3D
+                pred_sample = pred2d.view(1, nz, -1, nx, ny).permute(0, 2, 1, 3, 4).contiguous()
+                all_predictions.append(pred_sample)
+            
+            return torch.cat(all_predictions, dim=0)
 
     def forward(self, input_tensor, mode="both", **kwargs):
         """
         Forward pass for the composite model.
+        
         Parameters:
         -----------
         input_tensor : torch.Tensor
             Input tensor for the model.
         mode : str
-            Which model to use: "pressure", "saturation", or "both".
+            Which model to use: "pressure", "saturation", "gas", "oil", "peacemann", or "both".
+        
         Returns:
         --------
         dict
             Outputs from the selected model(s).
         """
         outputs = {}
+        
         if mode in ["pressure", "both"]:
-            outputs["pressure"] = self.surrogate_pressure(input_tensor)
+            outputs["pressure"] = self._handle_3d_to_2d(input_tensor, self.surrogate_pressure, "pressure")
+        
         if mode in ["gas", "both"]:
-            outputs["gas"] = self.surrogate_gas(input_tensor)
-
+            outputs["gas"] = self._handle_3d_to_2d(input_tensor, self.surrogate_gas, "gas")
+        
         if mode in ["saturation", "both"]:
-            outputs["saturation"] = self.surrogate_saturation(input_tensor)
-
+            outputs["saturation"] = self._handle_3d_to_2d(input_tensor, self.surrogate_saturation, "saturation")
+        
         if mode in ["oil", "both"]:
-            outputs["oil"] = self.surrogate_oil(input_tensor)
-
+            outputs["oil"] = self._handle_3d_to_2d(input_tensor, self.surrogate_oil, "oil")
+        
         if mode in ["peacemann", "both"]:
-            outputs["peacemann"] = self.surrogate_peacemann(input_tensor)
+            outputs["peacemann"] = self._handle_3d_to_2d(input_tensor, self.surrogate_peacemann, "peacemann")
 
         return outputs
 
