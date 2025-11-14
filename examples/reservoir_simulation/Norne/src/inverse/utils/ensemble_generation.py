@@ -152,7 +152,7 @@ class FNOModel(Module):
             decoder_layer_size=decoder_layer_size,
             dimension=dimension,
             latent_channels=latent_channels,
-            num_fno_layers=num_layers,
+            num_fno_layers=num_fno_layers,
             padding=padding,
             num_fno_modes=num_fno_modes,
         ).to(torch.device(device))  # Explicit device conversion
@@ -177,7 +177,42 @@ def create_fno_model(
     padding=8,
     num_fno_modes=16,
 ):
-    """Factory for FNO-based surrogate with given IO dimensions and config."""
+    """
+    Create a Fourier Neural Operator (FNO) model wrapped in a compatible PhyNeMo Module.
+
+    Parameters:
+    -----------
+    input_dim : int
+        The number of input features (e.g., the number of spatial points).
+    steppi : int
+        Number of time steps or resolution in the output.
+    output_shape : int
+        The number of distinct outputs to predict.
+    device : str
+        Device to create the model on ('cpu' or 'cuda').
+    num_layers : int, optional
+        The number of layers in the FNO. Default is 4.
+    decoder_layers : int, optional
+        The number of decoder layers. Default is 1.
+    decoder_layer_size : int, optional
+        The size of each decoder layer. Default is 32.
+    dimension : int, optional
+        The dimensionality of the FNO (2D or 3D). Default is 2.
+    latent_channels : int, optional
+        Number of latent channels. Default is 32.
+    num_fno_layers : int, optional
+        Number of FNO layers. Default is 4.
+    padding : int, optional
+        Padding for the FNO. Default is 8.
+    num_fno_modes : int, optional
+        Number of Fourier modes to use. Default is 16.
+
+    Returns:
+    --------
+    fno_model : FNOModel
+        Initialized FNO model ready for inference or training.
+    """
+    # Validate arguments
     if dimension not in [1, 2, 3]:
         raise ValueError(f"Invalid dimension: {dimension}. Must be 1, 2 or 3.")
     return FNOModel(
@@ -198,12 +233,12 @@ def create_fno_model(
 
 def Get_Time(nx, ny, nz, steppi, steppi_indices, N):
     """Return tiled time volume and shape helpers for dataset construction."""
-    with gzip.open(to_absolute_path("../PACKETS/data_train.pkl.gz"), "rb") as f2:
+    with gzip.open(to_absolute_path("../data/data_train.pkl.gz"), "rb") as f2:
         mat = pickle.load(f2)
     X_data1 = mat
     # del mat
     # gc.collect()
-    # mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    # mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
     Time = X_data1["Time"]  # * mat ["maxT"]
     np_array2 = np.zeros((Time.shape[1]))
     for mm in range(Time.shape[1]):
@@ -223,7 +258,7 @@ def Get_Time(nx, ny, nz, steppi, steppi_indices, N):
 
 def historydata(timestep, steppi, steppi_indices, N_pr):
     """Load and assemble historical RSM slices by category for a NORNE deck."""
-    file_path = "../Necessaryy/Flow.xlsx"
+    file_path = "../simulator_data/Flow.xlsx"
     df = pd.read_excel(file_path, skiprows=1)
     data_array = df.to_numpy()[:10, 1:]  # Skips first column (assuming it's time)
     WOIL1 = data_array[:, :N_pr]
@@ -444,10 +479,9 @@ def setup_models_and_data(
         )
     if cfg.custom.fno_type == "FNO":
         os.chdir("../MODELS/FNO")
-        if cfg.custom.model_saturation == "FNO":
-            logger.info(
-                "|   PRESSURE MODEL = FNO;   SATUARATION MODEL = FNO; PEACEMAN MODEL = FNO |"
-            )
+        logger.info(
+            "|   PRESSURE MODEL = FNO;   SATUARATION MODEL = FNO; PEACEMAN MODEL = FNO |"
+        )
         models = {}
         base_paths = {
             "pressure": "./checkpoints_pressure",
@@ -543,10 +577,9 @@ def setup_models_and_data(
             models["oil"] = fno_supervised_oil
     else:
         os.chdir("../MODELS/PINO")
-        if cfg.custom.model_saturation == "FNO":
-            logger.info(
-                "|   PRESSURE MODEL = PINO;   SATUARATION MODEL = PINO; PEACEMAN MODEL = PINO |"
-            )
+        logger.info(
+            "|   PRESSURE MODEL = PINO;   SATUARATION MODEL = PINO; PEACEMAN MODEL = PINO |"
+        )
         models = {}
         base_paths = {
             "pressure": "./checkpoints_pressure",
@@ -720,7 +753,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
     os.chdir(oldfolder)
     source_dir = cfg.custom.file_location
     os.chdir(source_dir)
-    timestep = np.genfromtxt(to_absolute_path("../Necessaryy/timestep.out"))
+    timestep = np.genfromtxt(to_absolute_path("../simulator_data/timestep.out"))
     timestep = timestep.astype(int)
     os.chdir(oldfolder)
     if dist.rank == 0:
@@ -914,13 +947,13 @@ def NorneGeostat(nx, ny, nz):
     dim = np.array([nx, ny, nz])
     ldim = dim[0] * dim[1]
     norne["dim"] = dim
-    act = read_until_line("../Necessaryy/ACTNUM_0704.prop")
+    act = read_until_line("../simulator_data/ACTNUM_0704.prop")
     act = act.T
     act = np.reshape(act, (-1,), "F")
     norne["actnum"] = act
     meanv = np.zeros(dim[2])
     stdv = np.zeros(dim[2])
-    file_path = "../Necessaryy/porosity.dat"
+    file_path = "../simulator_data/porosity.dat"
     p = read_until_line(file_path)
     p = p[act != 0]
     for nr in range(int(dim[2])):
@@ -938,7 +971,7 @@ def NorneGeostat(nx, ny, nz):
     norne["poroLB"] = 0.1
     norne["poroUB"] = 0.4
     norne["poroRange"] = 26
-    k = read_until_line("../Necessaryy/permx.dat")
+    k = read_until_line("../simulator_data/permx.dat")
     k = np.log(k)
     k = k[act != 0]
     meanv = np.zeros(dim[2])
@@ -1061,7 +1094,7 @@ def generate_ensemble(
         logger.info("                     Generating ensemble                        ")
         logger.info("****************************************************************")
     if Ne == int(cfg.custom.ntrain):
-        with gzip.open(to_absolute_path("../PACKETS/static.pkl.gz"), "rb") as f2:
+        with gzip.open(to_absolute_path("../data/static.pkl.gz"), "rb") as f2:
             mat = pickle.load(f2)
         X_data1 = mat
         for key, value in X_data1.items():
@@ -1133,7 +1166,7 @@ def generate_ensemble(
             Time_unie[i] = Time[0, i, 0, 0, 0]
         os.chdir(oldfolder)
         dt = Time_unie
-        with gzip.open(to_absolute_path("../PACKETS/static.pkl.gz"), "rb") as f2:
+        with gzip.open(to_absolute_path("../data/static.pkl.gz"), "rb") as f2:
             mat = pickle.load(f2)
         X_data1 = mat
         for key, value in X_data1.items():
@@ -1186,7 +1219,7 @@ def generate_ensemble(
         pass
     if Ne < int(cfg.custom.ntrain):
         indices = np.random.choice(Ne, size=Ne, replace=False)
-        with gzip.open(to_absolute_path("../PACKETS/static.pkl.gz"), "rb") as f2:
+        with gzip.open(to_absolute_path("../data/static.pkl.gz"), "rb") as f2:
             mat = pickle.load(f2)
         X_data1 = mat
         for key, value in X_data1.items():
