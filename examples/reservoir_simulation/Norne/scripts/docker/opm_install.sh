@@ -62,24 +62,24 @@ if [ "$BUILD_TYPE" = "CUDA" ]; then
     fi
 fi
 
-sudo apt-get update -y
-sudo apt-get install -y software-properties-common
-sudo add-apt-repository -y ppa:opm/ppa
-sudo apt-get update -y
+apt-get update -y
+apt-get install -y software-properties-common
+add-apt-repository -y ppa:opm/ppa
+apt-get update -y
 
 # Essential build tools and version control
-sudo apt-get install -y build-essential cmake gfortran pkg-config git-core
+apt-get install -y build-essential cmake gfortran pkg-config git-core
 
 # Documentation tools
-sudo apt-get install -y doxygen ghostscript \
+apt-get install -y doxygen ghostscript \
   texlive-latex-recommended gnuplot
 
 # Dependencies without MPI (removed mpi-default-dev)
-sudo apt-get install -y libsuitesparse-dev \
+apt-get install -y libsuitesparse-dev \
   libboost-all-dev libtrilinos-zoltan-dev libfmt-dev libcjson-dev
   
 # DUNE core modules
-sudo apt-get install -y libdune-common-dev \
+apt-get install -y libdune-common-dev \
   libdune-geometry-dev libdune-istl-dev libdune-grid-dev
 
 # === Define workspace ===
