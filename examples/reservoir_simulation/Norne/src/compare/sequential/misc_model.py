@@ -58,6 +58,7 @@ from matplotlib import cm
 
 # 📦 Local Modules
 from physicsnemo.models.fno import FNO
+from physicsnemo.models.transolver import Transolver
 from physicsnemo.models.module import Module
 from compare.sequential.misc_operations import (
     ProgressBar,
@@ -665,6 +666,41 @@ class FNOModel(Module):
         return self.fno(x)
 
 
+class FNOModel(Module):
+    def __init__(
+        self,
+        input_dim,
+        steppi,
+        output_shape,
+        device,
+        num_layers=4,
+        decoder_layers=1,
+        decoder_layer_size=32,
+        dimension=3,
+        latent_channels=32,
+        num_fno_layers=4,
+        padding=8,
+        num_fno_modes=16,
+    ):
+        super().__init__()
+        self.fno = FNO(
+            in_channels=input_dim,
+            out_channels=output_shape * steppi,
+            decoder_layers=decoder_layers,
+            decoder_layer_size=decoder_layer_size,
+            dimension=dimension,
+            latent_channels=latent_channels,
+            num_fno_layers=num_fno_layers,
+            padding=padding,
+            num_fno_modes=num_fno_modes,
+        ).to(torch.device(device))  # Explicit device conversion
+        self.meta = type("", (), {})()  # Empty object
+        self.meta.name = "fno_model"
+
+    def forward(self, x):
+        return self.fno(x)
+
+
 def create_fno_model(
     input_dim,
     steppi,
@@ -717,8 +753,6 @@ def create_fno_model(
     # Validate arguments
     if dimension not in [1, 2, 3]:
         raise ValueError(f"Invalid dimension: {dimension}. Must be 1, 2 or 3.")
-
-    # Create and return FNOModel instance
     return FNOModel(
         input_dim=input_dim,
         steppi=steppi,
@@ -732,4 +766,139 @@ def create_fno_model(
         num_fno_layers=num_fno_layers,
         padding=padding,
         num_fno_modes=num_fno_modes,
+    )
+
+class TransolverModel(Module):
+    def __init__(
+        self,
+        functional_dim,
+        out_dim,
+        device,
+        embedding_dim=None,
+        n_layers=8,
+        n_hidden=256,
+        dropout=0.0,
+        n_head=8,
+        act="gelu",
+        mlp_ratio=4,
+        slice_num=32,
+        unified_pos=True,
+        ref=8,
+        structured_shape=(46, 112),
+        use_te=True,
+        time_input=False,
+    ):
+        super().__init__()
+        self.transolver = Transolver(
+            functional_dim=functional_dim,
+            out_dim=out_dim,
+            embedding_dim=embedding_dim,
+            n_layers=n_layers,
+            n_hidden=n_hidden,
+            dropout=dropout,
+            n_head=n_head,
+            act=act,
+            mlp_ratio=mlp_ratio,
+            slice_num=slice_num,
+            unified_pos=unified_pos,
+            ref=ref,
+            structured_shape=structured_shape,
+            use_te=use_te,
+            time_input=time_input,
+        ).to(torch.device(device))  # Explicit device conversion
+        self.meta = type("", (), {})()  # Empty object
+        self.meta.name = "transolver_model"
+
+    def forward(self, x):
+        return self.transolver(x)
+
+
+def create_transolver_model(
+    functional_dim,
+    out_dim,
+    device,
+    embedding_dim=None,
+    n_layers=8,
+    n_hidden=16,
+    dropout=0.0,
+    n_head=8,
+    act="gelu",
+    mlp_ratio=4,
+    slice_num=16,
+    unified_pos=True,
+    ref=8,
+    structured_shape=(46, 112),
+    use_te=True,
+    time_input=False,
+):
+    """
+    Create a Transolver model wrapped in a compatible PhyNeMo Module.
+
+    Parameters:
+    -----------
+    functional_dim : int
+        The dimension of the input values, not including any embeddings.
+    out_dim : int
+        The dimension of the output of the model.
+    device : str
+        Device to create the model on ('cpu' or 'cuda').
+    embedding_dim : int | None, optional
+        The spatial dimension of the input data embeddings. Default is None.
+    n_layers : int, optional
+        The number of transformer PhysicsAttention layers. Default is 8.
+    n_hidden : int, optional
+        The hidden dimension of the transformer. Default is 256.
+    dropout : float, optional
+        The dropout rate. Default is 0.0.
+    n_head : int, optional
+        The number of attention heads. Default is 8.
+    act : str, optional
+        The activation function. Default is "gelu".
+    mlp_ratio : int, optional
+        The ratio of hidden dimension in the MLP. Default is 4.
+    slice_num : int, optional
+        The number of slices in the PhysicsAttention layers. Default is 32.
+    unified_pos : bool, optional
+        Whether to use unified positional embeddings. Default is True.
+    ref : int, optional
+        The reference dimension size when using unified positions. Default is 8.
+    structured_shape : tuple, optional
+        The shape of the latent space for structured data. Default is (46, 112).
+    use_te : bool, optional
+        Whether to use transformer engine backend. Default is True.
+    time_input : bool, optional
+        Whether to include time embeddings. Default is False.
+
+    Returns:
+    --------
+    transolver_model : TransolverModel
+        Initialized Transolver model ready for inference or training.
+    """
+    # Validate arguments
+    if n_hidden % n_head != 0:
+        raise ValueError(f"n_hidden ({n_hidden}) must be divisible by n_head ({n_head})")
+    
+    if unified_pos and structured_shape is None:
+        raise ValueError("structured_shape must be provided when unified_pos=True")
+    
+    if structured_shape is not None and len(structured_shape) not in [2, 3]:
+        raise ValueError(f"structured_shape must be 2D or 3D, got {structured_shape}")
+
+    return TransolverModel(
+        functional_dim=functional_dim,
+        out_dim=out_dim,
+        device=device,
+        embedding_dim=embedding_dim,
+        n_layers=n_layers,
+        n_hidden=n_hidden,
+        dropout=dropout,
+        n_head=n_head,
+        act=act,
+        mlp_ratio=mlp_ratio,
+        slice_num=slice_num,
+        unified_pos=unified_pos,
+        ref=ref,
+        structured_shape=structured_shape,
+        use_te=use_te,
+        time_input=time_input,
     )

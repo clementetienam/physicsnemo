@@ -235,7 +235,7 @@ def add_gnoise(Ytrue, SIGMA, SQ=None):
             RTSIGMA = SIGMA
             if np.isscalar(SIGMA) or np.ndim(SIGMA) == 1:
                 # SIGMA is a scalar or vector
-                error = RTSIGMA * np.random.randn(1)
+                error = RTSIGMA * np.random.randn(*Ytrue.shape)
             else:
                 error = RTSIGMA @ np.random.randn(RTSIGMA.shape[1], 1)
         else:
@@ -249,15 +249,20 @@ def add_gnoise(Ytrue, SIGMA, SQ=None):
                 try:
                     RTSIGMA = np.linalg.cholesky(SIGMA).T
                 except np.linalg.LinAlgError:
-                    #logger = setup_logging()
-                    #logger.warning("Problem with Cholesky factorization")
+                    logger = setup_logging()
+                    logger.warning("Problem with Cholesky factorization")
                     RTSIGMA = np.sqrtm(SIGMA).real
-                    #logger.info("Finally - we got a square root!")
+                    logger.info("Finally - we got a square root!")
 
                 error = RTSIGMA @ np.random.randn(*Ytrue.shape)
 
         # Add the noise:
         Y = Ytrue + error.flatten()
+
+    except Exception as e:
+        logger = setup_logging()
+        logger.error("Error in AddGnoise")
+        raise e
 
     return Y, RTSIGMA
 
@@ -312,7 +317,7 @@ def NorneGeostat(nx, ny, nz):
 
     # actnum
     # act = pd.read_csv('../Norne_Initial_ensemble/ACTNUM_0704.prop', skiprows=8,nrows = 2472, sep='\s+', header=None)
-    act = read_until_line(to_absolute_path("../Necessaryy/ACTNUM_0704.prop"))
+    act = read_until_line(to_absolute_path("../simulator_data/ACTNUM_0704.prop"))
     act = act.T
     act = np.reshape(act, (-1,), "F")
     norne["actnum"] = act
@@ -320,7 +325,7 @@ def NorneGeostat(nx, ny, nz):
     # porosity
     meanv = np.zeros(dim[2])
     stdv = np.zeros(dim[2])
-    file_path = to_absolute_path("../Necessaryy/porosity.dat")
+    file_path = to_absolute_path("../simulator_data/porosity.dat")
     p = read_until_line(file_path)
     p = p[act != 0]
 
@@ -341,7 +346,7 @@ def NorneGeostat(nx, ny, nz):
     norne["poroLB"] = 0.1
     norne["poroUB"] = 0.4
     norne["poroRange"] = 26
-    k = read_until_line(to_absolute_path("../Necessaryy/permx.dat"))
+    k = read_until_line(to_absolute_path("../simulator_data/permx.dat"))
     k = np.log(k)
     k = k[act != 0]
 

@@ -862,6 +862,34 @@ def convert_backs(rescaled_tensor, max_val, N_pr, lenwels):
     get_it2 = np.concatenate(C, axis=-1)
     return get_it2
 
+def run_transolver(x, model):
+
+    B, num_channels, nz, nx, ny = x.shape
+    
+    all_predictions = []
+    
+    for i in range(B):
+        sample = x[i:i+1]
+        
+        # Reshape
+        x2d = sample.permute(0, 2, 1, 3, 4).contiguous()
+        x2d = x2d.view(1 * nz, num_channels, nx, ny)
+        x2d = x2d.permute(0, 2, 3, 1).contiguous()
+
+        # Forward pass
+        pred2d = model(x2d)
+        
+        # Handle output
+        if pred2d.dim() == 4 and pred2d.shape[-1] == 1:
+            pred2d = pred2d.permute(0, 3, 1, 2).contiguous()
+
+        pred_sample = pred2d.view(1, nz, 1, nx, ny).permute(0, 2, 1, 3, 4).contiguous()
+        all_predictions.append(pred_sample)
+        
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    
+    return torch.cat(all_predictions, dim=0)
 
 def Forward_model_ensemble(
     N,
@@ -920,24 +948,24 @@ def Forward_model_ensemble(
     #
     #### ===================================================================== ####
     if "PRESSURE" in output_variables:
-        modelP = models["pressure"]
+        modelP = models["pressure"].eval()
         pressure = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
     if "SWAT" in output_variables:
         output_keys_saturation = []
-        modelS = models["saturation"]
+        modelS = models["saturation"].eval()
         output_keys_saturation.append("water_sat")
         swater = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
     if "SOIL" in output_variables:
         output_keys_oil = []
-        modelO = models["oil"]
+        modelO = models["oil"].eval()
         output_keys_oil.append("oil_sat")
         soil = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
     if "SGAS" in output_variables:
         output_keys_gas = []
         output_keys_gas.append("gas_sat")
-        modelG = models["gas"]
+        modelG = models["gas"].eval()
         sgas = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
-    modelPe = models["peacemann"]
+    modelPe = models["peacemann"].eval()
 
     # Initialize flow rate tensors
     Qg = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
@@ -993,7 +1021,9 @@ def Forward_model_ensemble(
     Timebefore[1:] = Timeafter[:-1]
     dt = Timeafter - Timebefore
     dt = dt / maxT
+    Time = Time / maxT
     dt_full = torch.from_numpy(dt).to(device, dtype=torch.float32)
+    t_full = torch.from_numpy(Time).to(device, dtype=torch.float32)
 
     # Sequential forwarding with chunking
     for i in range(N):
@@ -1010,6 +1040,7 @@ def Forward_model_ensemble(
 
         for t in range(steppi):
             dt_in = dt_full[0, t, 0, 0, 0] * torch.ones_like(perm_sample, device=device)
+            t_in = t_full[0, t, 0, 0, 0] * torch.ones_like(perm_sample, device=device)
             temp = {
                 "perm": perm_sample,
                 "poro": poro_sample,
@@ -1022,6 +1053,7 @@ def Forward_model_ensemble(
                 "Qg": Qg_sample[:, t : t + 1, :, :, :],
                 "Qw": Qw_sample[:, t : t + 1, :, :, :],
                 "dt": dt_in,
+                "t": t_in,
             }
 
             with torch.no_grad():
@@ -1034,90 +1066,33 @@ def Forward_model_ensemble(
                 input_tensor = torch.cat(tensors, dim=1)
                 nz_current = input_tensor.shape[2]
 
-                # Setup chunking - only if nz > 30
-                if nz_current > cfg.custom.allowable_size:
-                    chunk_size = max(1, int(nz_current * 0.1))
-                    num_chunks = (nz_current + chunk_size - 1) // chunk_size
-                    use_chunking = True
+                # Model predictions
+                if cfg.custom.model_type == "FNO":
+                    if "PRESSURE" in output_variables and modelP is not None:
+                        pafter = modelP(input_tensor)
+                        pafter = torch.clamp(pafter, 0.0, 1.0)
+                    if "SWAT" in output_variables and modelS is not None:
+                        swafter = modelS(input_tensor)
+                        swafter = torch.clamp(swafter, 0.0, 1.0)
+                    if "SOIL" in output_variables and modelO is not None:
+                        soafter = modelO(input_tensor)
+                        soafter = torch.clamp(soafter, 0.0, 1.0)
+                    if "SGAS" in output_variables and modelG is not None:
+                        sgafter = modelG(input_tensor)
+                        sgafter = torch.clamp(sgafter, 0.0, 1.0)
                 else:
-                    chunk_size = nz_current
-                    num_chunks = 1
-                    use_chunking = False
-
-                # Initialize chunk outputs
-                pafter_chunks, swafter_chunks, soafter_chunks, sgafter_chunks = (
-                    [],
-                    [],
-                    [],
-                    [],
-                )
-
-                # Process in chunks
-                for chunk_idx in range(num_chunks):
-                    start_idx = chunk_idx * chunk_size
-                    end_idx = min(start_idx + chunk_size, nz_current)
-                    current_chunk_size = end_idx - start_idx
-
-                    # Extract chunk
-                    input_temp = input_tensor[:, :, start_idx:end_idx, :, :]
-
-                    # Pad if needed (only when chunking)
-                    if use_chunking:
-                        pad_size = chunk_size - current_chunk_size
-                        if pad_size > 0:
-                            input_temp = torch.nn.functional.pad(
-                                input_temp, (0, 0, 0, 0, 0, pad_size)
-                            )
-                    else:
-                        pad_size = 0
-
-                    # Model predictions
                     if "PRESSURE" in output_variables and modelP is not None:
-                        pafter_chunk = modelP(input_temp)
+                        pafter = run_transolver(input_tensor, modelP)
+                        pafter = torch.clamp(pafter, 0.0, 1.0)
                     if "SWAT" in output_variables and modelS is not None:
-                        swafter_chunk = modelS(input_temp)
+                        swafter = run_transolver(input_tensor, modelS)
+                        swafter = torch.clamp(swafter, 0.0, 1.0)
                     if "SOIL" in output_variables and modelO is not None:
-                        soafter_chunk = modelO(input_temp)
+                        soafter = run_transolver(input_tensor, modelO)
+                        soafter = torch.clamp(soafter, 0.0, 1.0)
                     if "SGAS" in output_variables and modelG is not None:
-                        sgafter_chunk = modelG(input_temp)
-
-                    # Remove padding if applied
-                    if use_chunking and pad_size > 0:
-                        if "PRESSURE" in output_variables and modelP is not None:
-                            pafter_chunk = pafter_chunk[:, :, :current_chunk_size, :, :]
-                        if "SWAT" in output_variables and modelS is not None:
-                            swafter_chunk = swafter_chunk[
-                                :, :, :current_chunk_size, :, :
-                            ]
-                        if "SOIL" in output_variables and modelO is not None:
-                            soafter_chunk = soafter_chunk[
-                                :, :, :current_chunk_size, :, :
-                            ]
-                        if "SGAS" in output_variables and modelG is not None:
-                            sgafter_chunk = sgafter_chunk[
-                                :, :, :current_chunk_size, :, :
-                            ]
-
-                    # Store chunk results
-                    if "PRESSURE" in output_variables and modelP is not None:
-                        pafter_chunks.append(pafter_chunk)
-                    if "SWAT" in output_variables and modelS is not None:
-                        swafter_chunks.append(swafter_chunk)
-                    if "SOIL" in output_variables and modelO is not None:
-                        soafter_chunks.append(soafter_chunk)
-                    if "SGAS" in output_variables and modelG is not None:
-                        sgafter_chunks.append(sgafter_chunk)
-
-                # Combine chunk results
-                if "PRESSURE" in output_variables and modelP is not None:
-                    pafter = torch.cat(pafter_chunks, dim=2)
-                if "SWAT" in output_variables and modelS is not None:
-                    swafter = torch.cat(swafter_chunks, dim=2)
-                if "SOIL" in output_variables and modelO is not None:
-                    soafter = torch.cat(soafter_chunks, dim=2)
-                if "SGAS" in output_variables and modelG is not None:
-                    sgafter = torch.cat(sgafter_chunks, dim=2)
-
+                        sgafter = run_transolver(input_tensor, modelG)
+                        sgafter = torch.clamp(sgafter, 0.0, 1.0)
             # Update states and store results
             if "PRESSURE" in output_variables and modelP is not None:
                 puse = pafter[0, 0, :, :, :]
@@ -1136,7 +1111,6 @@ def Forward_model_ensemble(
                 sgas[i, t, :, :, :] = sguse
                 sgbefore = sguse[None, None, :, :, :]
 
-            # Clean up
 
             if (
                 torch.cuda.is_available()

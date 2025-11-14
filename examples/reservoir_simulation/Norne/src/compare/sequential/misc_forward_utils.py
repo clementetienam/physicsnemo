@@ -784,7 +784,7 @@ class EclBinaryParser(object):
         all_pointers = pd.concat(
             [self._get_static_pointers(), self._get_dynamic_pointers()]
         )
-        all_pointers = all_pointers..ffill(axis=1).astype("int32").T
+        all_pointers = all_pointers.ffill(axis=1).astype("int32").T
         all_pointers.columns = [byte2str(column) for column in all_pointers.columns]
         all_pointers = self.get_seqnum_dates().join(all_pointers)
         return all_pointers
@@ -1059,9 +1059,9 @@ def Get_data_FFNN1(
             ]
             mean_big.append(np.mean(values))
         permxx = np.tile(mean_big, (steppi, 1))
-        a3 = get_dyna(steppi, well_indices, water_use[steppi_indices - 1])
-        a2 = get_dyna(steppi, well_indices, gas_use[steppi_indices - 1])
-        a5 = get_dyna(steppi, well_indices, oil_use[steppi_indices - 1])
+        a3 = get_dyna(steppi, well_indices, water_use)
+        a2 = get_dyna(steppi, well_indices, gas_use)
+        a5 = get_dyna(steppi, well_indices, oil_use)
         a1 = np.zeros((steppi, 1))
         a4 = np.zeros((steppi, 1))
         for k in range(steppi):
