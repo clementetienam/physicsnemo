@@ -230,7 +230,7 @@ def load_and_setup_training_data(
     device = dist.device
     if dist.rank == 0:
         logger.info("Load simulated labelled training data")
-    with gzip.open(to_absolute_path("../PACKETS/data_train.pkl.gz"), "rb") as f2:
+    with gzip.open(to_absolute_path("../data/data_train.pkl.gz"), "rb") as f2:
         mat = pickle.load(f2)
     X_data1 = mat
     for key, value in X_data1.items():
@@ -394,7 +394,7 @@ def load_and_setup_training_data(
         )
         logger.info("Load simulated labelled training data for peacemann")
     with gzip.open(
-        to_absolute_path("../PACKETS/data_train_peaceman.pkl.gz"), "rb"
+        to_absolute_path("../data/data_train_peaceman.pkl.gz"), "rb"
     ) as f:
         mat = pickle.load(f)
     X_data2 = mat
@@ -409,7 +409,7 @@ def load_and_setup_training_data(
             "---------------------------------------------------------------------"
         )
         logger.info("Load simulated labelled test data from .gz file")
-    with gzip.open(to_absolute_path("../PACKETS/data_test.pkl.gz"), "rb") as f:
+    with gzip.open(to_absolute_path("../data/data_test.pkl.gz"), "rb") as f:
         mat = pickle.load(f)
     X_data1t = mat
     for key, value in X_data1t.items():
@@ -496,7 +496,7 @@ def load_and_setup_training_data(
         data_test["oil_sat"] = cSato
     if dist.rank == 0:
         logger.info("Load simulated labelled test data for peacemann modelling")
-    with gzip.open(to_absolute_path("../PACKETS/data_test_peaceman.pkl.gz"), "rb") as f:
+    with gzip.open(to_absolute_path("../data/data_test_peaceman.pkl.gz"), "rb") as f:
         mat = pickle.load(f)
     X_data2t = mat
     data2_test = X_data2t
@@ -582,22 +582,17 @@ def load_and_setup_training_data(
         drop_last=False,
     )
     if cfg.custom.model_Distributed == 2:
-        if cfg.custom.model_saturation == "FNO":
-            batch_sizee = cfg.batch_size.grid_fno
-        else:
-            batch_sizee = cfg.batch_size.grid_gnn
+        batch_sizee = cfg.batch_size.grid_fno
     else:
-        if cfg.custom.model_saturation == "FNO":
-            temp = cfg.batch_size.grid_fno
-            num_ranks = dist.world_size
-            if dist.rank == 0:
-                logger.info(f"Number of GPU ranks in use: {num_ranks}")
-            temp = temp / num_ranks
-            batch_sizee = int(temp)
-            if batch_sizee < 1:
-                batch_sizee = 1
-        else:
-            batch_sizee = cfg.batch_size.grid_gnn
+        temp = cfg.batch_size.grid_fno
+        num_ranks = dist.world_size
+        if dist.rank == 0:
+            logger.info(f"Number of GPU ranks in use: {num_ranks}")
+        temp = temp / num_ranks
+        batch_sizee = int(temp)
+        if batch_sizee < 1:
+            batch_sizee = 1
+
     labelled_loader_train = DataLoader(
         dataset_train,  # Pass the dataset here
         batch_size=batch_sizee,
