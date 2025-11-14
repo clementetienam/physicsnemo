@@ -777,24 +777,14 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
             models["peacemann"] = fno_supervised_peacemann
             if "SWAT" in output_variables:
                 logger.info("🟣 Loading Surrogate Model for Saturation")
-                if cfg.custom.model_saturation == "FNO":
-                    if excel == 1:
-                        model_path = os.path.join(
-                            base_paths["saturation"], "fno_saturation_forward_model.pth"
-                        )
-                    else:
-                        model_path = os.path.join(
-                            base_paths["saturation"], "checkpoint.pth"
-                        )
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["saturation"], "fno_saturation_forward_model.pth"
+                    )
                 else:
-                    if excel == 1:
-                        model_path = os.path.join(
-                            base_paths["saturation"], "GNN_saturation_forward_model.pth"
-                        )
-                    else:
-                        model_path = os.path.join(
-                            base_paths["saturation"], "checkpoint.pth"
-                        )
+                    model_path = os.path.join(
+                        base_paths["saturation"], "checkpoint.pth"
+                    )
                 fno_supervised_saturation = load_modell(
                     fno_supervised_saturation,
                     model_path,
