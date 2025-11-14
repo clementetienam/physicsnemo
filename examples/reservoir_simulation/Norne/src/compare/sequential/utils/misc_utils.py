@@ -320,7 +320,7 @@ def compare_and_analyze_results(
         f"Speedup =  {speedup}X  "
     )
     print(message)
-    os.chdir(to_absolute_path("../Necessaryy"))
+    os.chdir(to_absolute_path("../simulator_data"))
     Time = Get_Time(nx, ny, nz, steppi, steppi_indices, Ne)
     Time_unie = np.zeros((steppi))
     for i in range(steppi):
@@ -544,68 +544,132 @@ def compare_and_analyze_results(
     print("Using FNO for peacemann model           ")
 
     pred_type = 1
-    if cfg.custom.fno_type == "PINO":
-        folderr = "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
-        if not os.path.exists(
-            to_absolute_path(
+    if cfg.custom.model_type == "FNO":
+        if cfg.custom.fno_type == "PINO":
+            folderr = "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
+            if not os.path.exists(
+                to_absolute_path(
+                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
+                )
+            ):
+                os.makedirs(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
+                    ),
+                    exist_ok=True,
+                )
+            else:
+                shutil.rmtree(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
+                    )
+                )
+                os.makedirs(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
+                    ),
+                    exist_ok=True,
+                )
+            source_directory = to_absolute_path(
+                "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_CCR"
+            )
+            destination_directory = to_absolute_path(
                 "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
             )
-        ):
-            os.makedirs(
-                to_absolute_path(
-                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
-                ),
-                exist_ok=True,
-            )
         else:
-            shutil.rmtree(
+            folderr = "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
+            if not os.path.exists(
                 to_absolute_path(
-                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
+                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
                 )
+            ):
+                os.makedirs(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
+                    ),
+                    exist_ok=True,
+                )
+            else:
+                shutil.rmtree(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
+                    )
+                )
+                os.makedirs(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
+                    ),
+                    exist_ok=True,
+                )
+            source_directory = to_absolute_path(
+                "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_CCR"
             )
-            os.makedirs(
-                to_absolute_path(
-                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
-                ),
-                exist_ok=True,
-            )
-        source_directory = to_absolute_path(
-            "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_CCR"
-        )
-        destination_directory = to_absolute_path(
-            "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
-        )
-    else:
-        folderr = "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
-        if not os.path.exists(
-            to_absolute_path(
+            destination_directory = to_absolute_path(
                 "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
             )
-        ):
-            os.makedirs(
+    else:
+        if cfg.custom.fno_type == "PINO":
+            folderr = "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PI-TRANSOLVER/PEACEMANN_FNO"
+            if not os.path.exists(
                 to_absolute_path(
-                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
-                ),
-                exist_ok=True,
+                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PI-TRANSOLVER/PEACEMANN_FNO"
+                )
+            ):
+                os.makedirs(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PI-TRANSOLVER/PEACEMANN_FNO"
+                    ),
+                    exist_ok=True,
+                )
+            else:
+                shutil.rmtree(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PI-TRANSOLVER/PEACEMANN_FNO"
+                    )
+                )
+                os.makedirs(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PINO/PEACEMANN_FNO"
+                    ),
+                    exist_ok=True,
+                )
+            source_directory = to_absolute_path(
+                "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PI-TRANSOLVER/PEACEMANN_CCR"
+            )
+            destination_directory = to_absolute_path(
+                "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/PI-TRANSOLVER/PEACEMANN_FNO"
             )
         else:
-            shutil.rmtree(
+            folderr = "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/TRANSOLVER/PEACEMANN_FNO"
+            if not os.path.exists(
                 to_absolute_path(
-                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
+                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/TRANSOLVER/PEACEMANN_FNO"
                 )
+            ):
+                os.makedirs(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/TRANSOLVER/PEACEMANN_FNO"
+                    ),
+                    exist_ok=True,
+                )
+            else:
+                shutil.rmtree(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/TRANSOLVER/PEACEMANN_FNO"
+                    )
+                )
+                os.makedirs(
+                    to_absolute_path(
+                        "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/TRANSOLVER/PEACEMANN_FNO"
+                    ),
+                    exist_ok=True,
+                )
+            source_directory = to_absolute_path(
+                "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/TRANSOLVER/PEACEMANN_CCR"
             )
-            os.makedirs(
-                to_absolute_path(
-                    "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
-                ),
-                exist_ok=True,
-            )
-        source_directory = to_absolute_path(
-            "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_CCR"
-        )
-        destination_directory = to_absolute_path(
-            "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/FNO/PEACEMANN_FNO"
-        )
+            destination_directory = to_absolute_path(
+                "../RESULTS/FORWARD_RESULTS_SEQUENTIAL/RESULTS/COMPARE_RESULTS/TRANSOLVER/PEACEMANN_FNO"
+            )            
     filename = "Evolution.gif"
     source_path = to_absolute_path(os.path.join(source_directory, filename))
     destination_path = to_absolute_path(os.path.join(destination_directory, filename))
@@ -771,7 +835,7 @@ def compare_and_analyze_results(
         f"Speedup =  {speedup}X  "
     )
     print(message)
-    os.chdir(to_absolute_path("../Necessaryy"))
+    os.chdir(to_absolute_path("../simulator_data"))
     Time = Get_Time(nx, ny, nz, steppi, steppi_indices, Ne)
     Time_unie = np.zeros((steppi))
     for i in range(steppi):
