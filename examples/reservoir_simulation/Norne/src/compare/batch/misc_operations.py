@@ -80,7 +80,7 @@ from sklearn.cluster import MiniBatchKMeans
 from kneed import KneeLocator
 from pyDOE import lhs
 import mpslib as mps
-import scipy.linalg.norm as norm
+from scipy.linalg import norm
 
 # 📦 Local Modules
 from hydra.utils import to_absolute_path
@@ -332,7 +332,7 @@ def NorneGeostat(nx, ny, nz):
 
     # actnum
     # act = pd.read_csv('../Norne_Initial_ensemble/ACTNUM_0704.prop', skiprows=8,nrows = 2472, sep='\s+', header=None)
-    act = read_until_line(to_absolute_path("../Necessaryy/ACTNUM_0704.prop"))
+    act = read_until_line(to_absolute_path("../simulator_data/ACTNUM_0704.prop"))
     act = act.T
     act = np.reshape(act, (-1,), "F")
     norne["actnum"] = act
@@ -340,7 +340,7 @@ def NorneGeostat(nx, ny, nz):
     # porosity
     meanv = np.zeros(dim[2])
     stdv = np.zeros(dim[2])
-    file_path = to_absolute_path("../Necessaryy/porosity.dat")
+    file_path = to_absolute_path("../simulator_data/porosity.dat")
     p = read_until_line(file_path)
     p = p[act != 0]
 
@@ -361,7 +361,7 @@ def NorneGeostat(nx, ny, nz):
     norne["poroLB"] = 0.1
     norne["poroUB"] = 0.4
     norne["poroRange"] = 26
-    k = read_until_line(to_absolute_path("../Necessaryy/permx.dat"))
+    k = read_until_line(to_absolute_path("../simulator_data/permx.dat"))
     k = np.log(k)
     k = k[act != 0]
 

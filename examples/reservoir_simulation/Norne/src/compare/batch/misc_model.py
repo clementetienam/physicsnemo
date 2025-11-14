@@ -604,7 +604,6 @@ def load_modell(model, model_path, is_distributed, device, express, namee):
 
     return model
 
-
 class FNOModel(Module):
     def __init__(
         self,
@@ -622,8 +621,6 @@ class FNOModel(Module):
         num_fno_modes=16,
     ):
         super().__init__()
-
-        # Initialize FNO model
         self.fno = FNO(
             in_channels=input_dim,
             out_channels=output_shape * steppi,
@@ -631,12 +628,10 @@ class FNOModel(Module):
             decoder_layer_size=decoder_layer_size,
             dimension=dimension,
             latent_channels=latent_channels,
-            num_fno_layers=num_layers,
+            num_fno_layers=num_fno_layers,
             padding=padding,
             num_fno_modes=num_fno_modes,
         ).to(torch.device(device))  # Explicit device conversion
-
-        # Meta attribute for PhyNeMo compatibility
         self.meta = type("", (), {})()  # Empty object
         self.meta.name = "fno_model"
 
@@ -696,8 +691,6 @@ def create_fno_model(
     # Validate arguments
     if dimension not in [1, 2, 3]:
         raise ValueError(f"Invalid dimension: {dimension}. Must be 1, 2 or 3.")
-
-    # Create and return FNOModel instance
     return FNOModel(
         input_dim=input_dim,
         steppi=steppi,
@@ -712,3 +705,4 @@ def create_fno_model(
         padding=padding,
         num_fno_modes=num_fno_modes,
     )
+

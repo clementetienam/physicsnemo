@@ -539,12 +539,12 @@ def simulation_data_types():
 def Get_Time(nx, ny, nz, steppi, steppi_indices, N):
     logger = setup_logging()
     logger.info("Load simulated labelled training data")
-    with gzip.open(to_absolute_path("../PACKETS/data_train.pkl.gz"), "rb") as f2:
+    with gzip.open(to_absolute_path("../data/data_train.pkl.gz"), "rb") as f2:
         mat = pickle.load(f2)
     X_data1 = mat
     del mat
     gc.collect()
-    # mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    # mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
     Time = X_data1["Time"]  # * mat ["maxT"]
     np_array2 = np.zeros((Time.shape[1]))
     for mm in range(Time.shape[1]):
@@ -736,7 +736,7 @@ def historydata(timestep, steppi, steppi_indices):
     logger = setup_logging()
     logger.info(" Get the Well Oil Production Rate")
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 47873:  # Skip the first 47873 lines
                 continue
@@ -756,7 +756,7 @@ def historydata(timestep, steppi, steppi_indices):
     D_4H = A1[:, 4][indices - 1]
     E_3H = A1[:, 5][indices - 1]
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 48743:  # Skip the first 47873 lines
                 continue
@@ -775,7 +775,7 @@ def historydata(timestep, steppi, steppi_indices):
     E_2H = A2[:, 3][indices - 1]
     E_4AH = A2[:, 4][indices - 1]
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 49613:  # Skip the first 47873 lines
                 continue
@@ -794,7 +794,7 @@ def historydata(timestep, steppi, steppi_indices):
     D_4AH = A3[:, 3][indices - 1]
     D_1CH = A3[:, 4][indices - 1]
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 50483:  # Skip the first 47873 lines
                 continue
@@ -838,7 +838,7 @@ def historydata(timestep, steppi, steppi_indices):
     logger = setup_logging()
     logger.info(" Get the Well water Production Rate")
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 40913:  # Skip the first 47873 lines
                 continue
@@ -858,7 +858,7 @@ def historydata(timestep, steppi, steppi_indices):
     D_4Hw = A1w[:, 4][indices - 1]
     E_3Hw = A1w[:, 5][indices - 1]
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 41783:  # Skip the first 47873 lines
                 continue
@@ -877,7 +877,7 @@ def historydata(timestep, steppi, steppi_indices):
     E_2Hw = A2w[:, 3][indices - 1]
     E_4AHw = A2w[:, 4][indices - 1]
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 42653:  # Skip the first 47873 lines
                 continue
@@ -896,7 +896,7 @@ def historydata(timestep, steppi, steppi_indices):
     D_4AHw = A3w[:, 3][indices - 1]
     D_1CHw = A3w[:, 4][indices - 1]
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 43523:  # Skip the first 47873 lines
                 continue
@@ -940,7 +940,7 @@ def historydata(timestep, steppi, steppi_indices):
     logger = setup_logging()
     logger.info(" Get the Well Gas Production Rate")
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 54833:  # Skip the first 47873 lines
                 continue
@@ -960,7 +960,7 @@ def historydata(timestep, steppi, steppi_indices):
     D_4Hg = A1g[:, 4][indices - 1]
     E_3Hg = A1g[:, 5][indices - 1]
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 55703:  # Skip the first 47873 lines
                 continue
@@ -979,7 +979,7 @@ def historydata(timestep, steppi, steppi_indices):
     E_2Hg = A2g[:, 3][indices - 1]
     E_4AHg = A2g[:, 4][indices - 1]
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 56573:  # Skip the first 47873 lines
                 continue
@@ -998,7 +998,7 @@ def historydata(timestep, steppi, steppi_indices):
     D_4AHg = A3g[:, 3][indices - 1]
     D_1CHg = A3g[:, 4][indices - 1]
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 57443:  # Skip the first 47873 lines
                 continue
@@ -1042,7 +1042,7 @@ def historydata(timestep, steppi, steppi_indices):
     logger = setup_logging()
     logger.info(" Get the Well water injection Rate")
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 72237:  # Skip the first 47873 lines
                 continue
@@ -1076,7 +1076,7 @@ def historydata(timestep, steppi, steppi_indices):
     logger = setup_logging()
     logger.info(" Get the Well Gas injection Rate")
     lines = []
-    with open(to_absolute_path("../NORNE/NORNE_ATW2013.RSM"), "r") as f:
+    with open(to_absolute_path("../simulator_data/NORNE_ATW2013.RSM"), "r") as f:
         for i, line in enumerate(f):
             if i < 73977:  # Skip the first 47873 lines
                 continue

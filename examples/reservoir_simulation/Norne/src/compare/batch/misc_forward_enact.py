@@ -911,31 +911,31 @@ def Forward_model_ensemble(
     #### ===================================================================== ####
     # Initialize tensors
     # Derive grid dimensions from effective_abi
-    nx, ny, nz = effective_abi.shape
+    #nx, ny, nz = effective_abi.shape
     if "PRESSURE" in output_variables:
         pressure = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
-        modelP = models["pressure"]
+        modelP = models["pressure"].eval()
     if "SWAT" in output_variables:
         Swater = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
-        modelS = models["saturation"]
+        modelS = models["saturation"].eval()
         # removed unused variable: output_keys_saturation
     if "SOIL" in output_variables:
         Soil = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
-        modelO = models["oil"]
+        modelO = models["oil"].eval()
         # removed unused variable: output_keys_oil
     if "SGAS" in output_variables:
         Sgas = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
-        modelG = models["gas"]
+        modelG = models["gas"].eval()
         # removed unused variable: output_keys_gas
-    modelPe = models["peacemann"]
+    modelPe = models["peacemann"].eval()
 
     for i in range(N):
         temp = {
             "perm": x_true["perm"][i, :, :, :, :][None, :, :, :, :],
-            "poro": x_true["poro"][i, :, :, :, :][None, :, :, :, :],
-            "fault": x_true["fault"][i, :, :, :, :][None, :, :, :, :],
+            "poro": x_true["poro"][i, :, :, :, :][None, :, :, :, :],            
             "pini": x_true["pini"][i, :, :, :, :][None, :, :, :, :],
             "sini": x_true["sini"][i, :, :, :, :][None, :, :, :, :],
+            "fault": x_true["fault"][i, :, :, :, :][None, :, :, :, :],
         }
 
         with torch.no_grad():
@@ -983,7 +983,7 @@ def Forward_model_ensemble(
                     ouut_so1 = modelO(input_temp)
 
                 # Remove padding if applied
-                if nz_current > 30 and pad_size > 0:
+                if nz_current > cfg.custom.allowable_size and pad_size > 0:
                     if "PRESSURE" in output_variables and modelP is not None:
                         ouut_p1 = ouut_p1[:, :, :current_chunk_size, :, :]
                     if "SGAS" in output_variables and modelG is not None:
@@ -1013,6 +1013,7 @@ def Forward_model_ensemble(
     if "PRESSURE" in output_variables:
         pressure_np = Make_correct(pressure.detach().cpu().numpy())
         pressure_np = convert_back(pressure_np, target_min, target_max, minP, maxP)
+        pressure_np = np.clip(pressure_np, a_min=0, a_max=None)
         results["PRESSURE"] = pressure_np
 
     if "SWAT" in output_variables:
