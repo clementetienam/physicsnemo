@@ -106,6 +106,7 @@ from data_extract.opm_extract_rates import read_compdats2
 from forward.gradients_extract import clip_and_convert_to_float32
 from forward.utils.sequential.training_function import run_training_loop
 
+torch.cuda.empty_cache()
 
 # 🖥️ Detect GPU
 def is_available() -> bool:
@@ -281,10 +282,10 @@ def main(cfg: DictConfig) -> None:
         logger.info(
             "|-----------------------------------------------------------------|"
         )
-        folders_to_create = ["../RUNS", "../PACKETS"]
+        folders_to_create = ["../RUNS", "../data"]
         if dist.rank == 0:
-            if os.path.isfile(to_absolute_path("../PACKETS/conversions.mat")):
-                os.remove(to_absolute_path("../PACKETS/conversions.mat"))
+            if os.path.isfile(to_absolute_path("../data/conversions.mat")):
+                os.remove(to_absolute_path("../data/conversions.mat"))
             for folder in folders_to_create:
                 absolute_path = to_absolute_path(folder)
                 lock_path = (
@@ -299,22 +300,40 @@ def main(cfg: DictConfig) -> None:
         logger.info(
             "|-----------------------------------------------------------------|"
         )
-    if cfg.custom.fno_type == "FNO":
-        folders_to_create = [
-            "../MODELS/FNO/checkpoints_saturation_seq",
-            "../MODELS/FNO/checkpoints_oil_seq",
-            "../MODELS/FNO/checkpoints_pressure_seq",
-            "../MODELS/FNO/checkpoints_gas_seq",
-            "../MODELS/FNO/checkpoints_peacemann_seq",
-        ]
+    if cfg.custom.model_type == "FNO":
+        if cfg.custom.fno_type == "FNO":
+            folders_to_create = [
+                "../MODELS/FNO/checkpoints_saturation_seq",
+                "../MODELS/FNO/checkpoints_oil_seq",
+                "../MODELS/FNO/checkpoints_pressure_seq",
+                "../MODELS/FNO/checkpoints_gas_seq",
+                "../MODELS/FNO/checkpoints_peacemann_seq",
+            ]
+        else:
+            folders_to_create = [
+                "../MODELS/PINO/checkpoints_saturation_seq",
+                "../MODELS/PINO/checkpoints_oil_seq",
+                "../MODELS/PINO/checkpoints_pressure_seq",
+                "../MODELS/PINO/checkpoints_gas_seq",
+                "../MODELS/PINO/checkpoints_peacemann_seq",
+            ]
     else:
-        folders_to_create = [
-            "../MODELS/PINO/checkpoints_saturation_seq",
-            "../MODELS/PINO/checkpoints_oil_seq",
-            "../MODELS/PINO/checkpoints_pressure_seq",
-            "../MODELS/PINO/checkpoints_gas_seq",
-            "../MODELS/PINO/checkpoints_peacemann_seq",
-        ]
+        if cfg.custom.fno_type == "FNO":
+            folders_to_create = [
+                "../MODELS/TRANSOLVER/checkpoints_saturation_seq",
+                "../MODELS/TRANSOLVER/checkpoints_oil_seq",
+                "../MODELS/TRANSOLVER/checkpoints_pressure_seq",
+                "../MODELS/TRANSOLVER/checkpoints_gas_seq",
+                "../MODELS/TRANSOLVER/checkpoints_peacemann_seq",
+            ]
+        else:
+            folders_to_create = [
+                "../MODELS/PI-TRANSOLVER/checkpoints_saturation_seq",
+                "../MODELS/PI-TRANSOLVER/checkpoints_oil_seq",
+                "../MODELS/PI-TRANSOLVER/checkpoints_pressure_seq",
+                "../MODELS/PI-TRANSOLVER/checkpoints_gas_seq",
+                "../MODELS/PI-TRANSOLVER/checkpoints_peacemann_seq",
+            ]            
     if dist.rank == 0:
         logger.info(
             "|-----------------------------------------------------------------|"
@@ -334,7 +353,7 @@ def main(cfg: DictConfig) -> None:
     nx = cfg.custom.PROPS.nx
     ny = cfg.custom.PROPS.ny
     nz = cfg.custom.PROPS.nz
-    file_path = to_absolute_path("../PACKETS/conversions.mat")
+    file_path = to_absolute_path("../data/conversions.mat")
     file_exists = os.path.isfile(file_path)
     if file_exists:
         mat = sio.loadmat(file_path)
@@ -348,7 +367,7 @@ def main(cfg: DictConfig) -> None:
     logger.info(f"Rank {dist.rank}: steppi = {steppi}, N_ens = {N_ens}")
     # oldfolder2 = os.getcwd()
     sourc_dir = cfg.custom.file_location
-    source_dir = to_absolute_path(sourc_dir)  # ('../Necessaryy')
+    source_dir = to_absolute_path(sourc_dir)  # ('../simulator_data')
     effective = np.genfromtxt(Path(source_dir) / "actnum.out", dtype="float")
     effective_i = np.reshape(effective, (nx, ny, nz), "F")
     SWOW = torch.tensor(np.array(np.vstack(cfg.custom.WELLSPECS.SWOW), dtype=float)).to(
@@ -405,7 +424,7 @@ def main(cfg: DictConfig) -> None:
     if dist.rank == 0:
         logger.info(f"Using {njobs} cores for parallel processing.")
     sourc_dir = cfg.custom.file_location
-    source_dir = to_absolute_path(sourc_dir)  # ('../Necessaryy')
+    source_dir = to_absolute_path(sourc_dir)  # ('../simulator_data')
 
     gass, producers, injectors = read_compdats2(
         to_absolute_path(cfg.custom.COMPLETIONS_DATA),
@@ -452,7 +471,7 @@ def main(cfg: DictConfig) -> None:
         logger.info("water injector well names")
         logger.info(f"Water injector well names: {well_namesw}")
     try:
-        with gzip.open(to_absolute_path("../PACKETS/static.pkl.gz"), "rb") as f2:
+        with gzip.open(to_absolute_path("../data/static.pkl.gz"), "rb") as f2:
             mat = pickle.load(f2)
     except (pickle.PickleError, EOFError, FileNotFoundError) as e:
         logger.error(f"Error loading pickle file: {e}")
@@ -482,7 +501,7 @@ def main(cfg: DictConfig) -> None:
     p_bub = torch.from_numpy(np.array(p_bub)).to(device)
     p_atm = torch.from_numpy(np.array(p_atm)).to(device)
     CFO = torch.from_numpy(np.array(CFO)).to(device)
-    mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
     minK = mat["minK"]
     maxK = mat["maxK"]
     maxT = mat["maxT"]
@@ -554,6 +573,8 @@ def main(cfg: DictConfig) -> None:
     optimizer_peacemann = MODELS_C["peacemann"]
     scheduler_peacemann = SCHEDULER["PEACEMANN"]
 
+
+        
     @StaticCaptureTraining(
         model=composite_model,
         optim=combined_optimizer,
@@ -577,21 +598,55 @@ def main(cfg: DictConfig) -> None:
         epoch,
     ):
         # Prepare input tensors
-        tensors = [
-            value for value in inputin.values() if isinstance(value, torch.Tensor)
-        ]
-        input_tensor = torch.cat(tensors, dim=1)
+        if cfg.custom.model_type == "FNO":
+            tensors = [
+                value for value in inputin.values() if isinstance(value, torch.Tensor)
+            ]
+            input_tensor = torch.cat(tensors, dim=1)
+        
+        else:
+            # --------------------------------------------------------------
+            # Prepare input tensors with small *relative* noise on evolving state
+            # --------------------------------------------------------------
+
+            noise_rel  = float(getattr(cfg.loss, "noise_rel", 0.05))  # 5% relative noise
+            noise_abs  = float(getattr(cfg.loss, "noise_abs", 0.001)) # fallback for tiny values
+            noise_prob = float(getattr(cfg.loss, "noise_prob", 0.5))  # 50% probability
+
+            noisy_tensors = []
+            for key, value in inputin.items():
+                if not isinstance(value, torch.Tensor):
+                    continue
+
+                v = value
+
+                # Apply noise ONLY on previous-state channels
+                if key in ("pini", "sini", "sgini", "soini") and model.training:
+
+                    if noise_prob > 0.0 and torch.rand((), device=v.device) < noise_prob:
+
+                        # --- Relative noise: eps ~ N(0, noise_rel * v) ---
+                        rel_eps = torch.randn_like(v) * (noise_rel * v)
+
+                        # --- Absolute fallback for tiny values ---
+                        abs_eps = torch.randn_like(v) * noise_abs
+
+                        # Combine (if v is small, rel_eps is tiny → abs_eps dominates)
+                        eps = rel_eps + abs_eps
+
+                        # Add noise and clamp
+                        v = (v + eps).clamp(0.0, 1.0)
+
+                noisy_tensors.append(v)
+
+            input_tensor = torch.cat(noisy_tensors, dim=1)
+
+            
         input_tensor_p = inputin_p["X"]
         nz = input_tensor.shape[2]
 
-        # Setup chunking - only if nz > 30
-        if nz > cfg.custom.allowable_size:
-            fno_expected_nz = max(1, int(nz * 0.1))  # 10% for chunking
-            chunk_size = fno_expected_nz
-            num_chunks = (nz + chunk_size - 1) // chunk_size
-        else:
-            fno_expected_nz = chunk_size = nz
-            num_chunks = 1
+        fno_expected_nz = chunk_size = nz
+        num_chunks = 1
 
         # Initialize accumulators
         loss = 0
@@ -609,195 +664,254 @@ def main(cfg: DictConfig) -> None:
                 "peacemanned": 0.0,
             }
 
-        for chunk_idx in range(num_chunks):
-            start_idx = chunk_idx * chunk_size
-            end_idx = min(start_idx + chunk_size, nz)
-            current_chunk_size = end_idx - start_idx
+        # Extract chunks
+        input_temp = input_tensor
+        target_chunks = {}
 
-            # Extract chunks
-            input_temp = input_tensor[:, :, start_idx:end_idx, :, :]
-            target_chunks = {}
+        # Extract target chunks
+        if "PRESSURE" in output_variables:
+            target_chunks["pressure"] = {
+                "pressure": TARGETS["PRESSURE"]["pressure"]
+            }
+        if "SWAT" in output_variables:
+            target_chunks["saturation"] = {
+                "water_sat": TARGETS["SATURATION"]["water_sat"]
+            }
+        if "SOIL" in output_variables:
+            target_chunks["oil"] = {
+                "oil_sat": TARGETS["OIL"]["oil_sat"]
+            }
+        if "SGAS" in output_variables:
+            target_chunks["gas"] = {
+                "gas_sat": TARGETS["GAS"]["gas_sat"]
+            }
 
-            # Extract target chunks
-            if "PRESSURE" in output_variables:
-                target_chunks["pressure"] = {
-                    "pressure": TARGETS["PRESSURE"]["pressure"][
-                        :, :, start_idx:end_idx, :, :
-                    ]
-                }
-            if "SWAT" in output_variables:
-                target_chunks["saturation"] = {
-                    "water_sat": TARGETS["SATURATION"]["water_sat"][
-                        :, :, start_idx:end_idx, :, :
-                    ]
-                }
-            if "SOIL" in output_variables:
-                target_chunks["oil"] = {
-                    "oil_sat": TARGETS["OIL"]["oil_sat"][:, :, start_idx:end_idx, :, :]
-                }
-            if "SGAS" in output_variables:
-                target_chunks["gas"] = {
-                    "gas_sat": TARGETS["GAS"]["gas_sat"][:, :, start_idx:end_idx, :, :]
-                }
+        # Model predictions
+        predictions = {}
+        if "PRESSURE" in output_variables:
+            predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+        if "SGAS" in output_variables:
+            predictions["gas"] = model(input_temp, mode="gas")["gas"]
+        if "SWAT" in output_variables:
+            predictions["water"] = model(input_temp, mode="saturation")[
+                "saturation"
+            ]
+        if "SOIL" in output_variables:
+            predictions["oil"] = model(input_temp, mode="oil")["oil"]
+  
+        # Compute losses
+        loss = 0
+        if "PRESSURE" in output_variables:
+            pressure_loss = loss_func(
+                predictions["pressure"],
+                target_chunks["pressure"]["pressure"],
+                "eliptical",
+                cfg.loss.weights.pressure,
+                p=2.0,
+            )
+            loss += pressure_loss
+            metrics_accumulator["pressure_loss"] += pressure_loss.item()
 
-            # Pad if needed (only when chunking)
-            if nz > cfg.custom.allowable_size:
-                pad_size = fno_expected_nz - current_chunk_size
-                if pad_size > 0:
-                    input_temp = torch.nn.functional.pad(
-                        input_temp, (0, 0, 0, 0, 0, pad_size)
+        if "SWAT" in output_variables:
+            water_loss = loss_func(
+                predictions["water"],
+                target_chunks["saturation"]["water_sat"],
+                "hyperbolic",
+                cfg.loss.weights.water_sat,
+                p=2.0,
+            )
+            loss += water_loss
+            metrics_accumulator["water_loss"] += water_loss.item()
+
+        if "SOIL" in output_variables:
+            oil_loss = loss_func(
+                predictions["oil"],
+                target_chunks["oil"]["oil_sat"],
+                "hyperbolic",
+                cfg.loss.weights.oil_sat,
+                p=2.0,
+            )
+            loss += oil_loss
+            metrics_accumulator["oil_loss"] += oil_loss.item()
+
+        if "SGAS" in output_variables:
+            gas_loss = loss_func(
+                predictions["gas"],
+                target_chunks["gas"]["gas_sat"],
+                "hyperbolic",
+                cfg.loss.weights.gas_sat,
+                p=2.0,
+            )
+            loss += gas_loss
+            metrics_accumulator["gas_loss"] += gas_loss.item()
+        
+        if cfg.custom.model_type == "FNO":
+            # ------------------------------------------------------------------
+            # Gaussian-noise-robust forward on evolving state only (relative)
+            # ------------------------------------------------------------------
+            # Safe defaults if not present in cfg.loss
+            if not hasattr(cfg.loss, "noise_rel"):
+                cfg.loss.noise_rel = 0.05   # 5% relative noise
+            if not hasattr(cfg.loss, "noise_abs"):
+                cfg.loss.noise_abs = 0.001  # small absolute floor
+            if not hasattr(cfg.loss, "noise_cycle_weight"):
+                cfg.loss.noise_cycle_weight = 0.01
+            if not hasattr(cfg.loss, "noise_prob"):
+                cfg.loss.noise_prob = 0.5   # 50% of the time
+
+            noise_rel = float(getattr(cfg.loss, "noise_rel", 0.05))
+            noise_abs = float(getattr(cfg.loss, "noise_abs", 0.001))
+            noise_w   = float(getattr(cfg.loss, "noise_cycle_weight", 0.01))
+            noise_p   = float(getattr(cfg.loss, "noise_prob", 0.5))  # 1.0 => always add noise
+
+            if noise_w > 0.0 and noise_p > 0.0 and model.training:
+                # Keep original key order & channel slices
+                items = [(k, v) for k, v in inputin.items() if isinstance(v, torch.Tensor)]
+                key_slices = {}
+                cumsum = 0
+                for k, v in items:
+                    c = v.shape[1]
+                    key_slices[k] = (cumsum, cumsum + c)
+                    cumsum += c
+
+                # Assemble a noised version in the SAME order as input_temp
+                assembled_noisy = []
+                for k, v in items:
+                    s0, s1 = key_slices[k]
+                    slice_k = input_temp[:, s0:s1, ...]  # (B, c_k, nz, nx, ny)
+
+                    if k in ("pini", "sini", "sgini", "soini"):
+                        # stochastic application per batch
+                        if noise_p >= 1.0 or torch.rand((), device=slice_k.device) < noise_p:
+                            # relative scale based on current value
+                            scale = noise_rel * slice_k + noise_abs
+                            eps   = torch.randn_like(slice_k) * scale
+                            slice_k = (slice_k + eps).clamp(0.0, 1.0)
+
+                    assembled_noisy.append(slice_k)
+
+                input_tensor_noisy = torch.cat(assembled_noisy, dim=1)
+
+                # Forward (cycle 2) on noised input
+                if "PRESSURE" in output_variables:
+                    pressure_noisy = model(input_tensor_noisy, mode="pressure")["pressure"]
+                    pressure_loss_noisy = loss_func(
+                        pressure_noisy,
+                        target_chunks["pressure"]["pressure"],
+                        "eliptical",
+                        cfg.loss.weights.pressure,
+                        p=2.0,
                     )
-                    for target_type in target_chunks.values():
-                        for key in target_type:
-                            target_type[key] = torch.nn.functional.pad(
-                                target_type[key], (0, 0, 0, 0, 0, pad_size)
-                            )
+                    loss += noise_w * pressure_loss_noisy
+                    metrics_accumulator["pressure_loss"] += noise_w * pressure_loss_noisy.item()
 
-            # Model predictions
-            predictions = {}
-            if "PRESSURE" in output_variables:
-                predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
-            if "SGAS" in output_variables:
-                predictions["gas"] = model(input_temp, mode="gas")["gas"]
-            if "SWAT" in output_variables:
-                predictions["water"] = model(input_temp, mode="saturation")[
-                    "saturation"
-                ]
-            if "SOIL" in output_variables:
-                predictions["oil"] = model(input_temp, mode="oil")["oil"]
+                if "SWAT" in output_variables:
+                    water_noisy = model(input_tensor_noisy, mode="saturation")["saturation"]
+                    water_loss_noisy = loss_func(
+                        water_noisy,
+                        target_chunks["saturation"]["water_sat"],
+                        "hyperbolic",
+                        cfg.loss.weights.water_sat,
+                        p=2.0,
+                    )
+                    loss += noise_w * water_loss_noisy
+                    metrics_accumulator["water_loss"] += noise_w * water_loss_noisy.item()
 
-            # Compute losses
-            chunk_loss = 0
-            if "PRESSURE" in output_variables:
-                pressure_loss = loss_func(
-                    predictions["pressure"],
-                    target_chunks["pressure"]["pressure"],
-                    "eliptical",
-                    cfg.loss.weights.pressure,
-                    p=2.0,
-                )
-                chunk_loss += pressure_loss
-                metrics_accumulator["pressure_loss"] += pressure_loss.item()
+                if "SOIL" in output_variables:
+                    oil_noisy = model(input_tensor_noisy, mode="oil")["oil"]
+                    oil_loss_noisy = loss_func(
+                        oil_noisy,
+                        target_chunks["oil"]["oil_sat"],
+                        "hyperbolic",
+                        cfg.loss.weights.oil_sat,
+                        p=2.0,
+                    )
+                    loss += noise_w * oil_loss_noisy
+                    metrics_accumulator["oil_loss"] += noise_w * oil_loss_noisy.item()
 
-            if "SWAT" in output_variables:
-                water_loss = loss_func(
-                    predictions["water"],
-                    target_chunks["saturation"]["water_sat"],
-                    "hyperbolic",
-                    cfg.loss.weights.water_sat,
-                    p=2.0,
-                )
-                chunk_loss += water_loss
-                metrics_accumulator["water_loss"] += water_loss.item()
+                if "SGAS" in output_variables:
+                    gas_noisy = model(input_tensor_noisy, mode="gas")["gas"]
+                    gas_loss_noisy = loss_func(
+                        gas_noisy,
+                        target_chunks["gas"]["gas_sat"],
+                        "hyperbolic",
+                        cfg.loss.weights.gas_sat,
+                        p=2.0,
+                    )
+                    loss += noise_w * gas_loss_noisy
+                    metrics_accumulator["gas_loss"] += noise_w * gas_loss_noisy.item()
+                             
+        # PINO physics loss
+        if (
+            cfg.custom.fno_type == "PINO"
+            and epoch % max(1, int(0.01 * cfg.training.max_steps)) == 0
+        ):
+            input_varr = {
+                **{
+                    k: v
+                    if isinstance(v, torch.Tensor) and v.dim() > 2
+                    else v
+                    for k, v in inputin.items()
+                },
+                "pressure": predictions.get("pressure"),
+                "water_sat": predictions.get("water"),
+                "gas_sat": predictions.get("gas"),
+                "oil_sat": predictions.get("oil"),
+            }
 
-            if "SOIL" in output_variables:
-                oil_loss = loss_func(
-                    predictions["oil"],
-                    target_chunks["oil"]["oil_sat"],
-                    "hyperbolic",
-                    cfg.loss.weights.oil_sat,
-                    p=2.0,
-                )
-                chunk_loss += oil_loss
-                metrics_accumulator["oil_loss"] += oil_loss.item()
+            evaluate = Black_oil_seq(
+                input_varr,
+                neededM,
+                SWI,
+                SWR,
+                UW,
+                BW,
+                UO,
+                BO,
+                nx,
+                ny,
+                chunk_size,
+                SWOW,
+                SWOG,
+                target_min,
+                target_max,
+                minK,
+                maxK,
+                minP,
+                maxP,
+                p_bub,
+                p_atm,
+                CFO,
+                Relperm,
+                params,
+                pde_method,
+                RE,
+                max_inn_fcn,
+                max_out_fcn,
+                DZ,
+                device,
+                params1_swow,
+                params2_swow,
+                params1_swog,
+                params2_swog,
+                maxQw,
+                maxQg,
+                maxQ,
+                maxT,
+            )
 
-            if "SGAS" in output_variables:
-                gas_loss = loss_func(
-                    predictions["gas"],
-                    target_chunks["gas"]["gas_sat"],
-                    "hyperbolic",
-                    cfg.loss.weights.gas_sat,
-                    p=2.0,
-                )
-                chunk_loss += gas_loss
-                metrics_accumulator["gas_loss"] += gas_loss.item()
+            f_pressure2 = loss_func_physics(
+                evaluate["pressured"], cfg.loss.weights.pressured
+            )
+            f_water2 = loss_func_physics(
+                evaluate["saturationd"], cfg.loss.weights.saturationd
+            )
+            f_gas2 = loss_func_physics(evaluate["gasd"], cfg.loss.weights.gasd)
 
-            # PINO physics loss
-            if (
-                cfg.custom.fno_type == "PINO"
-                and epoch % max(1, int(0.01 * cfg.training.max_steps)) == 0
-            ):
-                input_varr = {
-                    **{
-                        k: v[:, :, start_idx:end_idx, :, :]
-                        if isinstance(v, torch.Tensor) and v.dim() > 2
-                        else v
-                        for k, v in inputin.items()
-                    },
-                    "pressure": predictions.get("pressure"),
-                    "water_sat": predictions.get("water"),
-                    "gas_sat": predictions.get("gas"),
-                    "oil_sat": predictions.get("oil"),
-                }
-
-                # Pad if needed
-                if nz > cfg.custom.allowable_size and pad_size > 0:
-                    for key in input_varr:
-                        if (
-                            isinstance(input_varr[key], torch.Tensor)
-                            and input_varr[key].dim() > 2
-                        ):
-                            input_varr[key] = torch.nn.functional.pad(
-                                input_varr[key], (0, 0, 0, 0, 0, pad_size)
-                            )
-
-                evaluate = Black_oil_seq(
-                    input_varr,
-                    neededM,
-                    SWI,
-                    SWR,
-                    UW,
-                    BW,
-                    UO,
-                    BO,
-                    nx,
-                    ny,
-                    current_chunk_size
-                    if (nz <= cfg.custom.allowable_size or pad_size == 0)
-                    else chunk_size,
-                    SWOW,
-                    SWOG,
-                    target_min,
-                    target_max,
-                    minK,
-                    maxK,
-                    minP,
-                    maxP,
-                    p_bub,
-                    p_atm,
-                    CFO,
-                    Relperm,
-                    params,
-                    pde_method,
-                    RE,
-                    max_inn_fcn,
-                    max_out_fcn,
-                    DZ,
-                    device,
-                    params1_swow,
-                    params2_swow,
-                    params1_swog,
-                    params2_swog,
-                    maxQw,
-                    maxQg,
-                    maxQ,
-                    maxT,
-                )
-
-                f_pressure2 = loss_func_physics(
-                    evaluate["pressured"], cfg.loss.weights.pressured
-                )
-                f_water2 = loss_func_physics(
-                    evaluate["saturationd"], cfg.loss.weights.saturationd
-                )
-                f_gas2 = loss_func_physics(evaluate["gasd"], cfg.loss.weights.gasd)
-
-                chunk_loss += f_pressure2 + f_water2 + f_gas2
-                pino_metrics["pressured"] += f_pressure2.item()
-                pino_metrics["saturationd"] += f_water2.item()
-                pino_metrics["gasd"] += f_gas2.item()
-
-            loss += chunk_loss
+            loss += f_pressure2 + f_water2 + f_gas2
+            pino_metrics["pressured"] += f_pressure2.item()
+            pino_metrics["saturationd"] += f_water2.item()
+            pino_metrics["gasd"] += f_gas2.item()
 
         # Process peacemann (no chunking)
         outputs_p = model(input_tensor_p, mode="peacemann")
@@ -854,7 +968,6 @@ def main(cfg: DictConfig) -> None:
             pino_metrics["peacemanned"] = f_peacemann2.item()
 
         # Average metrics
-        # Average metrics
         for key in metrics_accumulator:
             training_step_metrics[key] = metrics_accumulator[key] / (
                 num_chunks if key != "peacemann_loss" else 1
@@ -867,7 +980,8 @@ def main(cfg: DictConfig) -> None:
                 )
 
         return loss
-
+        
+        
     @StaticCaptureEvaluateNoGrad(
         model=composite_model, logger=logger, use_amp=False, use_graphs=True
     )
@@ -893,14 +1007,9 @@ def main(cfg: DictConfig) -> None:
         input_tensor_p = inputin_p["X"]
         nz = input_tensor.shape[2]
 
-        # Setup chunking - only if nz > 30
-        if nz > cfg.custom.allowable_size:
-            fno_expected_nz = max(1, int(nz * 0.1))
-            chunk_size = fno_expected_nz
-            num_chunks = (nz + chunk_size - 1) // chunk_size
-        else:
-            fno_expected_nz = chunk_size = nz
-            num_chunks = 1
+
+        fno_expected_nz = chunk_size = nz
+        num_chunks = 1
 
         # Initialize accumulators
         loss = 0
@@ -909,111 +1018,87 @@ def main(cfg: DictConfig) -> None:
             for var in ["pressure", "water", "oil", "gas", "peacemann"]
         }
 
-        # Process main model in chunks
-        for chunk_idx in range(num_chunks):
-            start_idx = chunk_idx * chunk_size
-            end_idx = min(start_idx + chunk_size, nz)
-            current_chunk_size = end_idx - start_idx
 
-            # Extract chunks
-            input_temp = input_tensor[:, :, start_idx:end_idx, :, :]
-            target_chunks = {}
+        input_temp = input_tensor
+        target_chunks = {}
 
-            # Extract target chunks
-            if "PRESSURE" in output_variables:
-                target_chunks["pressure"] = {
-                    "pressure": TARGETS["PRESSURE"]["pressure"][
-                        :, :, start_idx:end_idx, :, :
-                    ]
-                }
-            if "SWAT" in output_variables:
-                target_chunks["saturation"] = {
-                    "water_sat": TARGETS["SATURATION"]["water_sat"][
-                        :, :, start_idx:end_idx, :, :
-                    ]
-                }
-            if "SOIL" in output_variables:
-                target_chunks["oil"] = {
-                    "oil_sat": TARGETS["OIL"]["oil_sat"][:, :, start_idx:end_idx, :, :]
-                }
-            if "SGAS" in output_variables:
-                target_chunks["gas"] = {
-                    "gas_sat": TARGETS["GAS"]["gas_sat"][:, :, start_idx:end_idx, :, :]
-                }
+        # Extract target chunks
+        if "PRESSURE" in output_variables:
+            target_chunks["pressure"] = {
+                "pressure": TARGETS["PRESSURE"]["pressure"]
+            }
+        if "SWAT" in output_variables:
+            target_chunks["saturation"] = {
+                "water_sat": TARGETS["SATURATION"]["water_sat"]
+            }
+        if "SOIL" in output_variables:
+            target_chunks["oil"] = {
+                "oil_sat": TARGETS["OIL"]["oil_sat"]
+            }
+        if "SGAS" in output_variables:
+            target_chunks["gas"] = {
+                "gas_sat": TARGETS["GAS"]["gas_sat"]
+            }
 
-            # Pad if needed (only when chunking)
-            if nz > cfg.custom.allowable_size:
-                pad_size = fno_expected_nz - current_chunk_size
-                if pad_size > 0:
-                    input_temp = torch.nn.functional.pad(
-                        input_temp, (0, 0, 0, 0, 0, pad_size)
-                    )
-                    for target_type in target_chunks.values():
-                        for key in target_type:
-                            target_type[key] = torch.nn.functional.pad(
-                                target_type[key], (0, 0, 0, 0, 0, pad_size)
-                            )
 
-            # Model predictions
-            predictions = {}
-            if "PRESSURE" in output_variables:
-                predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
-            if "SGAS" in output_variables:
-                predictions["gas"] = model(input_temp, mode="gas")["gas"]
-            if "SWAT" in output_variables:
-                predictions["water"] = model(input_temp, mode="saturation")[
-                    "saturation"
-                ]
-            if "SOIL" in output_variables:
-                predictions["oil"] = model(input_temp, mode="oil")["oil"]
+        # Model predictions
+        predictions = {}
+        if "PRESSURE" in output_variables:
+            predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+        if "SGAS" in output_variables:
+            predictions["gas"] = model(input_temp, mode="gas")["gas"]
+        if "SWAT" in output_variables:
+            predictions["water"] = model(input_temp, mode="saturation")[
+                "saturation"
+            ]
+        if "SOIL" in output_variables:
+            predictions["oil"] = model(input_temp, mode="oil")["oil"]
+            
+        # Compute losses
+        if "PRESSURE" in output_variables:
+            pressure_loss = loss_func(
+                predictions["pressure"],
+                target_chunks["pressure"]["pressure"],
+                "eliptical",
+                cfg.loss.weights.pressure,
+                p=2.0,
+            )
+            loss += pressure_loss
+            metrics_accumulator["pressure_loss"] += pressure_loss.item()
 
-            # Compute losses
-            chunk_loss = 0
-            if "PRESSURE" in output_variables:
-                pressure_loss = loss_func(
-                    predictions["pressure"],
-                    target_chunks["pressure"]["pressure"],
-                    "eliptical",
-                    cfg.loss.weights.pressure,
-                    p=2.0,
-                )
-                chunk_loss += pressure_loss
-                metrics_accumulator["pressure_loss"] += pressure_loss.item()
+        if "SWAT" in output_variables:
+            water_loss = loss_func(
+                predictions["water"],
+                target_chunks["saturation"]["water_sat"],
+                "hyperbolic",
+                cfg.loss.weights.water_sat,
+                p=2.0,
+            )
+            loss += water_loss
+            metrics_accumulator["water_loss"] += water_loss.item()
 
-            if "SWAT" in output_variables:
-                water_loss = loss_func(
-                    predictions["water"],
-                    target_chunks["saturation"]["water_sat"],
-                    "hyperbolic",
-                    cfg.loss.weights.water_sat,
-                    p=2.0,
-                )
-                chunk_loss += water_loss
-                metrics_accumulator["water_loss"] += water_loss.item()
+        if "SOIL" in output_variables:
+            oil_loss = loss_func(
+                predictions["oil"],
+                target_chunks["oil"]["oil_sat"],
+                "hyperbolic",
+                cfg.loss.weights.oil_sat,
+                p=2.0,
+            )
+            loss += oil_loss
+            metrics_accumulator["oil_loss"] += oil_loss.item()
 
-            if "SOIL" in output_variables:
-                oil_loss = loss_func(
-                    predictions["oil"],
-                    target_chunks["oil"]["oil_sat"],
-                    "hyperbolic",
-                    cfg.loss.weights.oil_sat,
-                    p=2.0,
-                )
-                chunk_loss += oil_loss
-                metrics_accumulator["oil_loss"] += oil_loss.item()
+        if "SGAS" in output_variables:
+            gas_loss = loss_func(
+                predictions["gas"],
+                target_chunks["gas"]["gas_sat"],
+                "hyperbolic",
+                cfg.loss.weights.gas_sat,
+                p=2.0,
+            )
+            loss += gas_loss
+            metrics_accumulator["gas_loss"] += gas_loss.item()
 
-            if "SGAS" in output_variables:
-                gas_loss = loss_func(
-                    predictions["gas"],
-                    target_chunks["gas"]["gas_sat"],
-                    "hyperbolic",
-                    cfg.loss.weights.gas_sat,
-                    p=2.0,
-                )
-                chunk_loss += gas_loss
-                metrics_accumulator["gas_loss"] += gas_loss.item()
-
-            loss += chunk_loss
 
         # Process peacemann (no chunking)
         outputs_p = model(input_tensor_p, mode="peacemann")

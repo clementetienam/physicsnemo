@@ -128,7 +128,7 @@ def load_training_data(logger: logging.Logger) -> Dict[str, Any]:
     logger.info(
         "-------------------LOAD INPUT DATA-------------------------------------"
     )
-    mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
 
     # Extract configuration parameters
     config_params = {
@@ -166,7 +166,7 @@ def load_training_data(logger: logging.Logger) -> Dict[str, Any]:
 def load_peaceman_data(logger: logging.Logger) -> Tuple[np.ndarray, np.ndarray]:
     """Load Peaceman well model training data."""
     with gzip.open(
-        to_absolute_path("../PACKETS/data_train_peaceman.pkl.gz"), "rb"
+        to_absolute_path("../data/data_train_peaceman.pkl.gz"), "rb"
     ) as f:
         mat = pickle.load(f)
 
@@ -519,7 +519,7 @@ def CCR_Machine(
         k = getoptimumk(matrix, ii, training_master, oldfolder)
         nclusters = k
     else:
-        nclusters = 4
+        nclusters = 8
     setup_logging().info("Optimal k is: %s", nclusters)
     # kmeans = MiniBatchKMeans(n_clusters=nclusters,max_iter=2000).fit(matrix)
     kmeans = KMeans(n_clusters=nclusters).fit(matrix)
@@ -953,7 +953,7 @@ def main(cfg: DictConfig) -> None:
     logger.info(
         "-------------------LOAD INPUT DATA-------------------------------------"
     )
-    mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
     minK = mat["minK"]
     maxK = mat["maxK"]
     minT = mat["minT"]
@@ -996,7 +996,7 @@ def main(cfg: DictConfig) -> None:
     logger.info(f"target_max value is: {target_max}")
 
     with gzip.open(
-        to_absolute_path("../PACKETS/data_train_peaceman.pkl.gz"), "rb"
+        to_absolute_path("../data/data_train_peaceman.pkl.gz"), "rb"
     ) as f:
         mat = pickle.load(f)
     X_data2 = mat
@@ -1009,8 +1009,6 @@ def main(cfg: DictConfig) -> None:
     Y = np.vstack(data2["Y2"])
     Y = Y[:, : lenwels * N_pr]
     Y[Y <= 0] = 0
-    # datafind = Path(oldfolder) / "Data"
-    # degg=int(input('select degree polynomial: 4-10: '))
     degg = 3
     gezz = X.shape[1]
     Machinetrue = "../ML_MACHINE"
@@ -1080,7 +1078,7 @@ def main(cfg: DictConfig) -> None:
         logger.info("Use XGboost experts")
 
     choice = {"expert": experts}
-    sio.savemat(to_absolute_path("../PACKETS/exper.mat"), choice)
+    sio.savemat(to_absolute_path("../data/exper.mat"), choice)
 
     os.chdir(trainingmaster)
     with warnings.catch_warnings():

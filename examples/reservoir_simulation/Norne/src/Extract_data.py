@@ -641,12 +641,12 @@ def main(cfg: DictConfig) -> None:
     oldfolder = os.getcwd()
     os.chdir(oldfolder)
 
-    folders_to_create = ["../RUNS", "../PACKETS"]
+    folders_to_create = ["../RUNS", "../data"]
 
-    # bb = os.path.isfile(to_absolute_path('../PACKETS/conversions.mat'))
+    # bb = os.path.isfile(to_absolute_path('../data/conversions.mat'))
     if dist.rank == 0:
-        if os.path.isfile(to_absolute_path("../PACKETS/conversions.mat")):
-            os.remove(to_absolute_path("../PACKETS/conversions.mat"))
+        if os.path.isfile(to_absolute_path("../data/conversions.mat")):
+            os.remove(to_absolute_path("../data/conversions.mat"))
         for folder in folders_to_create:
             absolute_path = to_absolute_path(folder)
             lock_path = (
@@ -681,7 +681,7 @@ def main(cfg: DictConfig) -> None:
     ny = cfg.custom.PROPS.ny
     nz = cfg.custom.PROPS.nz
 
-    file_path = to_absolute_path("../PACKETS/conversions.mat")
+    file_path = to_absolute_path("../data/conversions.mat")
     file_exists = os.path.isfile(file_path)
 
     # steppi,steppi_indices,N_ens = None, None,None
@@ -704,7 +704,7 @@ def main(cfg: DictConfig) -> None:
     oldfolder2 = os.getcwd()
 
     sourc_dir = cfg.custom.file_location
-    source_dir = to_absolute_path(sourc_dir)  # ('../Necessaryy')
+    source_dir = to_absolute_path(sourc_dir)  # ('../simulator_data')
 
     effective = np.genfromtxt(os.path.join(source_dir, "actnum.out"), dtype="float")
 
@@ -737,7 +737,7 @@ def main(cfg: DictConfig) -> None:
         logger.info(f"Using {njobs} cores for parallel processing.")
 
     sourc_dir = cfg.custom.file_location
-    source_dir = to_absolute_path(sourc_dir)  # ('../Necessaryy')
+    source_dir = to_absolute_path(sourc_dir)  # ('../simulator_data')
     # dest_dir = 'path_to_folder_B'
 
     minn = float(cfg.custom.PROPS.minn)
@@ -873,7 +873,7 @@ def main(cfg: DictConfig) -> None:
                 }
 
                 with gzip.open(
-                    to_absolute_path("../PACKETS/static.pkl.gz"), "wb"
+                    to_absolute_path("../data/static.pkl.gz"), "wb"
                 ) as f1:
                     pickle.dump(X_ensemble, f1)
 
@@ -912,7 +912,7 @@ def main(cfg: DictConfig) -> None:
                 }
 
                 with gzip.open(
-                    to_absolute_path("../PACKETS/static.pkl.gz"), "wb"
+                    to_absolute_path("../data/static.pkl.gz"), "wb"
                 ) as f1:
                     pickle.dump(X_ensemble, f1)
                 # logger.info('here')
@@ -926,7 +926,7 @@ def main(cfg: DictConfig) -> None:
                     "|-----------------------------------------------------------------|"
                 )
 
-    with gzip.open(to_absolute_path("../PACKETS/static.pkl.gz"), "rb") as f2:
+    with gzip.open(to_absolute_path("../data/static.pkl.gz"), "rb") as f2:
         mat = pickle.load(f2)
 
     X_data1 = mat
@@ -1354,23 +1354,23 @@ def main(cfg: DictConfig) -> None:
         del inn_fcnx, inn_fcn, out_fcnx, out_fcn, inn_fcnx2, out_fcnx2
 
         with gzip.open(
-            to_absolute_path("../PACKETS/data_train_peaceman.pkl.gz"), "wb"
+            to_absolute_path("../data/data_train_peaceman.pkl.gz"), "wb"
         ) as f3:
             pickle.dump(X_data2, f3)
 
         with gzip.open(
-            to_absolute_path("../PACKETS/data_test_peaceman.pkl.gz"), "wb"
+            to_absolute_path("../data/data_test_peaceman.pkl.gz"), "wb"
         ) as f4:
             pickle.dump(X_data2, f4)
 
-        with gzip.open(to_absolute_path("../PACKETS/data_train.pkl.gz"), "wb") as f5:
+        with gzip.open(to_absolute_path("../data/data_train.pkl.gz"), "wb") as f5:
             pickle.dump(X_data1, f5)
 
-        with gzip.open(to_absolute_path("../PACKETS/data_test.pkl.gz"), "wb") as f6:
+        with gzip.open(to_absolute_path("../data/data_test.pkl.gz"), "wb") as f6:
             pickle.dump(X_data1, f6)
 
         sio.savemat(
-            to_absolute_path("../PACKETS/conversions.mat"),
+            to_absolute_path("../data/conversions.mat"),
             {
                 "minK": minK,
                 "maxK": maxK,

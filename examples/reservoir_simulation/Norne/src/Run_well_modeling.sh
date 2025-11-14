@@ -49,6 +49,7 @@ PYTHON_SCRIPT_4="Compare_fvm_surrogate_batch.py"
 PYTHON_SCRIPT_5="Inverse_problem.py"
 PYTHON_SCRIPT_6="Moe_ccr.py"
 PYTHON_SCRIPT_7="Extract_data.py"
+PYTHON_SCRIPT_8="plot_metrics_run.py"
 
 # === Parse YAML values using Python ===
 read -r INTEREST MODEL_DISTRIBUTED FNO_TYPE <<< "$(python3 -c "
@@ -73,7 +74,8 @@ LOG_FILE3="$LOG_DIR/Forward_problem_batch_${FNO_TYPE}_${ts}.log"
 LOG_FILE4="$LOG_DIR/Compare_FVM_surrogate_batch_${ts}.log"
 LOG_FILE5="$LOG_DIR/Inverse_problem_${FNO_TYPE}_${ts}.log" 
 LOG_FILE6="$LOG_DIR/Moe_ccr_${ts}.log"  
-LOG_FILE7="$LOG_DIR/Extract_data_${ts}.log"  
+LOG_FILE7="$LOG_DIR/Extract_data_${ts}.log" 
+LOG_FILE8="$LOG_DIR/Plot_metrics_${ts}.log" 
 
 # === Detect number of available GPUs ===
 if ! command -v nvidia-smi >/dev/null 2>&1; then
@@ -121,6 +123,13 @@ export MASTER_PORT
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
 export NCCL_DEBUG=INFO
 
+# === FIX COMPILER ISSUES ===
+export CC=/usr/bin/gcc
+export CXX=/usr/bin/g++
+export CUDA_HOME=/usr/local/cuda
+export TRITON_JIT=0
+echo "🔧 Set compiler environment: CC=$CC, CXX=$CXX"
+
 
 # === Conditional run: Extraction ===
 if [[ "$INTEREST" == "Yes" ]]; then
@@ -158,8 +167,12 @@ if [[ "$OPERATION_CHOICE" == "1" ]]; then
   fi
 
   echo "🚀*******************************************"
+  echo "🚀 Running the Plot metrics...................."
+  ( run_torch 1 "$PYTHON_SCRIPT_8" ) 2>&1 | tee -a "$LOG_FILE8"
+  
+  echo "🚀*******************************************"
   echo "🚀 Running the Mixture of Experts.................."
-  ( run_torch 1 "$PYTHON_SCRIPT_6" ) 2>&1 | tee -a "$LOG_FILE6"
+  ( run_torch 1 "$PYTHON_SCRIPT_7" ) 2>&1 | tee -a "$LOG_FILE7"
 
   echo "🚀*******************************************"
   echo "🚀 Running the Comparison with the numerical solver..."
@@ -180,6 +193,11 @@ else
     echo "🚀 Running forward problem in Single-GPU mode..."
     ( run_torch 1 "$PYTHON_SCRIPT_1" ) 2>&1 | tee -a "$LOG_FILE1"
   fi
+
+  echo "🚀*******************************************"
+  echo "🚀 Running the Plot metrics...................."
+  ( run_torch 1 "$PYTHON_SCRIPT_8" ) 2>&1 | tee -a "$LOG_FILE8"  
+  
   echo "🚀 Running the Mixture of Experts.................."
   ( run_torch 1 "$PYTHON_SCRIPT_6" ) 2>&1 | tee -a "$LOG_FILE6"
   

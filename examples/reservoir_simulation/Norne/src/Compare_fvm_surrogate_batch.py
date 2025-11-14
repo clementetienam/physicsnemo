@@ -202,9 +202,9 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
     njobs = (num_cores // 4) - 1
     num_cores = njobs
 
-    exper = sio.loadmat(to_absolute_path("../PACKETS/exper.mat"))
+    exper = sio.loadmat(to_absolute_path("../data/exper.mat"))
     experts = exper["expert"]
-    mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
     for key, value in mat.items():
         logger.info(f"For key '{key}':")
     minK = mat["minK"]
@@ -247,7 +247,7 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
     effective_abi = np.genfromtxt(os.path.join(source_dir, "actnum.out"), dtype="float")
     effective_abi = np.reshape(effective_abi, (nx, ny, nz), "F")
     Ne = 1
-    with gzip.open(to_absolute_path("../PACKETS/static.pkl.gz"), "rb") as f2:
+    with gzip.open(to_absolute_path("../data/static.pkl.gz"), "rb") as f2:
         X_data1 = pickle.load(f2)
     for key, value in X_data1.items():
         logger.info(f"For key '{key}':")
@@ -540,15 +540,15 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
 
     fno_supervised_peacemann = create_fno_model(
         2 + (4 * N_pr),
-        (lenwels * N_pr),
+        lenwels * N_pr,
         len(output_keys_peacemann),
-        device,
+        dist.device,
         num_fno_modes=13,
         latent_channels=64,
         decoder_layer_size=32,
         padding=20,
-        decoder_layers=4,
         num_fno_layers=5,
+        decoder_layers=4,
         dimension=1,
     )
 

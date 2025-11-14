@@ -268,10 +268,10 @@ def main(cfg: DictConfig) -> None:
         logger.info(
             "|-----------------------------------------------------------------|"
         )
-        folders_to_create = ["../RUNS", "../PACKETS"]
+        folders_to_create = ["../RUNS", "../data"]
         if dist.rank == 0:
-            if os.path.isfile(to_absolute_path("../PACKETS/conversions.mat")):
-                os.remove(to_absolute_path("../PACKETS/conversions.mat"))
+            if os.path.isfile(to_absolute_path("../data/conversions.mat")):
+                os.remove(to_absolute_path("../data/conversions.mat"))
             for folder in folders_to_create:
                 absolute_path = to_absolute_path(folder)
                 lock_path = (
@@ -321,7 +321,7 @@ def main(cfg: DictConfig) -> None:
     nx = cfg.custom.PROPS.nx
     ny = cfg.custom.PROPS.ny
     nz = cfg.custom.PROPS.nz
-    file_path = to_absolute_path("../PACKETS/conversions.mat")
+    file_path = to_absolute_path("../data/conversions.mat")
     file_exists = os.path.isfile(file_path)
     if file_exists:
         mat = sio.loadmat(file_path)
@@ -335,7 +335,7 @@ def main(cfg: DictConfig) -> None:
     logger.info(f"Rank {dist.rank}: steppi = {steppi}, N_ens = {N_ens}")
     # oldfolder2 = os.getcwd()
     sourc_dir = cfg.custom.file_location
-    source_dir = to_absolute_path(sourc_dir)  # ('../Necessaryy')
+    source_dir = to_absolute_path(sourc_dir)  # ('../simulator_data')
     effective = np.genfromtxt(Path(source_dir) / "actnum.out", dtype="float")
     effective_i = np.reshape(effective, (nx, ny, nz), "F")
     SWOW = torch.tensor(np.array(np.vstack(cfg.custom.WELLSPECS.SWOW), dtype=float)).to(
@@ -429,7 +429,7 @@ def main(cfg: DictConfig) -> None:
         logger.info("water injector well names")
         logger.info(f"Water injector well names: {well_namesw}")
 
-    with gzip.open(to_absolute_path("../PACKETS/static.pkl.gz"), "rb") as f2:
+    with gzip.open(to_absolute_path("../data/static.pkl.gz"), "rb") as f2:
         mat = pickle.load(f2)
     X_data1 = mat
     for key, value in X_data1.items():
@@ -455,7 +455,7 @@ def main(cfg: DictConfig) -> None:
     p_bub = torch.from_numpy(np.array(p_bub)).to(device)
     p_atm = torch.from_numpy(np.array(p_atm)).to(device)
     CFO = torch.from_numpy(np.array(CFO)).to(device)
-    mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
     minK = mat["minK"]
     maxK = mat["maxK"]
     # minT = mat["minT"]
@@ -724,8 +724,6 @@ def main(cfg: DictConfig) -> None:
                 )
                 chunk_loss += gas_loss
                 metrics_accumulator["gas_loss"] += gas_loss.item()
-
-            loss += chunk_loss
 
             # PINO physics loss
             if (

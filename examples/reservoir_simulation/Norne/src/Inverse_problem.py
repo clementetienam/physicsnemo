@@ -117,11 +117,11 @@ def initialize_environment() -> logging.Logger:
 
 def load_configuration_data(cfg: DictConfig, logger: logging.Logger) -> Dict[str, Any]:
     """Load configuration and experimental data."""
-    exper = sio.loadmat(to_absolute_path("../PACKETS/exper.mat"))
+    exper = sio.loadmat(to_absolute_path("../data/exper.mat"))
     experts = exper["expert"]
 
     # Load conversion data
-    mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
     minK = mat["minK"]
     maxK = mat["maxK"]
     minT = mat["minT"]
@@ -157,7 +157,7 @@ def setup_ensemble_data(cfg: DictConfig, logger: logging.Logger) -> Dict[str, An
     # Load ensemble data
     try:
         with gzip.open(
-            to_absolute_path("../PACKETS/data_train_peaceman.pkl.gz"), "rb"
+            to_absolute_path("../data/data_train_peaceman.pkl.gz"), "rb"
         ) as f:
             X_data1 = pickle.load(f)
     except (pickle.PickleError, EOFError, FileNotFoundError) as e:
@@ -226,9 +226,9 @@ def main(cfg: DictConfig) -> None:
         TEMPLATEFILE["Surrogate model"] = "PINO"
     else:
         TEMPLATEFILE["Surrogate model"] = "FNO"
-    exper = sio.loadmat(to_absolute_path("../PACKETS/exper.mat"))
+    exper = sio.loadmat(to_absolute_path("../data/exper.mat"))
     experts = exper["expert"]
-    mat = sio.loadmat(to_absolute_path("../PACKETS/conversions.mat"))
+    mat = sio.loadmat(to_absolute_path("../data/conversions.mat"))
     minK = mat["minK"]
     maxK = mat["maxK"]
     minT = mat["minT"]
@@ -260,7 +260,7 @@ def main(cfg: DictConfig) -> None:
     effective = np.reshape(effective, (nx * ny * nz, -1), "F")
     effec = np.reshape(effective[:, 0], (-1, 1), "F")
     try:
-        with gzip.open(to_absolute_path("../PACKETS/static.pkl.gz"), "rb") as f2:
+        with gzip.open(to_absolute_path("../data/static.pkl.gz"), "rb") as f2:
             mat = pickle.load(f2)
     except (pickle.PickleError, EOFError, FileNotFoundError) as e:
         logger.error(f"Error loading static pickle file: {e}")
