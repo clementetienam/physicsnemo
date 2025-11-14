@@ -326,7 +326,7 @@ def load_and_setup_training_data(
                 )
             if "Pini" in X_data1:
                 cPini[kk, 0, i, :, :] = (
-                    clip_and_convert_to_float3(X_data1["Pini"][kk, 0, :, :, i]) / maxP
+                    clip_and_convert_to_float3(X_data1["Pini"][kk, 0, :, :, i]) 
                 )
             if "Sini" in X_data1:
                 cSini[kk, 0, i, :, :] = clip_and_convert_to_float3(
@@ -462,7 +462,7 @@ def load_and_setup_training_data(
             if "porosity" in X_data1t:
                 cPhi[kk, 0, i, :, :] = X_data1t["porosity"][kk, 0, :, :, i]
             if "Pini" in X_data1t:
-                cPini[kk, 0, i, :, :] = X_data1t["Pini"][kk, 0, :, :, i] / maxP
+                cPini[kk, 0, i, :, :] = X_data1t["Pini"][kk, 0, :, :, i] 
             if "Sini" in X_data1t:
                 cSini[kk, 0, i, :, :] = X_data1t["Sini"][kk, 0, :, :, i]
         for j in range(steppi):
