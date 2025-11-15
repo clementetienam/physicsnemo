@@ -363,7 +363,7 @@ def load_and_setup_training_data(
                 )
             if "Pini" in X_data1:
                 cPini[kk, 0, i, :, :] = (
-                    clip_and_convert_to_float3(X_data1["Pini"][kk, 0, :, :, i]) 
+                    clip_and_convert_to_float3(X_data1["Pini"][kk, 0, :, :, i])
                 )
             if "Sini" in X_data1:
                 cSini[kk, 0, i, :, :] = clip_and_convert_to_float3(
@@ -596,7 +596,7 @@ def load_and_setup_training_data(
             if "porosity" in X_data1t:
                 cPhi[kk, 0, i, :, :] = X_data1t["porosity"][kk, 0, :, :, i]
             if "Pini" in X_data1t:
-                cPini[kk, 0, i, :, :] = X_data1t["Pini"][kk, 0, :, :, i] 
+                cPini[kk, 0, i, :, :] = X_data1t["Pini"][kk, 0, :, :, i]
             if "Sini" in X_data1t:
                 cSini[kk, 0, i, :, :] = X_data1t["Sini"][kk, 0, :, :, i]
         for mv in range(steppi):
@@ -893,7 +893,14 @@ def load_and_setup_training_data(
             if batch_sizee < 1:
                 batch_sizee = 1
         else:
-            batch_sizee = 1
+            temp = cfg.batch_size.grid_fno
+            num_ranks = dist.world_size
+            if dist.rank == 0:
+                logger.info(f"Number of GPU ranks in use: {num_ranks}")
+            temp = temp / num_ranks
+            batch_sizee = int(temp)
+            if batch_sizee < 1:
+                batch_sizee = 1
     dataset_train = Labelledset(data, dist.device)
     train_sampler = DistributedSampler(
         dataset_train,
@@ -1036,7 +1043,7 @@ def load_and_setup_training_data(
                 device=device,
                 n_layers=8,
                 n_hidden=32,
-                n_head=8,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -1060,7 +1067,7 @@ def load_and_setup_training_data(
                 device=device,
                 n_layers=8,
                 n_hidden=32,
-                n_head=8,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -1071,7 +1078,7 @@ def load_and_setup_training_data(
                 device=device,
                 n_layers=8,
                 n_hidden=32,
-                n_head=8,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -1083,7 +1090,7 @@ def load_and_setup_training_data(
                 device=device,
                 n_layers=8,
                 n_hidden=32,
-                n_head=8,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
