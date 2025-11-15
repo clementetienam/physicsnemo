@@ -883,7 +883,7 @@ def load_and_setup_training_data(
     if cfg.custom.model_Distributed == 2:
         batch_sizee = cfg.batch_size.grid_fno
     else:
-        if cfg.custom.model_type == "TRANSOLVER":
+        if cfg.custom.model_type == "FNO":
             temp = cfg.batch_size.grid_fno
             num_ranks = dist.world_size
             if dist.rank == 0:
@@ -892,9 +892,8 @@ def load_and_setup_training_data(
             batch_sizee = int(temp)
             if batch_sizee < 1:
                 batch_sizee = 1
-            batch_sizee = steppi
         else:
-            batch_sizee = steppi
+            batch_sizee = 1
     dataset_train = Labelledset(data, dist.device)
     train_sampler = DistributedSampler(
         dataset_train,
