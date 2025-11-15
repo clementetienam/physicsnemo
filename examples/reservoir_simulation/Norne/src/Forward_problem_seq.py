@@ -598,49 +598,10 @@ def main(cfg: DictConfig) -> None:
         epoch,
     ):
         # Prepare input tensors
-        if cfg.custom.model_type == "FNO":
-            tensors = [
-                value for value in inputin.values() if isinstance(value, torch.Tensor)
-            ]
-            input_tensor = torch.cat(tensors, dim=1)
-        
-        else:
-            # --------------------------------------------------------------
-            # Prepare input tensors with small *relative* noise on evolving state
-            # --------------------------------------------------------------
-
-            noise_rel  = float(getattr(cfg.loss, "noise_rel", 0.05))  # 5% relative noise
-            noise_abs  = float(getattr(cfg.loss, "noise_abs", 0.001)) # fallback for tiny values
-            noise_prob = float(getattr(cfg.loss, "noise_prob", 0.5))  # 50% probability
-
-            noisy_tensors = []
-            for key, value in inputin.items():
-                if not isinstance(value, torch.Tensor):
-                    continue
-
-                v = value
-
-                # Apply noise ONLY on previous-state channels
-                if key in ("pini", "sini", "sgini", "soini") and model.training:
-
-                    if noise_prob > 0.0 and torch.rand((), device=v.device) < noise_prob:
-
-                        # --- Relative noise: eps ~ N(0, noise_rel * v) ---
-                        rel_eps = torch.randn_like(v) * (noise_rel * v)
-
-                        # --- Absolute fallback for tiny values ---
-                        abs_eps = torch.randn_like(v) * noise_abs
-
-                        # Combine (if v is small, rel_eps is tiny → abs_eps dominates)
-                        eps = rel_eps + abs_eps
-
-                        # Add noise and clamp
-                        v = (v + eps).clamp(0.0, 1.0)
-
-                noisy_tensors.append(v)
-
-            input_tensor = torch.cat(noisy_tensors, dim=1)
-
+        tensors = [
+            value for value in inputin.values() if isinstance(value, torch.Tensor)
+        ]
+        input_tensor = torch.cat(tensors, dim=1)
             
         input_tensor_p = inputin_p["X"]
         nz = input_tensor.shape[2]
@@ -744,102 +705,6 @@ def main(cfg: DictConfig) -> None:
             )
             loss += gas_loss
             metrics_accumulator["gas_loss"] += gas_loss.item()
-        
-        if cfg.custom.model_type == "FNO":
-            # ------------------------------------------------------------------
-            # Gaussian-noise-robust forward on evolving state only (relative)
-            # ------------------------------------------------------------------
-            # Safe defaults if not present in cfg.loss
-            if not hasattr(cfg.loss, "noise_rel"):
-                cfg.loss.noise_rel = 0.05   # 5% relative noise
-            if not hasattr(cfg.loss, "noise_abs"):
-                cfg.loss.noise_abs = 0.001  # small absolute floor
-            if not hasattr(cfg.loss, "noise_cycle_weight"):
-                cfg.loss.noise_cycle_weight = 0.01
-            if not hasattr(cfg.loss, "noise_prob"):
-                cfg.loss.noise_prob = 0.5   # 50% of the time
-
-            noise_rel = float(getattr(cfg.loss, "noise_rel", 0.05))
-            noise_abs = float(getattr(cfg.loss, "noise_abs", 0.001))
-            noise_w   = float(getattr(cfg.loss, "noise_cycle_weight", 0.01))
-            noise_p   = float(getattr(cfg.loss, "noise_prob", 0.5))  # 1.0 => always add noise
-
-            if noise_w > 0.0 and noise_p > 0.0 and model.training:
-                # Keep original key order & channel slices
-                items = [(k, v) for k, v in inputin.items() if isinstance(v, torch.Tensor)]
-                key_slices = {}
-                cumsum = 0
-                for k, v in items:
-                    c = v.shape[1]
-                    key_slices[k] = (cumsum, cumsum + c)
-                    cumsum += c
-
-                # Assemble a noised version in the SAME order as input_temp
-                assembled_noisy = []
-                for k, v in items:
-                    s0, s1 = key_slices[k]
-                    slice_k = input_temp[:, s0:s1, ...]  # (B, c_k, nz, nx, ny)
-
-                    if k in ("pini", "sini", "sgini", "soini"):
-                        # stochastic application per batch
-                        if noise_p >= 1.0 or torch.rand((), device=slice_k.device) < noise_p:
-                            # relative scale based on current value
-                            scale = noise_rel * slice_k + noise_abs
-                            eps   = torch.randn_like(slice_k) * scale
-                            slice_k = (slice_k + eps).clamp(0.0, 1.0)
-
-                    assembled_noisy.append(slice_k)
-
-                input_tensor_noisy = torch.cat(assembled_noisy, dim=1)
-
-                # Forward (cycle 2) on noised input
-                if "PRESSURE" in output_variables:
-                    pressure_noisy = model(input_tensor_noisy, mode="pressure")["pressure"]
-                    pressure_loss_noisy = loss_func(
-                        pressure_noisy,
-                        target_chunks["pressure"]["pressure"],
-                        "eliptical",
-                        cfg.loss.weights.pressure,
-                        p=2.0,
-                    )
-                    loss += noise_w * pressure_loss_noisy
-                    metrics_accumulator["pressure_loss"] += noise_w * pressure_loss_noisy.item()
-
-                if "SWAT" in output_variables:
-                    water_noisy = model(input_tensor_noisy, mode="saturation")["saturation"]
-                    water_loss_noisy = loss_func(
-                        water_noisy,
-                        target_chunks["saturation"]["water_sat"],
-                        "hyperbolic",
-                        cfg.loss.weights.water_sat,
-                        p=2.0,
-                    )
-                    loss += noise_w * water_loss_noisy
-                    metrics_accumulator["water_loss"] += noise_w * water_loss_noisy.item()
-
-                if "SOIL" in output_variables:
-                    oil_noisy = model(input_tensor_noisy, mode="oil")["oil"]
-                    oil_loss_noisy = loss_func(
-                        oil_noisy,
-                        target_chunks["oil"]["oil_sat"],
-                        "hyperbolic",
-                        cfg.loss.weights.oil_sat,
-                        p=2.0,
-                    )
-                    loss += noise_w * oil_loss_noisy
-                    metrics_accumulator["oil_loss"] += noise_w * oil_loss_noisy.item()
-
-                if "SGAS" in output_variables:
-                    gas_noisy = model(input_tensor_noisy, mode="gas")["gas"]
-                    gas_loss_noisy = loss_func(
-                        gas_noisy,
-                        target_chunks["gas"]["gas_sat"],
-                        "hyperbolic",
-                        cfg.loss.weights.gas_sat,
-                        p=2.0,
-                    )
-                    loss += noise_w * gas_loss_noisy
-                    metrics_accumulator["gas_loss"] += noise_w * gas_loss_noisy.item()
                              
         # PINO physics loss
         if (
