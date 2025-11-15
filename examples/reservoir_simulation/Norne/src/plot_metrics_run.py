@@ -55,8 +55,16 @@ def plot_all_metrics(cfg, mlruns_root: Path | str = None):
             return None
 
     # --- Choose model folder based on cfg ---
-    model_dir = Path("../MODELS/PINO") if cfg.custom.fno_type == "PINO" else Path("../MODELS/FNO")
-
+    if cfg.custom.model_type == "FNO":
+        if cfg.custom.fno_type == "PINO"
+            model_dir = Path("../MODELS/PINO") 
+        else:
+            model_dir = Path("../MODELS/FNO")
+    else:
+        if cfg.custom.fno_type == "PINO"
+            model_dir = Path("../MODELS/PI-TRANSOLVER") 
+        else:
+            model_dir = Path("../MODELS/TRANSOLVER")        
 
     # --- Locate mlruns metrics folder ---
     if mlruns_root is None:
