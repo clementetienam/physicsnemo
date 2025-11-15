@@ -363,7 +363,7 @@ def load_and_setup_training_data(
     if "Sini" in X_data1:
         data["sini"] = cSini  # * effec_abbi
     if "Fault" in X_data1:
-        data["fault"] = cfault  # * effec_abbi
+        data["fault"] = cfault/100  # * effec_abbi
     if "Pressure" in X_data1:
         data["pressure"] = cPress  # * effec_abbi
     if "Water_saturation" in X_data1:
@@ -479,7 +479,7 @@ def load_and_setup_training_data(
     if "permeability" in X_data1t:
         data_test["perm"] = cPerm  # * effec_abbi
     if "Fault" in X_data1t:
-        data_test["fault"] = cfault  # * effec_abbi
+        data_test["fault"] = cfault/100  # * effec_abbi
     if "porosity" in X_data1t:
         data_test["poro"] = cPhi  # * effec_abbi
     if "Pini" in X_data1t:
