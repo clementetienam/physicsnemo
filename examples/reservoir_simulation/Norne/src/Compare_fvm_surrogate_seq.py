@@ -642,7 +642,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 device=device,
                 n_layers=8,
                 n_hidden=32,
-                n_head=8,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -653,7 +653,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 device=device,
                 n_layers=8,
                 n_hidden=32,
-                n_head=8,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -677,7 +677,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 device=device,
                 n_layers=8,
                 n_hidden=32,
-                n_head=8,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -688,7 +688,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 device=device,
                 n_layers=8,
                 n_hidden=32,
-                n_head=8,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
     
