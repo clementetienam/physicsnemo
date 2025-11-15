@@ -494,7 +494,7 @@ def load_and_setup_training_data(
     if "Q" in X_data1:
         data["Q"] = cQ
     if "Fault" in X_data1:
-        data["fault"] = cfault
+        data["fault"] = cfault/100
     if "Qg" in X_data1:
         data["Qg"] = cQg  # [:, 0:1, :, :, :]
     if "Qw" in X_data1:
@@ -760,7 +760,7 @@ def load_and_setup_training_data(
     if "SOIL" in output_variables:
         data_test["soini"] = cSoini
     if "Fault" in X_data1t:
-        data_test["fault"] = cfault   # * effec_abbi
+        data_test["fault"] = cfault/100   # * effec_abbi
     if "Q" in X_data1t:
         data_test["Q"] = cQ
     if "Qg" in X_data1t:
