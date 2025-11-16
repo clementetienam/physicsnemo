@@ -520,10 +520,23 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
         cfg,
     )
     for key, value in inn.items():
-        logger.info(
-            "---------------------------------------------------------------------"
-        )
-        logger.info(f"For key '{key}':")
+        logger.info(f"For key in Training Data '{key}':")
+
+        # value is a torch.Tensor
+        has_inf = torch.isinf(value).any().item()
+        has_ninf = torch.isinf(value).any().item()
+        has_nan = torch.isnan(value).any().item()
+
+        vmin = torch.min(value).item()
+        vmax = torch.max(value).item()
+
+        logger.info(f"\tContains inf: {has_inf}")
+        logger.info(f"\tContains -inf: {has_ninf}")
+        logger.info(f"\tContains NaN: {has_nan}")
+        logger.info(f"\tSize = : {tuple(value.shape)}")
+        logger.info(f"\tMin value: {vmin}")
+        logger.info(f"\tMax value: {vmax}")
+        logger.info("--------------------------------------------------------------")
 
     logger.info("Finished constructing Pytorch inputs")
     logger.info("*******************Load the trained Forward models*******************")
