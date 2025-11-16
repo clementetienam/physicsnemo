@@ -517,7 +517,7 @@ def compare_and_analyze_results(
     
 
     frames = []
-    imgs = sorted(glob.glob("*Dynamic*"), key=sort_key)
+    imgs = sorted(glob.glob("*Dynamic*"), key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', x)])
     for i in imgs:
         new_frame = Image.open(i)
         frames.append(new_frame)
