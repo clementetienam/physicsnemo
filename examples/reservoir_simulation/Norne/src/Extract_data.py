@@ -23,6 +23,7 @@ limitations under the License.
 
 # 🛠 Standard Library
 import os
+import getpass
 import pickle
 import logging
 import warnings
@@ -62,12 +63,13 @@ from forward.gradients_extract import (
     scale_tensor_absS as scale_commandS,
     scale_tensor_absSin as scale_commandSin,
 )
-from forward.binaries_extract import check_and_remove_dirs
+
 from forward.machine_extract import Get_data_FFNN
 from data_extract.opm_extract_rates import (
     read_compdats2,
     read_compdats,
     safe_mean_std,
+    check_and_remove_dirs,
 )
 from data_extract.opm_extract_props_geostats import (
     process_task,
@@ -592,7 +594,7 @@ def main(cfg: DictConfig) -> None:
         "__pycache__/",
         "outputs/",
     ]
-    check_and_remove_dirs(directories_to_check, cfg.custom.file_response)
+    check_and_remove_dirs(directories_to_check, cfg.custom.file_response, logger)
     logger.info(
         "|-----------------------------------------------------------------|"
     )
@@ -620,7 +622,7 @@ def main(cfg: DictConfig) -> None:
         experiment_desc="PhyNeMo launch development",
         run_name="Reservoir forward modelling with OPM",
         run_desc="Reservoir forward modelling data extraction",
-        user_name="Clement Etienam",
+        user_name=getpass.getuser(),
         mode="offline",
     )
 
