@@ -172,7 +172,7 @@ if [[ "$OPERATION_CHOICE" == "1" ]]; then
   
   echo "🚀*******************************************"
   echo "🚀 Running the Mixture of Experts.................."
-  ( run_torch 1 "$PYTHON_SCRIPT_7" ) 2>&1 | tee -a "$LOG_FILE7"
+  ( run_torch 1 "$PYTHON_SCRIPT_6" ) 2>&1 | tee -a "$LOG_FILE6"
 
   echo "🚀*******************************************"
   echo "🚀 Running the Comparison with the numerical solver..."
