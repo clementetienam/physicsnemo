@@ -625,7 +625,7 @@ def process_final_results(
 
     if dist.rank == 0:
         frames = []
-        imgs = sorted(glob.glob("*Dynamic*"), key=sort_key)
+        imgs = sorted(glob.glob("*Dynamic*"), key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', x)])
         for i in imgs:
             new_frame = Image.open(i)
             frames.append(new_frame)
@@ -873,7 +873,7 @@ def process_final_results(
         time.sleep(1)
         os.chdir(to_absolute_path("../RESULTS/HM_RESULTS/BEST_RESERVOIR_MODEL"))
         frames = []
-        imgs = sorted(glob.glob("*Dynamic*"), key=sort_key)
+        imgs = sorted(glob.glob("*Dynamic*"), key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', x)])
         for i in imgs:
             new_frame = Image.open(i)
             frames.append(new_frame)
@@ -1100,7 +1100,7 @@ def process_final_results(
         time.sleep(1)
         os.chdir(to_absolute_path("../RESULTS/HM_RESULTS/MEAN_RESERVOIR_MODEL"))
         frames = []
-        imgs = sorted(glob.glob("*Dynamic*"), key=sort_key)
+        imgs = sorted(glob.glob("*Dynamic*"), key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', x)])
         for i in imgs:
             new_frame = Image.open(i)
             frames.append(new_frame)
