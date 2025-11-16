@@ -592,16 +592,16 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
             "|-----------------------------------------------------------------|"
         )
 
-        if cfg.custom.model_saturation == "FNO":
-            logger.info(
-                "|-------------------------------------------------------------------------|"
-            )
-            logger.info(
-                "|   PRESSURE MODEL = FNO;   SATUARATION MODEL = FNO; PEACEMAN MODEL = FNO |"
-            )
-            logger.info(
-                "|-------------------------------------------------------------------------|"
-            )
+
+        logger.info(
+            "|-------------------------------------------------------------------------|"
+        )
+        logger.info(
+            "|   PRESSURE MODEL = FNO;   SATUARATION MODEL = FNO; PEACEMAN MODEL = FNO |"
+        )
+        logger.info(
+            "|-------------------------------------------------------------------------|"
+        )
 
         models = {}
         base_paths = {
@@ -707,16 +707,16 @@ Gaussian Process Experts. arXiv prelogger.info arXiv:2006.13309, 2020.\n"
             "|-----------------------------------------------------------------|"
         )
 
-        if cfg.custom.model_saturation == "FNO":
-            logger.info(
-                "|-------------------------------------------------------------------------|"
-            )
-            logger.info(
-                "|   PRESSURE MODEL = FNO;   SATUARATION MODEL = FNO; PEACEMAN MODEL = FNO |"
-            )
-            logger.info(
-                "|-------------------------------------------------------------------------|"
-            )
+
+        logger.info(
+            "|-------------------------------------------------------------------------|"
+        )
+        logger.info(
+            "|   PRESSURE MODEL = FNO;   SATUARATION MODEL = FNO; PEACEMAN MODEL = FNO |"
+        )
+        logger.info(
+            "|-------------------------------------------------------------------------|"
+        )
         models = {}
         base_paths = {
             "pressure": "./checkpoints_pressure",
