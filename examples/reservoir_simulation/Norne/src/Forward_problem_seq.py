@@ -48,6 +48,7 @@ Outputs:
 """
 
 import os
+import getpass
 import copy
 import time
 import pickle
@@ -226,7 +227,7 @@ def main(cfg: DictConfig) -> None:
             experiment_desc="PhyNeMo launch development",
             run_name="Reservoir bacth forward modelling",
             run_desc="Reservoir batch forward modelling training",
-            user_name="Clement Etienam",
+            user_name=getpass.getuser(),
             mode="offline",
         )
         logger = PythonLogger(name=" PhyNeMo Reservoir_Characterisation")
