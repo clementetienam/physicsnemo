@@ -787,6 +787,7 @@ def ensemble_pytorch(
             flt.append(Fault)
         flt = np.stack(flt, axis=0)[:, None, :, :, :]
         faultz = np.stack(flt, axis=0)
+        faultz = faultz/100
     ini_ensembles = {}
     if "PERM" in input_variables:
         ini_ensembles["perm"] = np.zeros((Ne, 1, nz, nx, ny), dtype=np.float32)
