@@ -1,330 +1,351 @@
-# ======================================================================
-# NVIDIA PHYSIC-NEMO RESERVOIR SIMULATION CONFIGURATION DECK
-# ======================================================================
+# ================================================================================
+# NVIDIA PHYSICS-INFORMED NEURAL OPERATOR RESERVOIR SIMULATION CONFIGURATION
+# ================================================================================
+# NVIDIA Physics-NeMo Reservoir Simulation Configuration Deck
 #
-# SPDX-FileCopyrightText: Copyright (c) 2024 - 2025 NVIDIA CORPORATION & AFFILIATES.
-# SPDX-FileCopyrightText: All rights reserved.
+# This configuration deck defines parameters for reservoir simulation using
+# physics-informed neural operators for both forward modeling and inverse problems.
+# The configuration supports uncertainty quantification, ensemble methods, and
+# various neural operator architectures including FNO, PINO, and Transformer-based
+# solvers.
+#
+# Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
 # Author: Clement Etienam
-#
-# Description: Main configuration deck for reservoir simulation models
-# including forward modeling, inverse problems, and uncertainty quantification
-# using NVIDIA Physics-NeMo neural operators.
-# ======================================================================
+# Version: 1.0
 
-# Custom application-specific configurations
+# ================================================================================
+# CUSTOM APPLICATION-SPECIFIC CONFIGURATIONS
+# ================================================================================
 custom:
-  # ======================================================================
-  # WELL SPECIFICATIONS - Defines saturation tables for water-oil (SWOW) and water-gas (SWOG) relationships
-  # ======================================================================
+  # ================================================================================
+  # PHASE RELATIVE PERMEABILITY TABLES
+  # ================================================================================
+  # WELLSPECS: Defines phase relative permeability relationships for reservoir fluids
+  # SWOW: Water-Oil system [Sw, Krw, Kro] where Sw is water saturation, Krw is water
+  #       relative permeability, and Kro is oil relative permeability
+  # SWOG: Oil-Gas system [So, Kro, Krg] where So is oil saturation, Kro is oil
+  #       relative permeability, and Krg is gas relative permeability
   WELLSPECS:
-    # SWOW: Water-oil saturation function [Water saturation, water relative permeability, oil relative permeability]
+    # Water-Oil relative permeability table (drainage curve)
     SWOW:
-      - [0.00, 1.0, 0.0]
-      - [0.30, 1.0, 0.0]
-      - [0.35, 0.59, 0.01]
-      - [0.40, 0.32, 0.02]
-      - [0.45, 0.18, 0.034]
-      - [0.50, 0.08, 0.046]
-      - [0.55, 0.03, 0.068]
-      - [0.60, 0.01, 0.09]
+      - [0.00, 1.000, 0.000]    # Connate water saturation
+      - [0.30, 1.000, 0.000]    # Residual oil saturation region
+      - [0.35, 0.590, 0.010]    # Transition zone start
+      - [0.40, 0.320, 0.020]
+      - [0.45, 0.180, 0.034]
+      - [0.50, 0.080, 0.046]
+      - [0.55, 0.030, 0.068]
+      - [0.60, 0.010, 0.090]
       - [0.65, 0.001, 0.128]
       - [0.70, 0.0001, 0.166]
-      - [0.75, 0.0, 0.2]
-      - [0.80, 0.0, 0.24]
-      - [1.00, 0.0, 0.24]
+      - [0.75, 0.0000, 0.200]   # Residual water saturation region
+      - [0.80, 0.0000, 0.240]
+      - [1.00, 0.0000, 0.240]   # Maximum water saturation
     
-    # SWOG: Oil-gas saturation function [Oil saturation, oil relative permeability, gas relative permeability]
+    # Oil-Gas relative permeability table (drainage curve)
     SWOG:
-      - [0.00, 1.0, 0.0]
-      - [0.03, 0.75, 0.0]
-      - [0.05, 0.59, 0.02]
-      - [0.10, 0.32, 0.09]
-      - [0.15, 0.18, 0.16]
-      - [0.20, 0.08, 0.24]
-      - [0.25, 0.03, 0.33]
-      - [0.30, 0.01, 0.43]
-      - [0.35, 0.001, 0.55]
-      - [0.40, 0.0, 0.67]
-      - [0.45, 0.0, 0.81]
-      - [0.50, 0.0, 1.0]
-      - [1.00, 0.0, 1.0]
+      - [0.00, 1.000, 0.000]    # Critical gas saturation
+      - [0.03, 0.750, 0.000]
+      - [0.05, 0.590, 0.020]    # Transition zone start
+      - [0.10, 0.320, 0.090]
+      - [0.15, 0.180, 0.160]
+      - [0.20, 0.080, 0.240]
+      - [0.25, 0.030, 0.330]
+      - [0.30, 0.010, 0.430]
+      - [0.35, 0.001, 0.550]
+      - [0.40, 0.000, 0.670]    # Residual oil saturation
+      - [0.45, 0.000, 0.810]
+      - [0.50, 0.000, 1.000]
+      - [1.00, 0.000, 1.000]    # Maximum gas saturation
 
-  # ======================================================================
-  # PROPS: Defines fluid and rock properties
-  # ======================================================================
+  # ================================================================================
+  # RESERVOIR FLUID AND ROCK PROPERTIES
+  # ================================================================================
+  # PROPS: Defines fundamental reservoir rock and fluid properties including
+  #        PVT behavior, initial conditions, and spatial discretization
   PROPS:
-    # Fluid properties
-    BO: 1.2                    # Oil formation volume factor (rb/stb)
-    UW: 1.0                    # Water viscosity (centipoise)
-    UO: 2.5                    # Oil viscosity (centipoise)
-    BW: 1.0                    # Water formation volume factor (rb/stb)
+    # PVT Properties
+    BO: 1.2                    # Oil formation volume factor (RB/STB)
+    UW: 1.0                    # Water viscosity (cP)
+    UO: 2.5                    # Oil viscosity (cP) 
+    BW: 1.0                    # Water formation volume factor (RB/STB)
     
-    # Saturation properties
+    # Initial Saturation Conditions
     SWI: 0.1                   # Initial water saturation (fraction)
     SWR: 0.1                   # Residual water saturation (fraction)
-    S1: 0.2                    # Initial water saturation (fraction)
+    S1: 0.2                    # Initial water saturation - alternative (fraction)
     SG1: 0.01                  # Initial gas saturation (fraction)
     SO1: 0.8                   # Initial oil saturation (fraction)
     
-    # Compressibility properties
+    # Fluid Compressibility
     CFW: 1e-05                 # Water compressibility (1/psi)
-    CFO: 1e-05                 # Oil compressibility (1/psi)
-    CT: 2e-05                  # Total compressibility (1/psi)
+    CFO: 1e-05                 # Oil compressibility (1/psi) 
+    CT: 2e-05                  # Total system compressibility (1/psi)
     
-    # Pressure properties
-    P1: 3000.0                 # Initial pressure (psi)
+    # Pressure Conditions
+    P1: 3000.0                 # Initial reservoir pressure (psi)
     PB: 3000.0                 # Bubble point pressure (psi)
     PATM: 14.7                 # Atmospheric pressure (psi)
-    initial_pressure: 3000.0   # Initial pressure (psi)
+    initial_pressure: 3000.0   # Initial pressure - alternative (psi)
     initial_water_saturation: 0.20000000298023224  # Initial water saturation (fraction)
     
-    # Density properties (specific gravity)
-    RHOW: 1.0                  # Water density
-    RHOG: 1.0                  # Gas density
-    RHOO: 1.0                  # Oil density
+    # Fluid Densities (specific gravity relative to water)
+    RHOW: 1.0                  # Water density (g/cc)
+    RHOG: 1.0                  # Gas density (g/cc)
+    RHOO: 1.0                  # Oil density (g/cc)
     
-    # Grid dimensions
-    nx: 46                     # Number of grid blocks in x-direction
-    ny: 112                    # Number of grid blocks in y-direction
-    nz: 22                     # Number of grid blocks in z-direction
+    # Reservoir Grid Dimensions
+    nx: 46                     # Grid blocks in x-direction
+    ny: 112                    # Grid blocks in y-direction  
+    nz: 22                     # Grid blocks in z-direction
     
-    # Static rock properties
+    # Rock Property Ranges
     minn: 50.0                 # Minimum permeability (mD)
     maxx: 20000.0              # Maximum permeability (mD)
     minnp: 0.01                # Minimum porosity (fraction)
     maxxp: 0.6                 # Maximum porosity (fraction)
 
-  # ======================================================================
-  # Geostatistical parameters
-  # ======================================================================
+  # ================================================================================
+  # GEOSTATISTICAL PARAMETERS FOR RESERVOIR CHARACTERIZATION
+  # ================================================================================
+  # geostats: Defines spatial correlation and variability parameters for
+  #           reservoir property modeling using geostatistical methods
   geostats:
-    varr: 4                    # Variance of permeability field
+    varr: 4                    # Variance of permeability field (log-normal)
     len_scale: 5               # Correlation length scale (grid blocks)
-    type_geo: 2                # Geostatistical type: 1=Gaussian prior, 2=Norne field prior
+    type_geo: 2                # Geostatistical type: 1=Gaussian, 2=Norne field prior
 
-  # ======================================================================
-  # INVERSE_PROBLEM: Parameters for inverse modeling
-  # ======================================================================
+  # ================================================================================
+  # INVERSE PROBLEM CONFIGURATION - HISTORY MATCHING AND PARAMETER ESTIMATION
+  # ================================================================================
+  # INVERSE_PROBLEM: Configures ensemble-based history matching and parameter
+  #                  estimation using variational and transform-based methods
   INVERSE_PROBLEM:
-    DEFAULT: "Yes"                     # Enable default inverse problem settings
-    parametrization_options: "No"    # Enable domain parametrization [Yes, No]
-    DO_DCT: "Yes"                     # Apply Discrete Cosine Transform [Yes, No]
-    Do_param_method: "VCAE"           # Parameterization method: "DCT" or "VCAE"
-    DCT: 15                           # Percentage of DCT coefficients used (10-50%)
-    Pretrained Model: "Yes"           # Use pretrained model [Yes, No]
-    Train_Moe: "MoE"                  # Model training method: "FNO" or "MoE"
-    Decorrelationn: "No"              # Apply ensemble decorrelation [Yes, No]
-    Generate_ensemble: "pre-trained"  # Ensemble generation: "afresh" or "pre-trained"
-    Covariance_localisation: "Yes"     # Apply covariance localization [Yes, No]
-    CD_matrix: "Percentage of data value"  # Covariance matrix type
-    Ensemble_size: 500                # Number of ensemble members
-    Recommend_alpha: "Yes"            # Use recommended alpha value [Yes, No]
-    iteration_count: 20               # Number of iterations
-    Noise_level: 25.0                # Noise level (percentage)
+    DEFAULT: "Yes"                     # Enable default inverse problem framework
+    parametrization_options: "No"      # Enable domain parametrization [Yes/No]
+    DO_DCT: "Yes"                      # Apply Discrete Cosine Transform [Yes/No]
+    Do_param_method: "VCAE"            # Parameterization method: "DCT" or "VCAE"
+    DCT: 15                            # Percentage of DCT coefficients retained (10-50%)
+    Pretrained_Model: "Yes"            # Use pretrained generative model [Yes/No]
+    Train_Moe: "MoE"                   # Model training: "FNO" or "MoE" (Mixture of Experts)
+    Decorrelationn: "No"               # Apply ensemble decorrelation [Yes/No]
+    Generate_ensemble: "pre-trained"   # Ensemble generation: "afresh" or "pre-trained"
+    Covariance_localisation: "Yes"     # Apply covariance localization [Yes/No]
+    CD_matrix: "Percentage of data value"  # Covariance matrix specification method
+    Ensemble_size: 500                 # Number of ensemble realizations
+    Recommend_alpha: "Yes"             # Use recommended inflation factor [Yes/No]
+    iteration_count: 20                # Maximum iteration count for inversion
+    Noise_level: 25.0                  # Measurement noise level (percentage)
 
-  # ======================================================================
-  # INCLUDE FILES AND NUMERICAL SOLVER CONFIGURATION
-  # ======================================================================
-  PERMX_INCLUDE: "permx.dat"                    # Permeability include file name
-  PORO_INCLUDE: "porosity.dat"                 # Porosity include file name
-  FAULT_INCLUDE: "multflt.dat"                # Fault multiplier include file name
-  FAULT_INCLUDEE: "../simulator_data/multflt.dat" # Permanent fault multiplier file location
-  interest: "No"                              # Run numerical solver [Yes, No]
+  # ================================================================================
+  # RESERVOIR SIMULATION DATA FILES AND NUMERICAL SOLVER CONFIGURATION
+  # ================================================================================
+  # File paths and configurations for reservoir simulation input data and
+  # numerical solver selection
+  PERMX_INCLUDE: "permx.dat"                    # Permeability distribution file
+  PORO_INCLUDE: "porosity.dat"                  # Porosity distribution file  
+  FAULT_INCLUDE: "multflt.dat"                  # Fault transmissibility multiplier file
+  FAULT_INCLUDEE: "../simulator_data/multflt.dat" # Permanent fault multiplier path
+  interest: "No"                               # Enable numerical solver [Yes/No]
   
-  file_location: "../simulator_data"              # Directory containing simulation files
-  numerical_solver: "flow"                    # Numerical solver: "flow", "IX", "echelon"
-  COMPLETIONS_DATA: "../simulator_data/NORPT_NOKH.SCH"     # Well completions data file
-  FAULT_DATA: "../simulator_data/FAULT_JUN_05.INC"         # Fault data file
-  DECK: "../simulator_data/FULLNORNE.DATA"                # Main simulation deck file
-  SUMMARY_DATA: "../simulator_data/summaryShort.inc"      # Summary file
+  file_location: "../simulator_data"           # Root directory for simulation data
+  numerical_solver: "flow"                     # Numerical solver: "flow", "IX", "echelon"
+  COMPLETIONS_DATA: "../simulator_data/NORPT_NOKH.SCH"  # Well completions schedule
+  FAULT_DATA: "../simulator_data/FAULT_JUN_05.INC"      # Fault definitions
+  DECK: "../simulator_data/FULLNORNE.DATA"              # Main simulation deck
+  SUMMARY_DATA: "../simulator_data/summaryShort.inc"    # Simulation summary output
 
-  # ======================================================================
-  # WELL MEASUREMENTS TO MATCH
-  # Available measurements: 'TIME','WBHP', 'WBHPH', 'WBP', 'WGIR', 'WGLIR',
-  # 'WGOR', 'WGORH', 'WGPR', 'WGPRH', 'WLPR', 'WLPRH', 'WLPT', 'WMCON',
-  # 'WOPR', 'WOPRH', 'WPI', 'WWCT', 'WWCTH', 'WWIR', 'WWIRH', 'WWPR', 'WWPRH','YEARS'
-  # ======================================================================
+  # ================================================================================
+  # WELL MEASUREMENT DATA FOR HISTORY MATCHING
+  # ================================================================================
+  # well_measurements: Defines production data types to be matched during
+  #                    history matching and inverse modeling
+  # Available measurements: 
+  # 'TIME','WBHP','WBHPH','WBP','WGIR','WGLIR','WGOR','WGORH','WGPR','WGPRH',
+  # 'WLPR','WLPRH','WLPT','WMCON','WOPR','WOPRH','WPI','WWCT','WWCTH','WWIR',
+  # 'WWIRH','WWPR','WWPRH','YEARS'
   well_measurements:
-    - "WOPR"  # Well Oil Production Rate
-    - "WWPR"  # Well Water Production Rate
-    - "WGPR"  # Well Gas Production Rate
+    - "WOPR"  # Well Oil Production Rate (STB/day)
+    - "WWPR"  # Well Water Production Rate (STB/day) 
+    - "WGPR"  # Well Gas Production Rate (MSCF/day)
 
-  # ======================================================================
-  # BATCH FORWARD MODEL CONFIGURATION
-  # Available inputs: ['PERM','PORO','FAULT','PERMZ','OWC','GOC','PINI','SINI']
-  # Available outputs: ['PRESSURE','SWAT','SGAS','SOIL']
-  # ======================================================================
-  input_properties:           # Reservoir input parameters to vary
-    - "PERM"      # Permeability
-    - "PORO"      # Porosity
-    - "FAULT"     # Fault multiplier
-    - "PINI"      # Initial pressure
-    - "SINI"      # Initial water saturation
-    - "SGINI"     # Initial gas saturation
-    - "SOINI"     # Initial oil saturation
+  # ================================================================================
+  # BATCH FORWARD MODEL CONFIGURATION - STATIC TO DYNAMIC MAPPING
+  # ================================================================================
+  # Batch forward model maps static reservoir properties to dynamic state variables
+  # Inputs: Static reservoir characterization parameters
+  # Outputs: Dynamic reservoir state variables over time
+  input_properties:           # Static reservoir input parameters
+    - "PERM"      # Permeability field
+    - "PORO"      # Porosity field  
+    - "FAULT"     # Fault transmissibility multipliers
+    - "PINI"      # Initial pressure distribution
+    - "SINI"      # Initial water saturation distribution
+    - "SGINI"     # Initial gas saturation distribution
+    - "SOINI"     # Initial oil saturation distribution
 
-  output_properties:          # Reservoir dynamic properties to predict
-    - "PRESSURE"  # Pressure field
-    - "SWAT"      # Water saturation
-    - "SGAS"      # Gas saturation
-    - "SOIL"      # Oil saturation
+  output_properties:          # Dynamic reservoir output states
+    - "PRESSURE"  # Pressure field evolution
+    - "SWAT"      # Water saturation evolution  
+    - "SGAS"      # Gas saturation evolution
+    - "SOIL"      # Oil saturation evolution
 
-  # ======================================================================
-  # SEQUENTIAL FORWARD MODEL CONFIGURATION
-  # Available inputs: ['PERM','PORO','FAULT','PRESSURE_PRIOR','SWAT_PRIOR', 
-  # 'SGAS_PRIOR','WGIR','WWIR','WTIR','DELTA_TIME','TIME']
-  # Available outputs: ['PRESSURE','SWAT','SGAS','DELTA_PRESSURE','DELTA_SWAT','DELTA_SGAS']
-  # ======================================================================
-  input_properties2:          # Sequential input parameters
-    - "PERM"              # Permeability
-    - "PORO"              # Porosity
-    - "FAULT"             # Fault multiplier
-    - "PRESSURE_PRIOR"    # Prior pressure (P_t)
-    - "SWAT_PRIOR"        # Prior water saturation (SW_t)
-    - "SGAS_PRIOR"        # Prior gas saturation (SG_t)
-    - "SOIL_PRIOR"        # Prior oil saturation (SO_t)
+  # ================================================================================
+  # SEQUENTIAL FORWARD MODEL CONFIGURATION - TIME-STEPPING APPROACH
+  # ================================================================================
+  # Sequential forward model performs autoregressive time-stepping using
+  # current state and well controls to predict next time step
+  input_properties2:          # Sequential model inputs (time t)
+    - "PERM"              # Static permeability field
+    - "PORO"              # Static porosity field
+    - "FAULT"             # Fault multipliers
+    - "PRESSURE_PRIOR"    # Pressure at current time (P_t)
+    - "SWAT_PRIOR"        # Water saturation at current time (SW_t)
+    - "SGAS_PRIOR"        # Gas saturation at current time (SG_t) 
+    - "SOIL_PRIOR"        # Oil saturation at current time (SO_t)
     - "WGIR"              # Well gas injection rate
     - "WWIR"              # Well water injection rate
     - "WTIR"              # Well total injection rate
-    - "DELTA_TIME"        # Time increment (|t_next - t|)
-    - "TIME"              # Current time
+    - "DELTA_TIME"        # Time step size (Δt)
+    - "TIME"              # Current simulation time
 
-  output_properties2:         # Sequential output parameters
-    - "PRESSURE"         # Pressure field (P_t+1)
-    - "SWAT"             # Water saturation (SW_t+1)
-    - "SGAS"             # Gas saturation (SG_t+1)
-    - "SOIL"             # Oil saturation (SO_t+1)
+  output_properties2:         # Sequential model outputs (time t+1)
+    - "PRESSURE"         # Pressure at next time (P_t+1)
+    - "SWAT"             # Water saturation at next time (SW_t+1)
+    - "SGAS"             # Gas saturation at next time (SG_t+1)
+    - "SOIL"             # Oil saturation at next time (SO_t+1)
     - "DELTA_PRESSURE"   # Pressure change (|P_t+1 - P_t|)
     - "DELTA_SWAT"       # Water saturation change (|SW_t+1 - SW_t|)
     - "DELTA_SGAS"       # Gas saturation change (|SG_t+1 - SG_t|)
     - "DELTA_SOIL"       # Oil saturation change (|SO_t+1 - SO_t|)
 
-  # ======================================================================
-  # FORWARD_PROBLEM: Parameters for forward modeling
-  # ======================================================================
-  
-  # Distributed Learning Configuration
-  model_Distributed: 1        # Multi-GPU (1) or Single-GPU (2)
-  model_type: "FNO"           # model: "FNO" or "TRANSOLVER"
-  fno_type: "FNO"             # Neural operator type: "FNO" -DATA DRIVEN or "PINO" -PHYSICS + DATA DRIVEN  
-  allowable_size: 30          # Allowable size of nz accurate with batch FNO architecture
+  # ================================================================================
+  # NEURAL OPERATOR ARCHITECTURE AND TRAINING CONFIGURATION
+  # ================================================================================
+  # FORWARD_PROBLEM: Configures neural operator architectures, training strategies,
+  #                  and physics-informed learning approaches
+  # Distributed Computing Configuration
+  model_Distributed: 1        # Multi-GPU training: 1=Multi-GPU, 2=Single-GPU
+  model_type: "FNO"           # Neural operator architecture: "FNO" or "TRANSOLVER"
+  fno_type: "FNO"             # Operator variant: "FNO" (data-driven) or "PINO" (physics-informed)
+  unroll: "TRUE"              # Enable autoregressive training [TRUE/FALSE]
+  unroll_cost: "AUTO"         # Autoregressive strategy: "AUTO" (model predictions) or "BOTH" (mixed inputs)
+  allowable_size: 30          # Maximum allowable nz dimension for FNO architecture
 
-  # Model training and solver options
-  train_interest: 1            # Modulus configuration: 1=Fixed, 2=Flexible
-  fno_typee: 2                # Loss computation: 1=Peaceman+Darcy, 2=Flexible Modulus
-  Relperm: 2                  # Relative permeability: 1=Corey, 2=Stone II
+  # Physics and Numerical Method Selection
+  train_interest: 1           # Modulus configuration: 1=Fixed, 2=Flexible
+  fno_typee: 2                # Loss computation method: 1=Peaceman+Darcy, 2=Flexible Modulus
+  Relperm: 2                  # Relative permeability model: 1=Corey, 2=Stone II
   pde_method: 1               # PDE gradient computation: 1=Approximate, 2=Extensive
-  gradient_method: "fdm"       # Gradient computation method
+  gradient_method: "fdm"      # Numerical gradient method: "fdm" (finite difference)
 
-  # Dataset configuration
-  ntrain: 100                  # Number of training samples
-  nval: 1                      # Number of validation samples
-  ntest: 1                     # Number of test samples
+  # Dataset Configuration
+  ntrain: 100                 # Number of training samples
+  nval: 1                     # Number of validation samples
+  ntest: 1                    # Number of test samples
 
-  # Mixture of Experts (MoE) configuration
-  Number_of_experts: 2         # Expert initialization: 1=Elbow method, 2=Constant cluster
-  Type_of_experts: 3           # Expert type: 1=Polynomial, 2=SparseGP, 3=XGBoost
-  iteration_experts: 1000      # Expert optimization iterations
+  # Mixture of Experts Configuration
+  Number_of_experts: 2        # Expert initialization: 1=Elbow method, 2=Constant
+  Type_of_experts: 3          # Expert type: 1=Polynomial, 2=SparseGP, 3=XGBoost
+  iteration_experts: 1000     # Maximum optimization iterations per expert
 
-  # Simulation configuration
-  steppi: 10                   # Number of recorded time steps
-  file_response: "yes"         # Delete folders prompt: "yes"/"no"
+  # Simulation Output Configuration
+  steppi: 10                  # Number of recorded time steps
+  file_response: "yes"        # Enable folder management prompt [yes/no]
 
-  # Graph Neural Network configuration
-  num_edges: 5                 # Number of edges per node
-  edge_feature_size: 3         # Edge feature embedding size
+  # Graph Neural Network Configuration
+  num_edges: 5                # Number of edges per node in graph construction
+  edge_feature_size: 3        # Edge feature embedding dimension
 
-  long_rollout: "gaussian"     # Long-horizon helper: "closed" (teacher forcing) or "gaussian" (noise-robust)
-# ======================================================================
-# LOSS FUNCTION WEIGHTS FOR DIFFERENT PHYSICAL PROPERTIES
-# ======================================================================
+  # Long-term Prediction Strategy
+  long_rollout: "gaussian"    # Long-horizon method: "closed" (teacher forcing) or "gaussian" (noise-robust)
+
+# ================================================================================
+# MULTI-OBJECTIVE LOSS FUNCTION CONFIGURATION
+# ================================================================================
+# loss: Defines weighted multi-objective loss function combining data fitting,
+#       physics constraints, and regularization terms for robust training
 loss:
   weights:
-    # Data fitting weights(↑ = stronger emphasis) ---
-    pressure: 2.0              # Pressure field data fitting
-    water_sat: 2.0             # Water saturation data fitting
-    oil_sat: 1.0               # Oil saturation data fitting
-    gas_sat: 2.0               # Gas saturation data fitting
-    Y: 1.0                     # Peacemann data fitting
+    # Primary Data Fitting Terms (increase for stronger data matching)
+    pressure: 2.0              # Pressure field reconstruction
+    water_sat: 2.0             # Water saturation matching
+    oil_sat: 1.0               # Oil saturation matching  
+    gas_sat: 2.0               # Gas saturation matching
+    Y: 1.0                     # Peacemann well model matching
+    autoregressive_weight: 0.1 # Autoregressive prediction penalty
     
-    # Sequential model weights(if used) ---
-    pafter: 1.0                # Sequential pressure data
-    dp: 1.0                    # Sequential delta pressure data
-    swafter: 1e-1              # Sequential water saturation data
-    dsww: 1e-1                 # Sequential delta water saturation data
-    sgafter: 5e-1              # Sequential gas saturation data
-    dsgg: 5e-1                 # Sequential delta gas saturation data
-    soafter: 1e-1              # Sequential oil saturation data
-    dsoo: 1e-1                 # Sequential delta oil saturation data
+    # Sequential Model Data Terms
+    pafter: 1.0                # Sequential pressure prediction
+    dp: 1.0                    # Pressure change prediction
+    swafter: 1e-1              # Sequential water saturation prediction
+    dsww: 1e-1                 # Water saturation change prediction
+    sgafter: 5e-1              # Sequential gas saturation prediction
+    dsgg: 5e-1                 # Gas saturation change prediction
+    soafter: 1e-1              # Sequential oil saturation prediction
+    dsoo: 1e-1                 # Oil saturation change prediction
     
-    # Physics enforcement weights (keep small; tune 1e-7–1e-3) ---
-    pressured: 1e-6            # Pressure PDE constraint
-    pressuredd: 1e-6           # Pressure constraint variant
-    oild: 1e-6                 # Oil saturation PDE constraint
-    saturationd: 1e-6          # Water saturation PDE constraint
-    saturationdd: 1e-6         # Water saturation PDE constraint variant
-    waterd: 1e-6               # Water PDE closed form
-    saturationdg: 1e-6         # Gas saturation PDE constraint
-    saturationdgd: 1e-6        # Gas saturation PDE constraint variant
-    gasd: 1e-6                 # Gas PDE closed form
-    peacemanned: 1e-6          # Peacemann analytical equation
+    # Physics-Informed Regularization (tune between 1e-7–1e-3)
+    pressured: 1e-6            # Pressure PDE residual
+    pressuredd: 1e-6           # Alternative pressure constraint
+    oild: 1e-6                 # Oil mass conservation
+    saturationd: 1e-6          # Water saturation transport
+    saturationdd: 1e-6         # Alternative water constraint
+    waterd: 1e-6               # Water phase closure
+    saturationdg: 1e-6         # Gas saturation transport
+    saturationdgd: 1e-6        # Alternative gas constraint
+    gasd: 1e-6                 # Gas phase closure
+    peacemanned: 1e-6          # Peacemann well model constraint
     
-  # --- Long-horizon robustness (noise cycle added in training_step) ---
-  noise_std: 0.02               # Gaussian σ added to evolving states (pini/sini/sgini/soini) in [0.01–0.05].
-  noise_cycle_weight: 0.01      # Loss weight for the noisy-cycle pass relative to clean pass (0.5–1.0).
-  noise_prob: 0.5               # Probability of applying noise per batch (0–1). 0.5=stochastic half of the time.
-  noise_rel: 0.05
-  noise_abs: 0.001
+  # Robust Training with Noise Injection
+  noise_std: 0.02              # Gaussian noise standard deviation for state variables
+  noise_cycle_weight: 0.01     # Relative weight for noisy training pass (0.5-1.0)
+  noise_prob: 0.5              # Probability of noise injection per batch (0-1)
+  noise_rel: 0.05              # Relative noise magnitude
+  noise_abs: 0.001             # Absolute noise floor
 
-# ======================================================================
-# LEARNING RATE SCHEDULER CONFIGURATION
-# ======================================================================
-scheduler:
-  decay_rate: 0.949999988079071  # Exponential decay factor per `decay_steps`.
-  decay_steps: 1000              # Steps between decay
-
-# ======================================================================
-# BATCH PROCESSING CONFIGURATION
-# ======================================================================
-batch_size:
-  grid_fno: 20                  # Grid processing batch size for FNO
-  grid_gnn: 1                   # Grid processing batch size for GNN
-  validation: 1                 # Validation batch size
-  test: 1                       # Test batch size
-
-# ======================================================================
-# TRAINING CONFIGURATION
-# ======================================================================
-training:
-  max_steps: 5000               # Maximum training steps
-
-# ======================================================================
-# OPTIMIZER CONFIGURATION
-# ======================================================================
-optimizer:
-  weight_decay: 1e-4            # L2 regularization weight decay
-  lr: 2e-3                      # Learning rate
-  gamma: 0.99998708             # Learning rate decay gamma
-
-# ======================================================================
-# GLOBAL SYSTEM CONFIGURATION
 # ================================================================================
-cuda_graphs: false             #"Enable CUDA graphs" # true or false
-jit: false                     #"Enable JIT" # true or false  
-use_mlflow: True               # Enable MLflow experiment tracking # True or False
-use_default: True              # Use default configurations # True or False
-ckpt_path: ./checkpoints       # Checkpoint directory path
+# LEARNING RATE SCHEDULING CONFIGURATION
+# ================================================================================
+# scheduler: Exponential learning rate decay configuration for stable convergence
+scheduler:
+  decay_rate: 0.949999988079071  # Exponential decay factor per decay_steps
+  decay_steps: 1000              # Number of steps between learning rate updates
+
+# ================================================================================
+# BATCH PROCESSING CONFIGURATION
+# ================================================================================
+# batch_size: Defines mini-batch sizes for different model architectures and phases
+batch_size:
+  grid_fno: 20                  # Batch size for Fourier Neural Operator training
+  grid_gnn: 1                   # Batch size for Graph Neural Network training
+  validation: 1                 # Validation batch size
+  test: 1                       # Testing batch size
+
+# ================================================================================
+# TRAINING PROCESS CONFIGURATION
+# ================================================================================
+# training: Defines stopping criteria and training duration parameters
+training:
+  max_steps: 1500               # Maximum training iterations
+
+# ================================================================================
+# OPTIMIZER AND REGULARIZATION CONFIGURATION
+# ================================================================================
+# optimizer: Adam optimizer configuration with weight decay and learning rate decay
+optimizer:
+  weight_decay: 1e-4            # L2 regularization strength
+  lr: 2e-3                      # Initial learning rate
+  gamma: 0.99998708             # Learning rate decay factor per epoch
+
+# ================================================================================
+# SYSTEM-LEVEL PERFORMANCE AND EXPERIMENT TRACKING CONFIGURATION
+# ================================================================================
+# Global system configurations for performance optimization and experiment management
+cuda_graphs: true               # Enable CUDA graphs for performance [true/false]
+jit: false                      # Enable Just-In-Time compilation [true/false]  
+use_mlflow: True                # Enable MLflow experiment tracking [True/False]
+use_default: True               # Use default configuration fallbacks [True/False]
+ckpt_path: ./checkpoints        # Model checkpoint directory path
