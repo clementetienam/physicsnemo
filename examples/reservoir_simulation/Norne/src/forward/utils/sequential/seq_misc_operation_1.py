@@ -462,22 +462,41 @@ def load_and_setup_training_data(
         p14.append(temp14)
         p15.append(temp15)
         p16.append(temp16)
-    cPerm = np.concatenate(p1, axis=0)[:, None, :, :, :]
-    cPhi = np.concatenate(p2, axis=0)[:, None, :, :, :]
-    cPini = np.concatenate(p3, axis=0)[:, None, :, :, :]
-    cSini = np.concatenate(p4, axis=0)[:, None, :, :, :]
-    cSgini = np.concatenate(p5, axis=0)[:, None, :, :, :]
-    cSoini = np.concatenate(p6, axis=0)[:, None, :, :, :]
-    cfault = np.concatenate(p7, axis=0)[:, None, :, :, :]
-    cQg = np.concatenate(p8, axis=0)[:, None, :, :, :]
-    cQ = np.concatenate(p15, axis=0)[:, None, :, :, :]
-    cQw = np.concatenate(p9, axis=0)[:, None, :, :, :]
-    cdT = np.concatenate(p10, axis=0)[:, None, :, :, :]
-    cT = np.concatenate(p16, axis=0)[:, None, :, :, :]
-    cPress = np.concatenate(p11, axis=0)[:, None, :, :, :]
-    cSat = np.concatenate(p12, axis=0)[:, None, :, :, :]
-    cSatg = np.concatenate(p13, axis=0)[:, None, :, :, :]
-    cSato = np.concatenate(p14, axis=0)[:, None, :, :, :]
+        
+    if cfg.custom.unroll=="FALSE":    
+        cPerm = np.concatenate(p1, axis=0)[:, None, :, :, :]
+        cPhi = np.concatenate(p2, axis=0)[:, None, :, :, :]
+        cPini = np.concatenate(p3, axis=0)[:, None, :, :, :]
+        cSini = np.concatenate(p4, axis=0)[:, None, :, :, :]
+        cSgini = np.concatenate(p5, axis=0)[:, None, :, :, :]
+        cSoini = np.concatenate(p6, axis=0)[:, None, :, :, :]
+        cfault = np.concatenate(p7, axis=0)[:, None, :, :, :]
+        cQg = np.concatenate(p8, axis=0)[:, None, :, :, :]
+        cQ = np.concatenate(p15, axis=0)[:, None, :, :, :]
+        cQw = np.concatenate(p9, axis=0)[:, None, :, :, :]
+        cdT = np.concatenate(p10, axis=0)[:, None, :, :, :]
+        cT = np.concatenate(p16, axis=0)[:, None, :, :, :]
+        cPress = np.concatenate(p11, axis=0)[:, None, :, :, :]
+        cSat = np.concatenate(p12, axis=0)[:, None, :, :, :]
+        cSatg = np.concatenate(p13, axis=0)[:, None, :, :, :]
+        cSato = np.concatenate(p14, axis=0)[:, None, :, :, :]
+    else:
+        cPerm  = np.stack(p1, axis=0)   # (N_ens, steppi, nz, nx, ny)
+        cPhi   = np.stack(p2, axis=0)
+        cPini  = np.stack(p3, axis=0)
+        cSini  = np.stack(p4, axis=0)
+        cSgini = np.stack(p5, axis=0)
+        cSoini = np.stack(p6, axis=0)
+        cfault = np.stack(p7, axis=0)
+        cQg    = np.stack(p8, axis=0)
+        cQw    = np.stack(p9, axis=0)
+        cdT    = np.stack(p10, axis=0)
+        cPress = np.stack(p11, axis=0)
+        cSat   = np.stack(p12, axis=0)
+        cSatg  = np.stack(p13, axis=0)
+        cSato  = np.stack(p14, axis=0)
+        cQ     = np.stack(p15, axis=0)
+        cT     = np.stack(p16, axis=0)        
     data = {}
     if "permeability" in X_data1:
         data["perm"] = cPerm
@@ -730,22 +749,41 @@ def load_and_setup_training_data(
         p13.append(temp13)
         p14.append(temp14)
         p15.append(temp15)
-    cPerm = np.concatenate(p1, axis=0)[:, None, :, :, :]
-    cPhi = np.concatenate(p2, axis=0)[:, None, :, :, :]
-    cPini = np.concatenate(p3, axis=0)[:, None, :, :, :]
-    cSini = np.concatenate(p4, axis=0)[:, None, :, :, :]
-    cSgini = np.concatenate(p5, axis=0)[:, None, :, :, :]
-    cSoini = np.concatenate(p6, axis=0)[:, None, :, :, :]
-    cfault = np.concatenate(p7, axis=0)[:, None, :, :, :]
-    cQg = np.concatenate(p8, axis=0)[:, None, :, :, :]
-    cQ = np.concatenate(p15, axis=0)[:, None, :, :, :]
-    cQw = np.concatenate(p9, axis=0)[:, None, :, :, :]
-    cdT = np.concatenate(p10, axis=0)[:, None, :, :, :]
-    cT = np.concatenate(p16, axis=0)[:, None, :, :, :]
-    cPress = np.concatenate(p11, axis=0)[:, None, :, :, :]
-    cSat = np.concatenate(p12, axis=0)[:, None, :, :, :]
-    cSatg = np.concatenate(p13, axis=0)[:, None, :, :, :]
-    cSato = np.concatenate(p14, axis=0)[:, None, :, :, :]
+        
+    if cfg.custom.unroll=="FALSE":
+        cPerm = np.concatenate(p1, axis=0)[:, None, :, :, :]
+        cPhi = np.concatenate(p2, axis=0)[:, None, :, :, :]
+        cPini = np.concatenate(p3, axis=0)[:, None, :, :, :]
+        cSini = np.concatenate(p4, axis=0)[:, None, :, :, :]
+        cSgini = np.concatenate(p5, axis=0)[:, None, :, :, :]
+        cSoini = np.concatenate(p6, axis=0)[:, None, :, :, :]
+        cfault = np.concatenate(p7, axis=0)[:, None, :, :, :]
+        cQg = np.concatenate(p8, axis=0)[:, None, :, :, :]
+        cQ = np.concatenate(p15, axis=0)[:, None, :, :, :]
+        cQw = np.concatenate(p9, axis=0)[:, None, :, :, :]
+        cdT = np.concatenate(p10, axis=0)[:, None, :, :, :]
+        cT = np.concatenate(p16, axis=0)[:, None, :, :, :]
+        cPress = np.concatenate(p11, axis=0)[:, None, :, :, :]
+        cSat = np.concatenate(p12, axis=0)[:, None, :, :, :]
+        cSatg = np.concatenate(p13, axis=0)[:, None, :, :, :]
+        cSato = np.concatenate(p14, axis=0)[:, None, :, :, :]
+    else:
+        cPerm  = np.stack(p1, axis=0)   # (N_ens, steppi, nz, nx, ny)
+        cPhi   = np.stack(p2, axis=0)
+        cPini  = np.stack(p3, axis=0)
+        cSini  = np.stack(p4, axis=0)
+        cSgini = np.stack(p5, axis=0)
+        cSoini = np.stack(p6, axis=0)
+        cfault = np.stack(p7, axis=0)
+        cQg    = np.stack(p8, axis=0)
+        cQw    = np.stack(p9, axis=0)
+        cdT    = np.stack(p10, axis=0)
+        cPress = np.stack(p11, axis=0)
+        cSat   = np.stack(p12, axis=0)
+        cSatg  = np.stack(p13, axis=0)
+        cSato  = np.stack(p14, axis=0)
+        cQ     = np.stack(p15, axis=0)
+        cT     = np.stack(p16, axis=0)  
     data_test = {}
     if "permeability" in X_data1t:
         data_test["perm"] = cPerm  # * effec_abbi
@@ -1042,7 +1080,7 @@ def load_and_setup_training_data(
                 out_dim=len(output_keys_pressure),
                 device=device,
                 n_layers=8,
-                n_hidden=32,
+                n_hidden=60,
                 n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
@@ -1066,7 +1104,7 @@ def load_and_setup_training_data(
                 out_dim=len(output_keys_gas),
                 device=device,
                 n_layers=8,
-                n_hidden=32,
+                n_hidden=60,
                 n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
@@ -1077,7 +1115,7 @@ def load_and_setup_training_data(
                 out_dim=len(output_keys_saturation),
                 device=device,
                 n_layers=8,
-                n_hidden=32,
+                n_hidden=60,
                 n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
@@ -1089,7 +1127,7 @@ def load_and_setup_training_data(
                 out_dim=len(output_keys_oil),
                 device=device,
                 n_layers=8,
-                n_hidden=32,
+                n_hidden=60,
                 n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
