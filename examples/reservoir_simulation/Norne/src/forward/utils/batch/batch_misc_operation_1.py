@@ -539,12 +539,15 @@ def load_and_setup_training_data(
         data[key] = clip_and_convert_to_float32(data[key])
     for key, value in data.items():
         if dist.rank == 0:
-            logger.info(f"For key '{key}':")
+            logger.info(f"For key in Training Data '{key}':")
             logger.info(f"\tContains inf: {np.isinf(value).any()}")
             logger.info(f"\tContains -inf: {np.isinf(-value).any()}")
             logger.info(f"\tContains NaN: {np.isnan(value).any()}")
+            logger.info(f"\tSize = : {value.shape}")
+            logger.info(f"\tMin value: {np.min(value)}")
+            logger.info(f"\tMax value: {np.max(value)}")
             logger.info(
-                "|-----------------------------------------------------------------|"
+                "--------------------------------------------------------------"
             )
     for key in data_test.keys():
         data_test[key][np.isnan(data_test[key])] = np.min(
@@ -556,12 +559,15 @@ def load_and_setup_training_data(
         data_test[key] = clip_and_convert_to_float32(data_test[key])
     for key, value in data_test.items():
         if dist.rank == 0:
-            logger.info(f"For key '{key}':")
+            logger.info(f"For key in Training Data '{key}':")
             logger.info(f"\tContains inf: {np.isinf(value).any()}")
             logger.info(f"\tContains -inf: {np.isinf(-value).any()}")
             logger.info(f"\tContains NaN: {np.isnan(value).any()}")
+            logger.info(f"\tSize = : {value.shape}")
+            logger.info(f"\tMin value: {np.min(value)}")
+            logger.info(f"\tMax value: {np.max(value)}")
             logger.info(
-                "|-----------------------------------------------------------------|"
+                "--------------------------------------------------------------"
             )
     if dist.rank == 0:
         logger.info(
