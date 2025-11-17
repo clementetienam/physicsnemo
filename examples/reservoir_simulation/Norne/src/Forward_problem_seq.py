@@ -599,17 +599,7 @@ def main(cfg: DictConfig) -> None:
         epoch,
     ):
         # Prepare input tensors
-        tensors = [
-            value for value in inputin.values() if isinstance(value, torch.Tensor)
-        ]
-        input_tensor = torch.cat(tensors, dim=1)
-            
         input_tensor_p = inputin_p["X"]
-        nz = input_tensor.shape[2]
-
-        fno_expected_nz = chunk_size = nz
-        num_chunks = 1
-
         # Initialize accumulators
         loss = 0
         metrics_accumulator = {
@@ -625,161 +615,621 @@ def main(cfg: DictConfig) -> None:
                 "gasd": 0.0,
                 "peacemanned": 0.0,
             }
+       
+        if cfg.custom.unroll=="TRUE":
+            if cfg.custom.unroll_cost=="AUTO":
+                predictions_prev = None  # Initialize predictions_prev
+                for x in range(steppi):                
+                    if x ==0:
+                        inputin_t = {}
+                        for k, v in inputin.items():
+                            if isinstance(v, torch.Tensor) and v.dim() == 5:
+                                # v: (B, T, nz, nx, ny) -> take timestep x and keep dim=1
+                                inputin_t[k] = v[:, x:x+1, ...]
+                            else:
+                                # static or already right shape
+                                inputin_t[k] = v
+                    else: 
+                        # Create input using model's previous predictions
+                        inputin_t = {
+                            "perm": inputin["perm"][:, x:x+1, ...],
+                            "poro": inputin["poro"][:, x:x+1, ...],
+                            "pini": predictions_prev["pressure"],
+                            "sini": predictions_prev["water"], 
+                            "sgini": predictions_prev["gas"],
+                            "soini": predictions_prev["oil"],
+                            "fault": inputin["fault"][:, x:x+1, ...],
+                            "Q": inputin["Q"][:, x:x+1, ...],
+                            "Qg": inputin["Qg"][:, x:x+1, ...],
+                            "Qw": inputin["Qw"][:, x:x+1, ...],
+                            "dt": inputin["dt"][:, x:x+1, ...],
+                            "t": inputin["t"][:, x:x+1, ...],
+                        }
+                        
+                    tensors_ar = [
+                        value for value in inputin_t.values() if isinstance(value, torch.Tensor)
+                    ]
+                    input_temp = torch.cat(tensors_ar, dim=1)
 
-        # Extract chunks
-        input_temp = input_tensor
-        target_chunks = {}
+                    target_chunks = {}
 
-        # Extract target chunks
-        if "PRESSURE" in output_variables:
-            target_chunks["pressure"] = {
-                "pressure": TARGETS["PRESSURE"]["pressure"]
-            }
-        if "SWAT" in output_variables:
-            target_chunks["saturation"] = {
-                "water_sat": TARGETS["SATURATION"]["water_sat"]
-            }
-        if "SOIL" in output_variables:
-            target_chunks["oil"] = {
-                "oil_sat": TARGETS["OIL"]["oil_sat"]
-            }
-        if "SGAS" in output_variables:
-            target_chunks["gas"] = {
-                "gas_sat": TARGETS["GAS"]["gas_sat"]
-            }
+                    # Extract target chunks
+                    if "PRESSURE" in output_variables:
+                        target_chunks["pressure"] = {
+                            "pressure": TARGETS["PRESSURE"]["pressure"][:, x:x+1, ...]
+                        }
+                    if "SWAT" in output_variables:
+                        target_chunks["saturation"] = {
+                            "water_sat": TARGETS["SATURATION"]["water_sat"][:, x:x+1, ...]
+                        }
+                    if "SOIL" in output_variables:
+                        target_chunks["oil"] = {
+                            "oil_sat": TARGETS["OIL"]["oil_sat"][:, x:x+1, ...]
+                        }
+                    if "SGAS" in output_variables:
+                        target_chunks["gas"] = {
+                            "gas_sat": TARGETS["GAS"]["gas_sat"][:, x:x+1, ...]
+                        }
 
-        # Model predictions
-        predictions = {}
-        if "PRESSURE" in output_variables:
-            predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
-        if "SGAS" in output_variables:
-            predictions["gas"] = model(input_temp, mode="gas")["gas"]
-        if "SWAT" in output_variables:
-            predictions["water"] = model(input_temp, mode="saturation")[
-                "saturation"
+                    # Model predictions
+                    predictions = {}
+                    if "PRESSURE" in output_variables:
+                        predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+                    if "SGAS" in output_variables:
+                        predictions["gas"] = model(input_temp, mode="gas")["gas"]
+                    if "SWAT" in output_variables:
+                        predictions["water"] = model(input_temp, mode="saturation")[
+                            "saturation"
+                        ]
+                    if "SOIL" in output_variables:
+                        predictions["oil"] = model(input_temp, mode="oil")["oil"]
+          
+                    # Compute losses
+                    if "PRESSURE" in output_variables:
+                        pressure_loss = loss_func(
+                            predictions["pressure"],
+                            target_chunks["pressure"]["pressure"],
+                            "eliptical",
+                            cfg.loss.weights.pressure,
+                            p=2.0,
+                        )
+                        loss += pressure_loss
+                        metrics_accumulator["pressure_loss"] += pressure_loss.item()
+
+                    if "SWAT" in output_variables:
+                        water_loss = loss_func(
+                            predictions["water"],
+                            target_chunks["saturation"]["water_sat"],
+                            "hyperbolic",
+                            cfg.loss.weights.water_sat,
+                            p=2.0,
+                        )
+                        loss += water_loss
+                        metrics_accumulator["water_loss"] += water_loss.item()
+
+                    if "SOIL" in output_variables:
+                        oil_loss = loss_func(
+                            predictions["oil"],
+                            target_chunks["oil"]["oil_sat"],
+                            "hyperbolic",
+                            cfg.loss.weights.oil_sat,
+                            p=2.0,
+                        )
+                        loss += oil_loss
+                        metrics_accumulator["oil_loss"] += oil_loss.item()
+
+                    if "SGAS" in output_variables:
+                        gas_loss = loss_func(
+                            predictions["gas"],
+                            target_chunks["gas"]["gas_sat"],
+                            "hyperbolic",
+                            cfg.loss.weights.gas_sat,
+                            p=2.0,
+                        )
+                        loss += gas_loss
+                        metrics_accumulator["gas_loss"] += gas_loss.item()
+                                         
+                    # PINO physics loss
+                    if (
+                        cfg.custom.fno_type == "PINO"
+                        and epoch % max(1, int(0.01 * cfg.training.max_steps)) == 0
+                    ):
+                        input_varr = {
+                            **{
+                                k: v
+                                if isinstance(v, torch.Tensor) and v.dim() > 2
+                                else v
+                                for k, v in inputin_t.items()
+                            },
+                            "pressure": predictions.get("pressure"),
+                            "water_sat": predictions.get("water"),
+                            "gas_sat": predictions.get("gas"),
+                            "oil_sat": predictions.get("oil"),
+                        }
+
+                        evaluate = Black_oil_seq(
+                            input_varr,
+                            neededM,
+                            SWI,
+                            SWR,
+                            UW,
+                            BW,
+                            UO,
+                            BO,
+                            nx,
+                            ny,
+                            chunk_size,
+                            SWOW,
+                            SWOG,
+                            target_min,
+                            target_max,
+                            minK,
+                            maxK,
+                            minP,
+                            maxP,
+                            p_bub,
+                            p_atm,
+                            CFO,
+                            Relperm,
+                            params,
+                            pde_method,
+                            RE,
+                            max_inn_fcn,
+                            max_out_fcn,
+                            DZ,
+                            device,
+                            params1_swow,
+                            params2_swow,
+                            params1_swog,
+                            params2_swog,
+                            maxQw,
+                            maxQg,
+                            maxQ,
+                            maxT,
+                        )
+
+                        f_pressure2 = loss_func_physics(
+                            evaluate["pressured"], cfg.loss.weights.pressured
+                        )
+                        f_water2 = loss_func_physics(
+                            evaluate["saturationd"], cfg.loss.weights.saturationd
+                        )
+                        f_gas2 = loss_func_physics(evaluate["gasd"], cfg.loss.weights.gasd)
+
+                        loss += f_pressure2 + f_water2 + f_gas2
+                        pino_metrics["pressured"] += f_pressure2.item()
+                        pino_metrics["saturationd"] += f_water2.item()
+                        pino_metrics["gasd"] += f_gas2.item()                
+                    
+                    predictions_prev = predictions.copy()
+                    #predictions_prev = {k: v.detach() for k, v in predictions.items()}  
+            else:
+                predictions_prev = None  # Initialize predictions_prev
+                for x in range(steppi):
+                    inputin_t = {}
+                    for k, v in inputin.items():
+                        if isinstance(v, torch.Tensor) and v.dim() == 5:
+                            # v: (B, T, nz, nx, ny) -> take timestep x and keep dim=1
+                            inputin_t[k] = v[:, x:x+1, ...]
+                        else:
+                            # static or already right shape
+                            inputin_t[k] = v
+                    tensors = [
+                        value for value in inputin_t.values() if isinstance(value, torch.Tensor)
+                    ]
+                    input_tensor = torch.cat(tensors, dim=1)
+                                          
+                    nz = input_tensor.shape[2]
+
+                    fno_expected_nz = chunk_size = nz
+                    num_chunks = 1
+
+                    # Extract chunks
+                    input_temp = input_tensor
+                    target_chunks = {}
+
+                    # Extract target chunks
+                    if "PRESSURE" in output_variables:
+                        target_chunks["pressure"] = {
+                            "pressure": TARGETS["PRESSURE"]["pressure"][:, x:x+1, ...]
+                        }
+                    if "SWAT" in output_variables:
+                        target_chunks["saturation"] = {
+                            "water_sat": TARGETS["SATURATION"]["water_sat"][:, x:x+1, ...]
+                        }
+                    if "SOIL" in output_variables:
+                        target_chunks["oil"] = {
+                            "oil_sat": TARGETS["OIL"]["oil_sat"][:, x:x+1, ...]
+                        }
+                    if "SGAS" in output_variables:
+                        target_chunks["gas"] = {
+                            "gas_sat": TARGETS["GAS"]["gas_sat"][:, x:x+1, ...]
+                        }
+
+                    # Model predictions
+                    predictions = {}
+                    if "PRESSURE" in output_variables:
+                        predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+                    if "SGAS" in output_variables:
+                        predictions["gas"] = model(input_temp, mode="gas")["gas"]
+                    if "SWAT" in output_variables:
+                        predictions["water"] = model(input_temp, mode="saturation")[
+                            "saturation"
+                        ]
+                    if "SOIL" in output_variables:
+                        predictions["oil"] = model(input_temp, mode="oil")["oil"]
+          
+                    # Compute losses
+                    if "PRESSURE" in output_variables:
+                        pressure_loss = loss_func(
+                            predictions["pressure"],
+                            target_chunks["pressure"]["pressure"],
+                            "eliptical",
+                            cfg.loss.weights.pressure,
+                            p=2.0,
+                        )
+                        loss += pressure_loss
+                        metrics_accumulator["pressure_loss"] += pressure_loss.item()
+
+                    if "SWAT" in output_variables:
+                        water_loss = loss_func(
+                            predictions["water"],
+                            target_chunks["saturation"]["water_sat"],
+                            "hyperbolic",
+                            cfg.loss.weights.water_sat,
+                            p=2.0,
+                        )
+                        loss += water_loss
+                        metrics_accumulator["water_loss"] += water_loss.item()
+
+                    if "SOIL" in output_variables:
+                        oil_loss = loss_func(
+                            predictions["oil"],
+                            target_chunks["oil"]["oil_sat"],
+                            "hyperbolic",
+                            cfg.loss.weights.oil_sat,
+                            p=2.0,
+                        )
+                        loss += oil_loss
+                        metrics_accumulator["oil_loss"] += oil_loss.item()
+
+                    if "SGAS" in output_variables:
+                        gas_loss = loss_func(
+                            predictions["gas"],
+                            target_chunks["gas"]["gas_sat"],
+                            "hyperbolic",
+                            cfg.loss.weights.gas_sat,
+                            p=2.0,
+                        )
+                        loss += gas_loss
+                        metrics_accumulator["gas_loss"] += gas_loss.item()
+                                         
+                    # PINO physics loss
+                    if (
+                        cfg.custom.fno_type == "PINO"
+                        and epoch % max(1, int(0.01 * cfg.training.max_steps)) == 0
+                    ):
+                        input_varr = {
+                            **{
+                                k: v
+                                if isinstance(v, torch.Tensor) and v.dim() > 2
+                                else v
+                                for k, v in inputin_t.items()
+                            },
+                            "pressure": predictions.get("pressure"),
+                            "water_sat": predictions.get("water"),
+                            "gas_sat": predictions.get("gas"),
+                            "oil_sat": predictions.get("oil"),
+                        }
+
+                        evaluate = Black_oil_seq(
+                            input_varr,
+                            neededM,
+                            SWI,
+                            SWR,
+                            UW,
+                            BW,
+                            UO,
+                            BO,
+                            nx,
+                            ny,
+                            chunk_size,
+                            SWOW,
+                            SWOG,
+                            target_min,
+                            target_max,
+                            minK,
+                            maxK,
+                            minP,
+                            maxP,
+                            p_bub,
+                            p_atm,
+                            CFO,
+                            Relperm,
+                            params,
+                            pde_method,
+                            RE,
+                            max_inn_fcn,
+                            max_out_fcn,
+                            DZ,
+                            device,
+                            params1_swow,
+                            params2_swow,
+                            params1_swog,
+                            params2_swog,
+                            maxQw,
+                            maxQg,
+                            maxQ,
+                            maxT,
+                        )
+
+                        f_pressure2 = loss_func_physics(
+                            evaluate["pressured"], cfg.loss.weights.pressured
+                        )
+                        f_water2 = loss_func_physics(
+                            evaluate["saturationd"], cfg.loss.weights.saturationd
+                        )
+                        f_gas2 = loss_func_physics(evaluate["gasd"], cfg.loss.weights.gasd)
+
+                        loss += f_pressure2 + f_water2 + f_gas2
+                        pino_metrics["pressured"] += f_pressure2.item()
+                        pino_metrics["saturationd"] += f_water2.item()
+                        pino_metrics["gasd"] += f_gas2.item()
+                    
+                    # Compute losses with model's own outputs as inputs (autoregressive)
+                    if x > 0 and predictions_prev is not None: 
+                        # Create input using model's previous predictions
+                        input_autoregressive = {
+                            "perm": inputin["perm"][:, x:x+1, ...],
+                            "poro": inputin["poro"][:, x:x+1, ...],
+                            "pini": predictions_prev["pressure"],
+                            "sini": predictions_prev["water"], 
+                            "sgini": predictions_prev["gas"],
+                            "soini": predictions_prev["oil"],
+                            "fault": inputin["fault"][:, x:x+1, ...],
+                            "Q": inputin["Q"][:, x:x+1, ...],
+                            "Qg": inputin["Qg"][:, x:x+1, ...],
+                            "Qw": inputin["Qw"][:, x:x+1, ...],
+                            "dt": inputin["dt"][:, x:x+1, ...],
+                            "t": inputin["t"][:, x:x+1, ...],
+                        }
+                        
+                        # Prepare autoregressive input tensor
+                        tensors_ar = [
+                            value for value in input_autoregressive.values() if isinstance(value, torch.Tensor)
+                        ]
+                        input_tensor_ar = torch.cat(tensors_ar, dim=1)
+                        
+                        # Get predictions using autoregressive inputs
+                        predictions_ar = {}
+                        if "PRESSURE" in output_variables:
+                            predictions_ar["pressure"] = model(input_tensor_ar, mode="pressure")["pressure"]
+                        if "SGAS" in output_variables:
+                            predictions_ar["gas"] = model(input_tensor_ar, mode="gas")["gas"]
+                        if "SWAT" in output_variables:
+                            predictions_ar["water"] = model(input_tensor_ar, mode="saturation")["saturation"]
+                        if "SOIL" in output_variables:
+                            predictions_ar["oil"] = model(input_tensor_ar, mode="oil")["oil"]
+                        
+                        # Calculate autoregressive loss for this timestep
+                        predictions = predictions_ar  # Replace with autoregressive predictions
+                        autoregressive_timestep_loss = 0
+                        if "PRESSURE" in output_variables:
+                            pressure_loss_ar = loss_func(
+                                predictions["pressure"],
+                                target_chunks["pressure"]["pressure"],
+                                "eliptical",
+                                cfg.loss.weights.pressure,
+                                p=2.0,
+                            )
+                            autoregressive_timestep_loss += pressure_loss_ar
+                            metrics_accumulator["pressure_loss"] += pressure_loss_ar.item()
+
+                        if "SWAT" in output_variables:
+                            water_loss_ar = loss_func(
+                                predictions["water"],
+                                target_chunks["saturation"]["water_sat"],
+                                "hyperbolic",
+                                cfg.loss.weights.water_sat,
+                                p=2.0,
+                            )
+                            autoregressive_timestep_loss += water_loss_ar
+                            metrics_accumulator["water_loss"] += water_loss_ar.item()
+
+                        if "SOIL" in output_variables:
+                            oil_loss_ar = loss_func(
+                                predictions["oil"],
+                                target_chunks["oil"]["oil_sat"],
+                                "hyperbolic",
+                                cfg.loss.weights.oil_sat,
+                                p=2.0,
+                            )
+                            autoregressive_timestep_loss += oil_loss_ar
+                            metrics_accumulator["oil_loss"] += oil_loss_ar.item()
+
+                        if "SGAS" in output_variables:
+                            gas_loss_ar = loss_func(
+                                predictions["gas"],
+                                target_chunks["gas"]["gas_sat"],
+                                "hyperbolic",
+                                cfg.loss.weights.gas_sat,
+                                p=2.0,
+                            )
+                            autoregressive_timestep_loss += gas_loss_ar
+                            metrics_accumulator["gas_loss"] += gas_loss_ar.item()  
+                        
+                        # Add weighted autoregressive loss for this timestep
+                        loss_autoregressive += autoregressive_timestep_loss
+                        loss += autoregressive_timestep_loss * cfg.loss.weights.get('autoregressive_weight', 0.1)
+                    
+                    # Store current predictions for next timestep
+                    predictions_prev = predictions.copy()  
+        else:
+            tensors = [
+                value for value in inputin.values() if isinstance(value, torch.Tensor)
             ]
-        if "SOIL" in output_variables:
-            predictions["oil"] = model(input_temp, mode="oil")["oil"]
-  
-        # Compute losses
-        loss = 0
-        if "PRESSURE" in output_variables:
-            pressure_loss = loss_func(
-                predictions["pressure"],
-                target_chunks["pressure"]["pressure"],
-                "eliptical",
-                cfg.loss.weights.pressure,
-                p=2.0,
-            )
-            loss += pressure_loss
-            metrics_accumulator["pressure_loss"] += pressure_loss.item()
+            input_tensor = torch.cat(tensors, dim=1)
+                      
+            #input_tensor_p = inputin_p["X"]
+            nz = input_tensor.shape[2]
 
-        if "SWAT" in output_variables:
-            water_loss = loss_func(
-                predictions["water"],
-                target_chunks["saturation"]["water_sat"],
-                "hyperbolic",
-                cfg.loss.weights.water_sat,
-                p=2.0,
-            )
-            loss += water_loss
-            metrics_accumulator["water_loss"] += water_loss.item()
+            fno_expected_nz = chunk_size = nz
+            num_chunks = 1
+            # Extract chunks
+            input_temp = input_tensor
+            target_chunks = {}
 
-        if "SOIL" in output_variables:
-            oil_loss = loss_func(
-                predictions["oil"],
-                target_chunks["oil"]["oil_sat"],
-                "hyperbolic",
-                cfg.loss.weights.oil_sat,
-                p=2.0,
-            )
-            loss += oil_loss
-            metrics_accumulator["oil_loss"] += oil_loss.item()
+            # Extract target chunks
+            if "PRESSURE" in output_variables:
+                target_chunks["pressure"] = {
+                    "pressure": TARGETS["PRESSURE"]["pressure"]
+                }
+            if "SWAT" in output_variables:
+                target_chunks["saturation"] = {
+                    "water_sat": TARGETS["SATURATION"]["water_sat"]
+                }
+            if "SOIL" in output_variables:
+                target_chunks["oil"] = {
+                    "oil_sat": TARGETS["OIL"]["oil_sat"]
+                }
+            if "SGAS" in output_variables:
+                target_chunks["gas"] = {
+                    "gas_sat": TARGETS["GAS"]["gas_sat"]
+                }
 
-        if "SGAS" in output_variables:
-            gas_loss = loss_func(
-                predictions["gas"],
-                target_chunks["gas"]["gas_sat"],
-                "hyperbolic",
-                cfg.loss.weights.gas_sat,
-                p=2.0,
-            )
-            loss += gas_loss
-            metrics_accumulator["gas_loss"] += gas_loss.item()
-                             
-        # PINO physics loss
-        if (
-            cfg.custom.fno_type == "PINO"
-            and epoch % max(1, int(0.01 * cfg.training.max_steps)) == 0
-        ):
-            input_varr = {
-                **{
-                    k: v
-                    if isinstance(v, torch.Tensor) and v.dim() > 2
-                    else v
-                    for k, v in inputin.items()
-                },
-                "pressure": predictions.get("pressure"),
-                "water_sat": predictions.get("water"),
-                "gas_sat": predictions.get("gas"),
-                "oil_sat": predictions.get("oil"),
-            }
+            # Model predictions
+            predictions = {}
+            if "PRESSURE" in output_variables:
+                predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+            if "SGAS" in output_variables:
+                predictions["gas"] = model(input_temp, mode="gas")["gas"]
+            if "SWAT" in output_variables:
+                predictions["water"] = model(input_temp, mode="saturation")[
+                    "saturation"
+                ]
+            if "SOIL" in output_variables:
+                predictions["oil"] = model(input_temp, mode="oil")["oil"]
+      
+            if "PRESSURE" in output_variables:
+                pressure_loss = loss_func(
+                    predictions["pressure"],
+                    target_chunks["pressure"]["pressure"],
+                    "eliptical",
+                    cfg.loss.weights.pressure,
+                    p=2.0,
+                )
+                loss += pressure_loss
+                metrics_accumulator["pressure_loss"] += pressure_loss.item()
 
-            evaluate = Black_oil_seq(
-                input_varr,
-                neededM,
-                SWI,
-                SWR,
-                UW,
-                BW,
-                UO,
-                BO,
-                nx,
-                ny,
-                chunk_size,
-                SWOW,
-                SWOG,
-                target_min,
-                target_max,
-                minK,
-                maxK,
-                minP,
-                maxP,
-                p_bub,
-                p_atm,
-                CFO,
-                Relperm,
-                params,
-                pde_method,
-                RE,
-                max_inn_fcn,
-                max_out_fcn,
-                DZ,
-                device,
-                params1_swow,
-                params2_swow,
-                params1_swog,
-                params2_swog,
-                maxQw,
-                maxQg,
-                maxQ,
-                maxT,
-            )
+            if "SWAT" in output_variables:
+                water_loss = loss_func(
+                    predictions["water"],
+                    target_chunks["saturation"]["water_sat"],
+                    "hyperbolic",
+                    cfg.loss.weights.water_sat,
+                    p=2.0,
+                )
+                loss += water_loss
+                metrics_accumulator["water_loss"] += water_loss.item()
 
-            f_pressure2 = loss_func_physics(
-                evaluate["pressured"], cfg.loss.weights.pressured
-            )
-            f_water2 = loss_func_physics(
-                evaluate["saturationd"], cfg.loss.weights.saturationd
-            )
-            f_gas2 = loss_func_physics(evaluate["gasd"], cfg.loss.weights.gasd)
+            if "SOIL" in output_variables:
+                oil_loss = loss_func(
+                    predictions["oil"],
+                    target_chunks["oil"]["oil_sat"],
+                    "hyperbolic",
+                    cfg.loss.weights.oil_sat,
+                    p=2.0,
+                )
+                loss += oil_loss
+                metrics_accumulator["oil_loss"] += oil_loss.item()
 
-            loss += f_pressure2 + f_water2 + f_gas2
-            pino_metrics["pressured"] += f_pressure2.item()
-            pino_metrics["saturationd"] += f_water2.item()
-            pino_metrics["gasd"] += f_gas2.item()
+            if "SGAS" in output_variables:
+                gas_loss = loss_func(
+                    predictions["gas"],
+                    target_chunks["gas"]["gas_sat"],
+                    "hyperbolic",
+                    cfg.loss.weights.gas_sat,
+                    p=2.0,
+                )
+                loss += gas_loss
+                metrics_accumulator["gas_loss"] += gas_loss.item()
 
-        # Process peacemann (no chunking)
+                                 
+            # PINO physics loss
+            if (
+                cfg.custom.fno_type == "PINO"
+                and epoch % max(1, int(0.01 * cfg.training.max_steps)) == 0
+            ):
+                input_varr = {
+                    **{
+                        k: v
+                        if isinstance(v, torch.Tensor) and v.dim() > 2
+                        else v
+                        for k, v in inputin.items()
+                    },
+                    "pressure": predictions.get("pressure"),
+                    "water_sat": predictions.get("water"),
+                    "gas_sat": predictions.get("gas"),
+                    "oil_sat": predictions.get("oil"),
+                }
+
+                evaluate = Black_oil_seq(
+                    input_varr,
+                    neededM,
+                    SWI,
+                    SWR,
+                    UW,
+                    BW,
+                    UO,
+                    BO,
+                    nx,
+                    ny,
+                    chunk_size,
+                    SWOW,
+                    SWOG,
+                    target_min,
+                    target_max,
+                    minK,
+                    maxK,
+                    minP,
+                    maxP,
+                    p_bub,
+                    p_atm,
+                    CFO,
+                    Relperm,
+                    params,
+                    pde_method,
+                    RE,
+                    max_inn_fcn,
+                    max_out_fcn,
+                    DZ,
+                    device,
+                    params1_swow,
+                    params2_swow,
+                    params1_swog,
+                    params2_swog,
+                    maxQw,
+                    maxQg,
+                    maxQ,
+                    maxT,
+                )
+
+                f_pressure2 = loss_func_physics(
+                    evaluate["pressured"], cfg.loss.weights.pressured
+                )
+                f_water2 = loss_func_physics(
+                    evaluate["saturationd"], cfg.loss.weights.saturationd
+                )
+                f_gas2 = loss_func_physics(evaluate["gasd"], cfg.loss.weights.gasd)
+
+                loss += f_pressure2 + f_water2 + f_gas2
+                pino_metrics["pressured"] += f_pressure2.item()
+                pino_metrics["saturationd"] += f_water2.item()
+                pino_metrics["gasd"] += f_gas2.item()
+                
+        if cfg.custom.unroll=="TRUE":  
+            loss = loss/steppi
+            
         outputs_p = model(input_tensor_p, mode="peacemann")
         peacemann_pred = outputs_p["peacemann"]
         target_peacemann = {
@@ -834,11 +1284,17 @@ def main(cfg: DictConfig) -> None:
             pino_metrics["peacemanned"] = f_peacemann2.item()
 
         # Average metrics
+
+        if cfg.custom.unroll == "TRUE":
+            denom = steppi
+        else:
+            denom = 1
+
         for key in metrics_accumulator:
             training_step_metrics[key] = metrics_accumulator[key] / (
-                num_chunks if key != "peacemann_loss" else 1
+                denom if key != "peacemann_loss" else 1
             )
-
+            
         if cfg.custom.fno_type == "PINO":
             for key in pino_metrics:
                 training_step_metrics[key] = pino_metrics[key] / (
@@ -866,107 +1322,210 @@ def main(cfg: DictConfig) -> None:
         val_step_metrics,
     ):
         # Prepare input tensors
-        tensors = [
-            value for value in inputin.values() if isinstance(value, torch.Tensor)
-        ]
-        input_tensor = torch.cat(tensors, dim=1)
         input_tensor_p = inputin_p["X"]
-        nz = input_tensor.shape[2]
-
-
-        fno_expected_nz = chunk_size = nz
-        num_chunks = 1
-
         # Initialize accumulators
         loss = 0
         metrics_accumulator = {
             f"{var}_loss": 0.0
             for var in ["pressure", "water", "oil", "gas", "peacemann"]
         }
+        
+        if cfg.custom.unroll=="TRUE":
+            predictions_prev = None  # Initialize predictions_prev
+            for x in range(steppi):
+                inputin_t = {}
+                for k, v in inputin.items():
+                    if isinstance(v, torch.Tensor) and v.dim() == 5:
+                        # v: (B, T, nz, nx, ny) -> take timestep x and keep dim=1
+                        inputin_t[k] = v[:, x:x+1, ...]
+                    else:
+                        # static or already right shape
+                        inputin_t[k] = v
+                tensors = [
+                    value for value in inputin_t.values() if isinstance(value, torch.Tensor)
+                ]
+                input_tensor = torch.cat(tensors, dim=1)
+                                      
+                nz = input_tensor.shape[2]
 
+                fno_expected_nz = chunk_size = nz
+                num_chunks = 1
 
-        input_temp = input_tensor
-        target_chunks = {}
+                # Extract chunks
+                input_temp = input_tensor
+                target_chunks = {}
 
-        # Extract target chunks
-        if "PRESSURE" in output_variables:
-            target_chunks["pressure"] = {
-                "pressure": TARGETS["PRESSURE"]["pressure"]
-            }
-        if "SWAT" in output_variables:
-            target_chunks["saturation"] = {
-                "water_sat": TARGETS["SATURATION"]["water_sat"]
-            }
-        if "SOIL" in output_variables:
-            target_chunks["oil"] = {
-                "oil_sat": TARGETS["OIL"]["oil_sat"]
-            }
-        if "SGAS" in output_variables:
-            target_chunks["gas"] = {
-                "gas_sat": TARGETS["GAS"]["gas_sat"]
-            }
+                # Extract target chunks
+                if "PRESSURE" in output_variables:
+                    target_chunks["pressure"] = {
+                        "pressure": TARGETS["PRESSURE"]["pressure"][:, x:x+1, ...]
+                    }
+                if "SWAT" in output_variables:
+                    target_chunks["saturation"] = {
+                        "water_sat": TARGETS["SATURATION"]["water_sat"][:, x:x+1, ...]
+                    }
+                if "SOIL" in output_variables:
+                    target_chunks["oil"] = {
+                        "oil_sat": TARGETS["OIL"]["oil_sat"][:, x:x+1, ...]
+                    }
+                if "SGAS" in output_variables:
+                    target_chunks["gas"] = {
+                        "gas_sat": TARGETS["GAS"]["gas_sat"][:, x:x+1, ...]
+                    }
 
+                # Model predictions
+                predictions = {}
+                if "PRESSURE" in output_variables:
+                    predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+                if "SGAS" in output_variables:
+                    predictions["gas"] = model(input_temp, mode="gas")["gas"]
+                if "SWAT" in output_variables:
+                    predictions["water"] = model(input_temp, mode="saturation")[
+                        "saturation"
+                    ]
+                if "SOIL" in output_variables:
+                    predictions["oil"] = model(input_temp, mode="oil")["oil"]
+      
+                # Compute losses
+                if "PRESSURE" in output_variables:
+                    pressure_loss = loss_func(
+                        predictions["pressure"],
+                        target_chunks["pressure"]["pressure"],
+                        "eliptical",
+                        cfg.loss.weights.pressure,
+                        p=2.0,
+                    )
+                    loss += pressure_loss
+                    metrics_accumulator["pressure_loss"] += pressure_loss.item()
 
-        # Model predictions
-        predictions = {}
-        if "PRESSURE" in output_variables:
-            predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
-        if "SGAS" in output_variables:
-            predictions["gas"] = model(input_temp, mode="gas")["gas"]
-        if "SWAT" in output_variables:
-            predictions["water"] = model(input_temp, mode="saturation")[
-                "saturation"
+                if "SWAT" in output_variables:
+                    water_loss = loss_func(
+                        predictions["water"],
+                        target_chunks["saturation"]["water_sat"],
+                        "hyperbolic",
+                        cfg.loss.weights.water_sat,
+                        p=2.0,
+                    )
+                    loss += water_loss
+                    metrics_accumulator["water_loss"] += water_loss.item()
+
+                if "SOIL" in output_variables:
+                    oil_loss = loss_func(
+                        predictions["oil"],
+                        target_chunks["oil"]["oil_sat"],
+                        "hyperbolic",
+                        cfg.loss.weights.oil_sat,
+                        p=2.0,
+                    )
+                    loss += oil_loss
+                    metrics_accumulator["oil_loss"] += oil_loss.item()
+
+                if "SGAS" in output_variables:
+                    gas_loss = loss_func(
+                        predictions["gas"],
+                        target_chunks["gas"]["gas_sat"],
+                        "hyperbolic",
+                        cfg.loss.weights.gas_sat,
+                        p=2.0,
+                    )
+                    loss += gas_loss
+                    metrics_accumulator["gas_loss"] += gas_loss.item()
+                       
+        else:
+            tensors = [
+                value for value in inputin.values() if isinstance(value, torch.Tensor)
             ]
-        if "SOIL" in output_variables:
-            predictions["oil"] = model(input_temp, mode="oil")["oil"]
+            input_tensor = torch.cat(tensors, dim=1)
+                      
+            #input_tensor_p = inputin_p["X"]
+            nz = input_tensor.shape[2]
+
+            fno_expected_nz = chunk_size = nz
+            num_chunks = 1
+            # Extract chunks
+            input_temp = input_tensor
+            target_chunks = {}
+
+            # Extract target chunks
+            if "PRESSURE" in output_variables:
+                target_chunks["pressure"] = {
+                    "pressure": TARGETS["PRESSURE"]["pressure"]
+                }
+            if "SWAT" in output_variables:
+                target_chunks["saturation"] = {
+                    "water_sat": TARGETS["SATURATION"]["water_sat"]
+                }
+            if "SOIL" in output_variables:
+                target_chunks["oil"] = {
+                    "oil_sat": TARGETS["OIL"]["oil_sat"]
+                }
+            if "SGAS" in output_variables:
+                target_chunks["gas"] = {
+                    "gas_sat": TARGETS["GAS"]["gas_sat"]
+                }
+
+            # Model predictions
+            predictions = {}
+            if "PRESSURE" in output_variables:
+                predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+            if "SGAS" in output_variables:
+                predictions["gas"] = model(input_temp, mode="gas")["gas"]
+            if "SWAT" in output_variables:
+                predictions["water"] = model(input_temp, mode="saturation")[
+                    "saturation"
+                ]
+            if "SOIL" in output_variables:
+                predictions["oil"] = model(input_temp, mode="oil")["oil"]
+      
+            if "PRESSURE" in output_variables:
+                pressure_loss = loss_func(
+                    predictions["pressure"],
+                    target_chunks["pressure"]["pressure"],
+                    "eliptical",
+                    cfg.loss.weights.pressure,
+                    p=2.0,
+                )
+                loss += pressure_loss
+                metrics_accumulator["pressure_loss"] += pressure_loss.item()
+
+            if "SWAT" in output_variables:
+                water_loss = loss_func(
+                    predictions["water"],
+                    target_chunks["saturation"]["water_sat"],
+                    "hyperbolic",
+                    cfg.loss.weights.water_sat,
+                    p=2.0,
+                )
+                loss += water_loss
+                metrics_accumulator["water_loss"] += water_loss.item()
+
+            if "SOIL" in output_variables:
+                oil_loss = loss_func(
+                    predictions["oil"],
+                    target_chunks["oil"]["oil_sat"],
+                    "hyperbolic",
+                    cfg.loss.weights.oil_sat,
+                    p=2.0,
+                )
+                loss += oil_loss
+                metrics_accumulator["oil_loss"] += oil_loss.item()
+
+            if "SGAS" in output_variables:
+                gas_loss = loss_func(
+                    predictions["gas"],
+                    target_chunks["gas"]["gas_sat"],
+                    "hyperbolic",
+                    cfg.loss.weights.gas_sat,
+                    p=2.0,
+                )
+                loss += gas_loss
+                metrics_accumulator["gas_loss"] += gas_loss.item()
+
+
+                
+        if cfg.custom.unroll=="TRUE":  
+            loss = loss/steppi
             
-        # Compute losses
-        if "PRESSURE" in output_variables:
-            pressure_loss = loss_func(
-                predictions["pressure"],
-                target_chunks["pressure"]["pressure"],
-                "eliptical",
-                cfg.loss.weights.pressure,
-                p=2.0,
-            )
-            loss += pressure_loss
-            metrics_accumulator["pressure_loss"] += pressure_loss.item()
-
-        if "SWAT" in output_variables:
-            water_loss = loss_func(
-                predictions["water"],
-                target_chunks["saturation"]["water_sat"],
-                "hyperbolic",
-                cfg.loss.weights.water_sat,
-                p=2.0,
-            )
-            loss += water_loss
-            metrics_accumulator["water_loss"] += water_loss.item()
-
-        if "SOIL" in output_variables:
-            oil_loss = loss_func(
-                predictions["oil"],
-                target_chunks["oil"]["oil_sat"],
-                "hyperbolic",
-                cfg.loss.weights.oil_sat,
-                p=2.0,
-            )
-            loss += oil_loss
-            metrics_accumulator["oil_loss"] += oil_loss.item()
-
-        if "SGAS" in output_variables:
-            gas_loss = loss_func(
-                predictions["gas"],
-                target_chunks["gas"]["gas_sat"],
-                "hyperbolic",
-                cfg.loss.weights.gas_sat,
-                p=2.0,
-            )
-            loss += gas_loss
-            metrics_accumulator["gas_loss"] += gas_loss.item()
-
-
-        # Process peacemann (no chunking)
         outputs_p = model(input_tensor_p, mode="peacemann")
         peacemann_pred = outputs_p["peacemann"]
         target_peacemann = {
@@ -979,14 +1538,18 @@ def main(cfg: DictConfig) -> None:
         loss += peacemann_loss
         metrics_accumulator["peacemann_loss"] = peacemann_loss.item()
 
-        # Average metrics
+        if cfg.custom.unroll == "TRUE":
+            denom = steppi
+        else:
+            denom = 1
+
         for key in metrics_accumulator:
-            if key not in ["peacemann_loss", "peacemanned"]:
-                val_step_metrics[key] = metrics_accumulator[key] / num_chunks
-            else:
-                val_step_metrics[key] = metrics_accumulator[key]
+            val_step_metrics[key] = metrics_accumulator[key] / (
+                denom if key != "peacemann_loss" else 1
+            )
 
         return loss
+        
 
     training_step_metrics = {}
     val_step_metrics = {}

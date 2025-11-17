@@ -536,7 +536,8 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
         logger.info(f"\tSize = : {tuple(value.shape)}")
         logger.info(f"\tMin value: {vmin}")
         logger.info(f"\tMax value: {vmax}")
-        logger.info("--------------------------------------------------------------")
+        logger.info("--------------------------------------------------------------")    
+
 
     logger.info("Finished constructing Pytorch inputs")
     logger.info("*******************Load the trained Forward models*******************")
@@ -654,7 +655,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 out_dim=len(output_keys_pressure),
                 device=device,
                 n_layers=8,
-                n_hidden=32,
+                n_hidden=60,
                 n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
@@ -665,7 +666,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 out_dim=len(output_keys_gas),
                 device=device,
                 n_layers=8,
-                n_hidden=32,
+                n_hidden=60,
                 n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
@@ -689,7 +690,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 out_dim=len(output_keys_saturation),
                 device=device,
                 n_layers=8,
-                n_hidden=32,
+                n_hidden=60,
                 n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
@@ -700,7 +701,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 out_dim=len(output_keys_oil),
                 device=device,
                 n_layers=8,
-                n_hidden=32,
+                n_hidden=60,
                 n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
