@@ -849,6 +849,7 @@ def ensemble_pytorch(
         inn["fault"] = torch.from_numpy(ini_ensembles["fault"]).to(
             device, dtype=torch.float32
         )
+    
     return inn
 
 
