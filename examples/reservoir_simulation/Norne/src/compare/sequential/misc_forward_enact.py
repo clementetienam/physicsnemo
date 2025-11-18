@@ -1018,7 +1018,7 @@ def Forward_model_ensemble(
     # Time setup
     Timeafter = Time
     Timebefore = np.zeros_like(Timeafter)
-    Timebefore[1:] = Timeafter[:-1]
+    Timebefore[:,1:,:,:,:] = Timeafter[:,:-1,:,:,:]
     dt = Timeafter - Timebefore
     dt = dt / maxT
     Time = Time / maxT
