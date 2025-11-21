@@ -64,7 +64,8 @@ import wandb
 # 📦 Local Modules
 from forward.machine_extract import (
     create_fno_model,
-    CompositeModel,
+    create_transolver_model_batch,
+    CompositeModelBatch,
     CompositeOptimizer,
 )
 from forward.gradients_extract import (
@@ -629,93 +630,190 @@ def load_and_setup_training_data(
         logger.info(
             "|-----------------------------------------------------------------|"
         )
-    if "PRESSURE" in output_variables:
-        surrogate_pressure = create_fno_model(
-            len(input_keys),
-            steppi,
-            len(output_keys_pressure),
-            dist.device,
-            num_fno_modes=16,
-            latent_channels=32,
-            decoder_layer_size=32,
-            padding=22,
-            decoder_layers=4,
-            dimension=3,
-        )
-    surrogate_peacemann = create_fno_model(
-        2 + (4 * N_pr),
-        lenwels * N_pr,
-        len(output_keys_peacemann),
-        dist.device,
-        num_fno_modes=13,
-        latent_channels=64,
-        decoder_layer_size=32,
-        padding=20,
-        num_fno_layers=5,
-        decoder_layers=4,
-        dimension=1,
-    )
-    if "SGAS" in output_variables:
-        surrogate_gas = create_fno_model(
-            len(input_keys),
-            steppi,
-            len(output_keys_gas),
-            dist.device,
-            num_fno_modes=16,
-            latent_channels=32,
-            decoder_layer_size=32,
-            padding=22,
-            decoder_layers=4,
-            dimension=3,
-        )
-    if "SWAT" in output_variables:
-        surrogate_saturation = create_fno_model(
-            len(input_keys),
-            steppi,
-            len(output_keys_saturation),
-            dist.device,
-            num_fno_modes=16,
-            latent_channels=32,
-            decoder_layer_size=32,
-            padding=22,
-            decoder_layers=4,
-            dimension=3,
-        )
-    if "SOIL" in output_variables:
-        surrogate_oil = create_fno_model(
-            len(input_keys),
-            steppi,
-            len(output_keys_oil),
-            dist.device,
-            num_fno_modes=16,
-            latent_channels=32,
-            decoder_layer_size=32,
-            padding=22,
-            decoder_layers=4,
-            dimension=3,
-        )
-    if cfg.custom.fno_type == "FNO":
-        if dist.rank == 0:
-            logger.info(
-                "|-----------------------------------------------------------------|"
+    if cfg.custom.model_type == "FNO":
+        if "PRESSURE" in output_variables:
+            surrogate_pressure = create_fno_model(
+                len(input_keys),
+                steppi,
+                len(output_keys_pressure),
+                dist.device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
             )
-            logger.info(
-                "|   PRESSURE MODEL = FNO   SATUARATION MODEL = FNO   :            |"
+        surrogate_peacemann = create_fno_model(
+            2 + (4 * N_pr),
+            lenwels * N_pr,
+            len(output_keys_peacemann),
+            dist.device,
+            num_fno_modes=13,
+            latent_channels=64,
+            decoder_layer_size=32,
+            padding=20,
+            num_fno_layers=5,
+            decoder_layers=4,
+            dimension=1,
+        )
+        if "SGAS" in output_variables:
+            surrogate_gas = create_fno_model(
+                len(input_keys),
+                steppi,
+                len(output_keys_gas),
+                dist.device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
             )
-            logger.info(
-                "|-----------------------------------------------------------------|"
+        if "SWAT" in output_variables:
+            surrogate_saturation = create_fno_model(
+                len(input_keys),
+                steppi,
+                len(output_keys_saturation),
+                dist.device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
+            )
+        if "SOIL" in output_variables:
+            surrogate_oil = create_fno_model(
+                len(input_keys),
+                steppi,
+                len(output_keys_oil),
+                dist.device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
             )
     else:
-        if dist.rank == 0:
-            logger.info(
-                "|-----------------------------------------------------------------|"
+        if "PRESSURE" in output_variables:
+            surrogate_pressure = create_transolver_model_batch(
+                functional_dim=len(input_keys),
+                out_dim=steppi,          # multi-step
+                embedding_dim=64,
+                device=device,
+                n_layers=8,
+                n_hidden=64,
+                n_head=8,
+                mlp_ratio=4,
+                slice_num=64,
+                structured_shape=(nx, ny),
+                use_te=True,
+            )            
+            
+            
+        surrogate_peacemann = create_fno_model(
+            2 + (4 * N_pr),
+            lenwels * N_pr,
+            len(output_keys_peacemann),
+            dist.device,
+            num_fno_modes=13,
+            latent_channels=64,
+            decoder_layer_size=32,
+            padding=20,
+            num_fno_layers=5,
+            decoder_layers=4,
+            dimension=1,
+        )
+        if "SGAS" in output_variables:
+            surrogate_gas = create_transolver_model_batch(
+                functional_dim=len(input_keys),
+                out_dim=steppi,          # multi-step
+                embedding_dim=64,
+                device=device,
+                n_layers=8,
+                n_hidden=64,
+                n_head=8,
+                mlp_ratio=4,
+                slice_num=64,
+                structured_shape=(nx, ny),
+                use_te=True,
+            ) 
+        if "SWAT" in output_variables:
+            surrogate_saturation = create_transolver_model_batch(
+                functional_dim=len(input_keys),
+                out_dim=steppi,          # multi-step
+                embedding_dim=64,
+                device=device,
+                n_layers=8,
+                n_hidden=64,
+                n_head=8,
+                mlp_ratio=4,
+                slice_num=64,
+                structured_shape=(nx, ny),
+                use_te=True,
+            ) 
+        if "SOIL" in output_variables:
+            surrogate_oil = create_transolver_model_batch(
+                functional_dim=len(input_keys),
+                out_dim=steppi,          # multi-step
+                embedding_dim=64,
+                device=device,
+                n_layers=8,
+                n_hidden=64,
+                n_head=8,
+                mlp_ratio=4,
+                slice_num=64,
+                structured_shape=(nx, ny),
+                use_te=True,
             )
-            logger.info(
-                "|   PRESSURE MODEL = PINO   SATUARATION MODEL = PINO   :            |"
-            )
-            logger.info(
-                "|-----------------------------------------------------------------|"
-            )
+    if cfg.custom.model_type == "FNO":
+        if cfg.custom.fno_type == "FNO":
+            if dist.rank == 0:
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+                logger.info(
+                    "|   PRESSURE MODEL = FNO   SATUARATION MODEL = FNO   :            |"
+                )
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+        else:
+            if dist.rank == 0:
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+                logger.info(
+                    "|   PRESSURE MODEL = PINO   SATUARATION MODEL = PINO   :            |"
+                )
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+    else:
+        if cfg.custom.fno_type == "FNO":
+            if dist.rank == 0:
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+                logger.info(
+                    "|   PRESSURE MODEL = TRANSOLVER   SATUARATION MODEL = TRANSOLVER   :|"
+                )
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+        else:
+            if dist.rank == 0:
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
+                logger.info(
+                    "|   PRESSURE MODEL = PI-TRANSOLVER SATUARATION MODEL = PI-TRANSOLVER   :|"
+                )
+                logger.info(
+                    "|-----------------------------------------------------------------|"
+                )
     if dist.rank == 0 and wandb.run is not None:
         if "PRESSURE" in output_variables:
             wandb.watch(surrogate_pressure, log="all", log_freq=1000, log_graph=(True))
@@ -849,96 +947,192 @@ def load_and_setup_training_data(
     if "SGAS" in output_variables:
         MODELS_C["gas"] = optimizer_gas
     combined_optimizer = CompositeOptimizer(MODELS_C)
-    if cfg.custom.fno_type == "FNO":
-        if "PRESSURE" in output_variables:
-            loaded_epoch_pressure = load_checkpoint(
-                to_absolute_path("../MODELS/FNO/checkpoints_pressure"),
-                models=surrogate_pressure,
-                optimizer=optimizer_pressure,
-                scheduler=scheduler_pressure,
+    if cfg.custom.model_type == "FNO":
+        if cfg.custom.fno_type == "FNO":
+            # Attempt to load latest checkpoint if one exists
+            if "PRESSURE" in output_variables:
+                loaded_epoch_pressure = load_checkpoint(
+                    to_absolute_path("../MODELS/FNO/checkpoints_pressure"),
+                    models=surrogate_pressure,
+                    optimizer=optimizer_pressure,
+                    scheduler=scheduler_pressure,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_pressure
+            if "SGAS" in output_variables:
+                loaded_epoch_gas = load_checkpoint(
+                    to_absolute_path("../MODELS/FNO/checkpoints_gas"),
+                    models=surrogate_gas,
+                    optimizer=optimizer_gas,
+                    scheduler=scheduler_gas,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_gas
+            if "SWAT" in output_variables:
+                loaded_epoch_saturation = load_checkpoint(
+                    to_absolute_path("../MODELS/FNO/checkpoints_saturation"),
+                    models=surrogate_saturation,
+                    optimizer=optimizer_saturation,
+                    scheduler=scheduler_saturation,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_saturation
+            if "SOIL" in output_variables:
+                loaded_epoch_oil = load_checkpoint(
+                    to_absolute_path("../MODELS/FNO/checkpoints_oil"),
+                    models=surrogate_oil,
+                    optimizer=optimizer_oil,
+                    scheduler=scheduler_oil,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_oil
+            loaded_epoch_peacemann = load_checkpoint(
+                to_absolute_path("../MODELS/FNO/checkpoints_peacemann"),
+                models=surrogate_peacemann,
+                optimizer=optimizer_peacemann,
+                scheduler=scheduler_peacemann,
                 device=dist.device,
             )
-            use_epoch = loaded_epoch_pressure
-        if "SGAS" in output_variables:
-            loaded_epoch_gas = load_checkpoint(
-                to_absolute_path("../MODELS/FNO/checkpoints_gas"),
-                models=surrogate_gas,
-                optimizer=optimizer_gas,
-                scheduler=scheduler_gas,
+            use_epoch = loaded_epoch_peacemann
+        else:
+            # Attempt to load latest checkpoint if one exists
+            if "PRESSURE" in output_variables:
+                loaded_epoch_pressure = load_checkpoint(
+                    to_absolute_path("../MODELS/PINO/checkpoints_pressure"),
+                    models=surrogate_pressure,
+                    optimizer=optimizer_pressure,
+                    scheduler=scheduler_pressure,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_pressure
+            if "SGAS" in output_variables:
+                loaded_epoch_gas = load_checkpoint(
+                    to_absolute_path("../MODELS/PINO/checkpoints_gas"),
+                    models=surrogate_gas,
+                    optimizer=optimizer_gas,
+                    scheduler=scheduler_gas,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_gas
+            if "SWAT" in output_variables:
+                loaded_epoch_saturation = load_checkpoint(
+                    to_absolute_path("../MODELS/PINO/checkpoints_saturation"),
+                    models=surrogate_saturation,
+                    optimizer=optimizer_saturation,
+                    scheduler=scheduler_saturation,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_saturation
+            if "SOIL" in output_variables:
+                loaded_epoch_oil = load_checkpoint(
+                    to_absolute_path("../MODELS/PINO/checkpoints_oil"),
+                    models=surrogate_oil,
+                    optimizer=optimizer_oil,
+                    scheduler=scheduler_oil,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_oil
+            loaded_epoch_peacemann = load_checkpoint(
+                to_absolute_path("../MODELS/PINO/checkpoints_peacemann"),
+                models=surrogate_peacemann,
+                optimizer=optimizer_peacemann,
+                scheduler=scheduler_peacemann,
                 device=dist.device,
             )
-            use_epoch = loaded_epoch_gas
-        if "SWAT" in output_variables:
-            loaded_epoch_saturation = load_checkpoint(
-                to_absolute_path("../MODELS/FNO/checkpoints_saturation"),
-                models=surrogate_saturation,
-                optimizer=optimizer_saturation,
-                scheduler=scheduler_saturation,
+            use_epoch = loaded_epoch_peacemann
+    else:  
+        if cfg.custom.fno_type == "FNO":
+            # Attempt to load latest checkpoint if one exists
+            if "PRESSURE" in output_variables:
+                loaded_epoch_pressure = load_checkpoint(
+                    to_absolute_path("../MODELS/TRANSOLVER/checkpoints_pressure"),
+                    models=surrogate_pressure,
+                    optimizer=optimizer_pressure,
+                    scheduler=scheduler_pressure,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_pressure
+            if "SGAS" in output_variables:
+                loaded_epoch_gas = load_checkpoint(
+                    to_absolute_path("../MODELS/TRANSOLVER/checkpoints_gas"),
+                    models=surrogate_gas,
+                    optimizer=optimizer_gas,
+                    scheduler=scheduler_gas,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_gas
+            if "SWAT" in output_variables:
+                loaded_epoch_saturation = load_checkpoint(
+                    to_absolute_path("../MODELS/TRANSOLVER/checkpoints_saturation"),
+                    models=surrogate_saturation,
+                    optimizer=optimizer_saturation,
+                    scheduler=scheduler_saturation,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_saturation
+            if "SOIL" in output_variables:
+                loaded_epoch_oil = load_checkpoint(
+                    to_absolute_path("../MODELS/TRANSOLVER/checkpoints_oil"),
+                    models=surrogate_oil,
+                    optimizer=optimizer_oil,
+                    scheduler=scheduler_oil,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_oil
+            loaded_epoch_peacemann = load_checkpoint(
+                to_absolute_path("../MODELS/TRANSOLVER/checkpoints_peacemann"),
+                models=surrogate_peacemann,
+                optimizer=optimizer_peacemann,
+                scheduler=scheduler_peacemann,
                 device=dist.device,
             )
-            use_epoch = loaded_epoch_saturation
-        if "SOIL" in output_variables:
-            loaded_epoch_oil = load_checkpoint(
-                to_absolute_path("../MODELS/FNO/checkpoints_oil"),
-                models=surrogate_oil,
-                optimizer=optimizer_oil,
-                scheduler=scheduler_oil,
+            use_epoch = loaded_epoch_peacemann
+        else:
+            # Attempt to load latest checkpoint if one exists
+            if "PRESSURE" in output_variables:
+                loaded_epoch_pressure = load_checkpoint(
+                    to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_pressure"),
+                    models=surrogate_pressure,
+                    optimizer=optimizer_pressure,
+                    scheduler=scheduler_pressure,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_pressure
+            if "SGAS" in output_variables:
+                loaded_epoch_gas = load_checkpoint(
+                    to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_gas"),
+                    models=surrogate_gas,
+                    optimizer=optimizer_gas,
+                    scheduler=scheduler_gas,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_gas
+            if "SWAT" in output_variables:
+                loaded_epoch_saturation = load_checkpoint(
+                    to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_saturation"),
+                    models=surrogate_saturation,
+                    optimizer=optimizer_saturation,
+                    scheduler=scheduler_saturation,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_saturation
+            if "SOIL" in output_variables:
+                loaded_epoch_oil = load_checkpoint(
+                    to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_oil"),
+                    models=surrogate_oil,
+                    optimizer=optimizer_oil,
+                    scheduler=scheduler_oil,
+                    device=dist.device,
+                )
+                use_epoch = loaded_epoch_oil
+            loaded_epoch_peacemann = load_checkpoint(
+                to_absolute_path("../MODELS/PI-TRANSOLVER/checkpoints_peacemann"),
+                models=surrogate_peacemann,
+                optimizer=optimizer_peacemann,
+                scheduler=scheduler_peacemann,
                 device=dist.device,
             )
-            use_epoch = loaded_epoch_oil
-        loaded_epoch_peacemann = load_checkpoint(
-            to_absolute_path("../MODELS/FNO/checkpoints_peacemann_seq"),
-            models=surrogate_peacemann,
-            optimizer=optimizer_peacemann,
-            scheduler=scheduler_peacemann,
-            device=dist.device,
-        )
-        use_epoch = loaded_epoch_peacemann
-    else:
-        if "PRESSURE" in output_variables:
-            loaded_epoch_pressure = load_checkpoint(
-                to_absolute_path("../MODELS/PINO/checkpoints_pressure"),
-                models=surrogate_pressure,
-                optimizer=optimizer_pressure,
-                scheduler=scheduler_pressure,
-                device=dist.device,
-            )
-            use_epoch = loaded_epoch_pressure
-        if "SGAS" in output_variables:
-            loaded_epoch_gas = load_checkpoint(
-                to_absolute_path("../MODELS/PINO/checkpoints_gas"),
-                models=surrogate_gas,
-                optimizer=optimizer_gas,
-                scheduler=scheduler_gas,
-                device=dist.device,
-            )
-            use_epoch = loaded_epoch_gas
-        if "SWAT" in output_variables:
-            loaded_epoch_saturation = load_checkpoint(
-                to_absolute_path("../MODELS/PINO/checkpoints_saturation"),
-                models=surrogate_saturation,
-                optimizer=optimizer_saturation,
-                scheduler=scheduler_saturation,
-                device=dist.device,
-            )
-            use_epoch = loaded_epoch_saturation
-        if "SOIL" in output_variables:
-            loaded_epoch_oil = load_checkpoint(
-                to_absolute_path("../MODELS/PINO/checkpoints_oil"),
-                models=surrogate_oil,
-                optimizer=optimizer_oil,
-                scheduler=scheduler_oil,
-                device=dist.device,
-            )
-            use_epoch = loaded_epoch_oil
-        loaded_epoch_peacemann = load_checkpoint(
-            to_absolute_path("../MODELS/PINO/checkpoints_peacemann"),
-            models=surrogate_peacemann,
-            optimizer=optimizer_peacemann,
-            scheduler=scheduler_peacemann,
-            device=dist.device,
-        )
-        use_epoch = loaded_epoch_peacemann
+            use_epoch = loaded_epoch_peacemann  
     MODELS = {}
     SCHEDULER = {}
     if "PRESSURE" in output_variables:
@@ -955,7 +1149,7 @@ def load_and_setup_training_data(
         SCHEDULER["SOIL"] = scheduler_oil
     MODELS["PEACEMANN"] = surrogate_peacemann
     SCHEDULER["PEACEMANN"] = scheduler_peacemann
-    composite_model = CompositeModel(MODELS, output_variables)
+    composite_model = CompositeModelBatch(MODELS,steppi, output_variables,model_type=cfg.custom.model_type)
 
     training_setup = {
         "data_train": data,  # Training data dictionary

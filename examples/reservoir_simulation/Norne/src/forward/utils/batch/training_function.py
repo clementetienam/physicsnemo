@@ -263,6 +263,7 @@ def run_training_loop(
                     TARGETS,
                     cfg,
                     dist.device,
+                    input_keys,
                     output_keys_saturation,
                     steppi,
                     output_variables,
@@ -470,6 +471,7 @@ def run_training_loop(
                         TARGETS,
                         cfg,
                         dist.device,
+                        input_keys,
                         output_keys_saturation,
                         steppi,
                         output_variables,
@@ -594,158 +596,314 @@ def run_training_loop(
             torch.distributed.barrier()
         if (epoch % 500 == 0 or epoch == 1) and dist.rank == 0:
             logger.info(f"🔥 Saving all models at epoch {epoch}...")
-            if "PRESSURE" in output_variables:
-                if cfg.custom.fno_type == "PINO":
-                    save_model_to_buffer(
-                        best_pressure,
-                        "../MODELS/PINO/checkpoints_pressure/pino_pressure_forward_model.pth",
-                    )
-                else:
-                    save_model_to_buffer(
-                        best_pressure,
-                        "../MODELS/FNO/checkpoints_pressure/fno_pressure_forward_model.pth",
-                    )
-            if "SGAS" in output_variables:
-                if cfg.custom.fno_type == "PINO":
-                    save_model_to_buffer(
-                        best_gas,
-                        "../MODELS/PINO/checkpoints_gas/pino_gas_forward_model.pth",
-                    )
-                else:
-                    save_model_to_buffer(
-                        best_gas,
-                        "../MODELS/FNO/checkpoints_gas/fno_gas_forward_model.pth",
-                    )
-            if "SWAT" in output_variables:
-                if cfg.custom.fno_type == "PINO":
-                    save_model_to_buffer(
-                        best_saturation,
-                        "../MODELS/PINO/checkpoints_saturation/pino_saturation_forward_model.pth",
-                    )
-                else:
-                    save_model_to_buffer(
-                        best_saturation,
-                        "../MODELS/FNO/checkpoints_saturation/fno_saturation_forward_model.pth",
-                    )
-            if "SOIL" in output_variables:
-                if cfg.custom.fno_type == "PINO":
-                    save_model_to_buffer(
-                        best_oil,
-                        "../MODELS/PINO/checkpoints_oil/pino_oil_forward_model.pth",
-                    )
-                else:
-                    save_model_to_buffer(
-                        best_oil,
-                        "../MODELS/FNO/checkpoints_oil/fno_oil_forward_model.pth",
-                    )
-            if cfg.custom.fno_type == "PINO":
-                save_model_to_buffer(
-                    best_peacemann,
-                    "../MODELS/PINO/checkpoints_peacemann/pino_peacemann_forward_model.pth",
-                )
-            else:
-                save_model_to_buffer(
-                    best_peacemann,
-                    "../MODELS/FNO/checkpoints_peacemann/fno_peacemann_forward_model.pth",
-                )
-            if cfg.custom.fno_type == "FNO":
+            if cfg.custom.model_type == "FNO":
                 if "PRESSURE" in output_variables:
-                    torch.save(
-                        {
-                            "surrogate_pressure_state_dict": surrogate_pressure.state_dict(),
-                            "optimizer_state_dict": optimizer_pressure.state_dict(),
-                            "scheduler_state_dict": scheduler_pressure.state_dict(),
-                            "epoch": epoch,  # Save the epoch in the checkpoint data as well
-                        },
-                        "../MODELS/FNO/checkpoints_pressure/checkpoint.pth",
-                    )  # Attach epoch to filename
+                    if cfg.custom.fno_type == "PINO":
+                        save_model_to_buffer(
+                            best_pressure,
+                            "../MODELS/PINO/checkpoints_pressure/pino_pressure_forward_model.pth",
+                        )
+                    else:
+                        save_model_to_buffer(
+                            best_pressure,
+                            "../MODELS/FNO/checkpoints_pressure/fno_pressure_forward_model.pth",
+                        )
                 if "SGAS" in output_variables:
-                    torch.save(
-                        {
-                            "surrogate_gas_state_dict": surrogate_gas.state_dict(),
-                            "optimizer_state_dict": optimizer_gas.state_dict(),
-                            "scheduler_state_dict": scheduler_gas.state_dict(),
-                            "epoch": epoch,  # Save the epoch in the checkpoint data as well
-                        },
-                        "../MODELS/FNO/checkpoints_gas/checkpoint.pth",
-                    )  # Attach epoch to filename
+                    if cfg.custom.fno_type == "PINO":
+                        save_model_to_buffer(
+                            best_gas,
+                            "../MODELS/PINO/checkpoints_gas/pino_gas_forward_model.pth",
+                        )
+                    else:
+                        save_model_to_buffer(
+                            best_gas,
+                            "../MODELS/FNO/checkpoints_gas/fno_gas_forward_model.pth",
+                        )
                 if "SWAT" in output_variables:
-                    torch.save(
-                        {
-                            "surrogate_saturation_state_dict": surrogate_saturation.state_dict(),
-                            "optimizer_state_dict": optimizer_saturation.state_dict(),
-                            "scheduler_state_dict": scheduler_saturation.state_dict(),
-                            "epoch": epoch,  # Save the epoch in the checkpoint data as well
-                        },
-                        "../MODELS/FNO/checkpoints_saturation/checkpoint.pth",
-                    )  # Attach epoch to filename
+                    if cfg.custom.fno_type == "PINO":
+                        save_model_to_buffer(
+                            best_saturation,
+                            "../MODELS/PINO/checkpoints_saturation/pino_saturation_forward_model.pth",
+                        )
+                    else:
+                        save_model_to_buffer(
+                            best_saturation,
+                            "../MODELS/FNO/checkpoints_saturation/fno_saturation_forward_model.pth",
+                        )
                 if "SOIL" in output_variables:
+                    if cfg.custom.fno_type == "PINO":
+                        save_model_to_buffer(
+                            best_oil,
+                            "../MODELS/PINO/checkpoints_oil/pino_oil_forward_model.pth",
+                        )
+                    else:
+                        save_model_to_buffer(
+                            best_oil,
+                            "../MODELS/FNO/checkpoints_oil/fno_oil_forward_model.pth",
+                        )
+                if cfg.custom.fno_type == "PINO":
+                    save_model_to_buffer(
+                        best_peacemann,
+                        "../MODELS/PINO/checkpoints_peacemann/pino_peacemann_forward_model.pth",
+                    )
+                else:
+                    save_model_to_buffer(
+                        best_peacemann,
+                        "../MODELS/FNO/checkpoints_peacemann/fno_peacemann_forward_model.pth",
+                    )
+                if cfg.custom.fno_type == "FNO":
+                    if "PRESSURE" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_pressure_state_dict": surrogate_pressure.state_dict(),
+                                "optimizer_state_dict": optimizer_pressure.state_dict(),
+                                "scheduler_state_dict": scheduler_pressure.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/FNO/checkpoints_pressure/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SGAS" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_gas_state_dict": surrogate_gas.state_dict(),
+                                "optimizer_state_dict": optimizer_gas.state_dict(),
+                                "scheduler_state_dict": scheduler_gas.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/FNO/checkpoints_gas/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SWAT" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_saturation_state_dict": surrogate_saturation.state_dict(),
+                                "optimizer_state_dict": optimizer_saturation.state_dict(),
+                                "scheduler_state_dict": scheduler_saturation.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/FNO/checkpoints_saturation/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SOIL" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_oil_state_dict": surrogate_oil.state_dict(),
+                                "optimizer_state_dict": optimizer_oil.state_dict(),
+                                "scheduler_state_dict": scheduler_oil.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/FNO/checkpoints_oil/checkpoint.pth",
+                        )  # Attach epoch to filename
                     torch.save(
                         {
-                            "surrogate_oil_state_dict": surrogate_oil.state_dict(),
-                            "optimizer_state_dict": optimizer_oil.state_dict(),
-                            "scheduler_state_dict": scheduler_oil.state_dict(),
+                            "surrogate_peacemann_state_dict": surrogate_peacemann.state_dict(),
+                            "optimizer_state_dict": optimizer_peacemann.state_dict(),
+                            "scheduler_state_dict": scheduler_peacemann.state_dict(),
                             "epoch": epoch,  # Save the epoch in the checkpoint data as well
                         },
-                        "../MODELS/FNO/checkpoints_oil/checkpoint.pth",
+                        "../MODELS/FNO/checkpoints_peacemann/checkpoint.pth",
                     )  # Attach epoch to filename
-                torch.save(
-                    {
-                        "surrogate_peacemann_state_dict": surrogate_peacemann.state_dict(),
-                        "optimizer_state_dict": optimizer_peacemann.state_dict(),
-                        "scheduler_state_dict": scheduler_peacemann.state_dict(),
-                        "epoch": epoch,  # Save the epoch in the checkpoint data as well
-                    },
-                    "../MODELS/FNO/checkpoints_peacemann/checkpoint.pth",
-                )  # Attach epoch to filename
+                else:
+                    if "PRESSURE" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_pressure_state_dict": surrogate_pressure.state_dict(),
+                                "optimizer_state_dict": optimizer_pressure.state_dict(),
+                                "scheduler_state_dict": scheduler_pressure.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/PINO/checkpoints_pressure/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SGAS" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_gas_state_dict": surrogate_gas.state_dict(),
+                                "optimizer_state_dict": optimizer_gas.state_dict(),
+                                "scheduler_state_dict": scheduler_gas.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/PINO/checkpoints_gas/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SWAT" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_saturation_state_dict": surrogate_saturation.state_dict(),
+                                "optimizer_state_dict": optimizer_saturation.state_dict(),
+                                "scheduler_state_dict": scheduler_saturation.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/PINO/checkpoints_saturation/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SOIL" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_oil_state_dict": surrogate_oil.state_dict(),
+                                "optimizer_state_dict": optimizer_oil.state_dict(),
+                                "scheduler_state_dict": scheduler_saturation.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/PINO/checkpoints_oil/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    torch.save(
+                        {
+                            "surrogate_peacemann_state_dict": surrogate_peacemann.state_dict(),
+                            "optimizer_state_dict": optimizer_peacemann.state_dict(),
+                            "scheduler_state_dict": scheduler_peacemann.state_dict(),
+                            "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                        },
+                        "../MODELS/PINO/checkpoints_peacemann/checkpoint.pth",
+                    )
             else:
                 if "PRESSURE" in output_variables:
-                    torch.save(
-                        {
-                            "surrogate_pressure_state_dict": surrogate_pressure.state_dict(),
-                            "optimizer_state_dict": optimizer_pressure.state_dict(),
-                            "scheduler_state_dict": scheduler_pressure.state_dict(),
-                            "epoch": epoch,  # Save the epoch in the checkpoint data as well
-                        },
-                        "../MODELS/PINO/checkpoints_pressure/checkpoint.pth",
-                    )  # Attach epoch to filename
+                    if cfg.custom.fno_type == "PINO":
+                        save_model_to_buffer(
+                            best_pressure,
+                            "../MODELS/PI-TRANSOLVER/checkpoints_pressure/pi-transolver_pressure_forward_model.pth",
+                        )
+                    else:
+                        save_model_to_buffer(
+                            best_pressure,
+                            "../MODELS/TRANSOLVER/checkpoints_pressure/transolver_pressure_forward_model.pth",
+                        )
                 if "SGAS" in output_variables:
-                    torch.save(
-                        {
-                            "surrogate_gas_state_dict": surrogate_gas.state_dict(),
-                            "optimizer_state_dict": optimizer_gas.state_dict(),
-                            "scheduler_state_dict": scheduler_gas.state_dict(),
-                            "epoch": epoch,  # Save the epoch in the checkpoint data as well
-                        },
-                        "../MODELS/PINO/checkpoints_gas/checkpoint.pth",
-                    )  # Attach epoch to filename
+                    if cfg.custom.fno_type == "PINO":
+                        save_model_to_buffer(
+                            best_gas,
+                            "../MODELS/PI-TRANSOLVER/checkpoints_gas/pi-transolver_gas_forward_model.pth",
+                        )
+                    else:
+                        save_model_to_buffer(
+                            best_gas,
+                            "../MODELS/TRANSOLVER/checkpoints_gas/transolver_gas_forward_model.pth",
+                        )
                 if "SWAT" in output_variables:
-                    torch.save(
-                        {
-                            "surrogate_saturation_state_dict": surrogate_saturation.state_dict(),
-                            "optimizer_state_dict": optimizer_saturation.state_dict(),
-                            "scheduler_state_dict": scheduler_saturation.state_dict(),
-                            "epoch": epoch,  # Save the epoch in the checkpoint data as well
-                        },
-                        "../MODELS/PINO/checkpoints_saturation/checkpoint.pth",
-                    )  # Attach epoch to filename
+                    if cfg.custom.fno_type == "PINO":
+                        save_model_to_buffer(
+                            best_saturation,
+                            "../MODELS/PI-TRANSOLVER/checkpoints_saturation/pi-transolver_saturation_forward_model.pth",
+                        )
+                    else:
+                        save_model_to_buffer(
+                            best_saturation,
+                            "../MODELS/TRANSOLVER/checkpoints_saturation/transolver_saturation_forward_model.pth",
+                        )
                 if "SOIL" in output_variables:
+                    if cfg.custom.fno_type == "PINO":
+                        save_model_to_buffer(
+                            best_oil,
+                            "../MODELS/PI-TRANSOLVER/checkpoints_oil/pi-transolver_oil_forward_model.pth",
+                        )
+                    else:
+                        save_model_to_buffer(
+                            best_oil,
+                            "../MODELS/TRANSOLVER/checkpoints_oil/transolver_oil_forward_model.pth",
+                        )
+                if cfg.custom.fno_type == "PINO":
+                    save_model_to_buffer(
+                        best_peacemann,
+                        "../MODELS/PI-TRANSOLVER/checkpoints_peacemann/pi-transolver_peacemann_forward_model.pth",
+                    )
+                else:
+                    save_model_to_buffer(
+                        best_peacemann,
+                        "../MODELS/TRANSOLVER/checkpoints_peacemann/fno_peacemann_forward_model.pth",
+                    )
+                if cfg.custom.fno_type == "FNO":
+                    if "PRESSURE" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_pressure_state_dict": surrogate_pressure.state_dict(),
+                                "optimizer_state_dict": optimizer_pressure.state_dict(),
+                                "scheduler_state_dict": scheduler_pressure.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/TRANSOLVER/checkpoints_pressure/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SGAS" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_gas_state_dict": surrogate_gas.state_dict(),
+                                "optimizer_state_dict": optimizer_gas.state_dict(),
+                                "scheduler_state_dict": scheduler_gas.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/TRANSOLVER/checkpoints_gas/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SWAT" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_saturation_state_dict": surrogate_saturation.state_dict(),
+                                "optimizer_state_dict": optimizer_saturation.state_dict(),
+                                "scheduler_state_dict": scheduler_saturation.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/TRANSOLVER/checkpoints_saturation/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SOIL" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_oil_state_dict": surrogate_oil.state_dict(),
+                                "optimizer_state_dict": optimizer_oil.state_dict(),
+                                "scheduler_state_dict": scheduler_oil.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/TRANSOLVER/checkpoints_oil/checkpoint.pth",
+                        )  # Attach epoch to filename
                     torch.save(
                         {
-                            "surrogate_oil_state_dict": surrogate_oil.state_dict(),
-                            "optimizer_state_dict": optimizer_oil.state_dict(),
-                            "scheduler_state_dict": scheduler_saturation.state_dict(),
+                            "surrogate_peacemann_state_dict": surrogate_peacemann.state_dict(),
+                            "optimizer_state_dict": optimizer_peacemann.state_dict(),
+                            "scheduler_state_dict": scheduler_peacemann.state_dict(),
                             "epoch": epoch,  # Save the epoch in the checkpoint data as well
                         },
-                        "../MODELS/PINO/checkpoints_oil/checkpoint.pth",
+                        "../MODELS/TRANSOLVER/checkpoints_peacemann/checkpoint.pth",
                     )  # Attach epoch to filename
-                torch.save(
-                    {
-                        "surrogate_peacemann_state_dict": surrogate_peacemann.state_dict(),
-                        "optimizer_state_dict": optimizer_peacemann.state_dict(),
-                        "scheduler_state_dict": scheduler_peacemann.state_dict(),
-                        "epoch": epoch,  # Save the epoch in the checkpoint data as well
-                    },
-                    "../MODELS/PINO/checkpoints_peacemann/checkpoint.pth",
-                )  # Attach epoch to filename
+                else:
+                    if "PRESSURE" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_pressure_state_dict": surrogate_pressure.state_dict(),
+                                "optimizer_state_dict": optimizer_pressure.state_dict(),
+                                "scheduler_state_dict": scheduler_pressure.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/PI-TRANSOLVER/checkpoints_pressure/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SGAS" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_gas_state_dict": surrogate_gas.state_dict(),
+                                "optimizer_state_dict": optimizer_gas.state_dict(),
+                                "scheduler_state_dict": scheduler_gas.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/PI-TRANSOLVER/checkpoints_gas/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SWAT" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_saturation_state_dict": surrogate_saturation.state_dict(),
+                                "optimizer_state_dict": optimizer_saturation.state_dict(),
+                                "scheduler_state_dict": scheduler_saturation.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/PI-TRANSOLVER/checkpoints_saturation/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    if "SOIL" in output_variables:
+                        torch.save(
+                            {
+                                "surrogate_oil_state_dict": surrogate_oil.state_dict(),
+                                "optimizer_state_dict": optimizer_oil.state_dict(),
+                                "scheduler_state_dict": scheduler_saturation.state_dict(),
+                                "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                            },
+                            "../MODELS/PI-TRANSOLVER/checkpoints_oil/checkpoint.pth",
+                        )  # Attach epoch to filename
+                    torch.save(
+                        {
+                            "surrogate_peacemann_state_dict": surrogate_peacemann.state_dict(),
+                            "optimizer_state_dict": optimizer_peacemann.state_dict(),
+                            "scheduler_state_dict": scheduler_peacemann.state_dict(),
+                            "epoch": epoch,  # Save the epoch in the checkpoint data as well
+                        },
+                        "../MODELS/PI-TRANSOLVER/checkpoints_peacemann/checkpoint.pth",
+                    )
     
