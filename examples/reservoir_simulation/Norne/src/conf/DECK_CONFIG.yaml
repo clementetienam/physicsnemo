@@ -129,7 +129,7 @@ custom:
     Do_param_method: "VCAE"            # Parameterization method: "DCT" or "VCAE"
     DCT: 15                            # Percentage of DCT coefficients retained (10-50%)
     Pretrained_Model: "Yes"            # Use pretrained generative model [Yes/No]
-    Train_Moe: "MoE"                   # Model training: "FNO" or "MoE" (Mixture of Experts)
+    Train_Moe: "FNO"                   # Model training: "FNO" or "MoE" (Mixture of Experts)
     Decorrelationn: "No"               # Apply ensemble decorrelation [Yes/No]
     Generate_ensemble: "pre-trained"   # Ensemble generation: "afresh" or "pre-trained"
     Covariance_localisation: "Yes"     # Apply covariance localization [Yes/No]
@@ -329,7 +329,7 @@ batch_size:
 # ================================================================================
 # training: Defines stopping criteria and training duration parameters
 training:
-  max_steps: 1500               # Maximum training iterations
+  max_steps: 10000               # Maximum training iterations
 
 # ================================================================================
 # OPTIMIZER AND REGULARIZATION CONFIGURATION
