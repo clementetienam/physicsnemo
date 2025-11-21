@@ -329,7 +329,49 @@ def remove_rows(matrix, indices_to_remove):
     matrix = np.delete(matrix, indices_to_remove, axis=0)
     return matrix
 
+def run_transolver(x,steppi, model):
 
+    B, steppi_no, nz, nx, ny, C = x.shape
+
+    batch_chunk_size = 2
+    time_chunk_size = 3
+
+    # Output: (B, steppi, nz, nx, ny)
+    output = torch.zeros(B, steppi, nz, nx, ny, device=x.device)
+
+    total_chunks = (
+        (B + batch_chunk_size - 1) // batch_chunk_size
+        * (steppi + time_chunk_size - 1)
+        // time_chunk_size
+    )
+    current_chunk = 0
+
+    for batch_start in range(0, B, batch_chunk_size):
+        batch_end = min(batch_start + batch_chunk_size, B)
+
+        # input_chunk: (b, t, nz, nx, ny, C)
+        input_chunk = x[batch_start:batch_end]
+        b, t, nz_c, nx_c, ny_c, C_c = input_chunk.shape
+
+        # Merge batch and time for TransolverModel:
+        # x_5d: (b * t, nz, nx, ny, C)
+        x_5d = input_chunk.view(b * t, nz_c, nx_c, ny_c, C_c)
+
+        # model(...) returns (b * t, nz, nx, ny, out_dim)
+        pred_5d = model(x_5d)
+
+        # Remove out_dim=1 and restore (b, t, nz, nx, ny)
+        pred_5d = pred_5d.squeeze(-1)
+        pred_3d = pred_5d.view(b, steppi, nz_c, nx_c, ny_c)
+
+        output[batch_start:batch_end] = pred_3d
+
+        # Clean up
+        del input_chunk, x_5d, pred_5d, pred_3d
+        if current_chunk % 3 == 0:
+            torch.cuda.empty_cache()
+
+    return output
 def Forward_model_ensemble(
     N,
     x_true,
@@ -397,6 +439,14 @@ def Forward_model_ensemble(
         modelG = models["gas"].eval()
         Sgas = torch.zeros(N, steppi, nz, nx, ny).to(device, torch.float32)
 
+    input_keys = [
+        "perm",
+        "poro",
+        "pini",
+        "sini",
+        "fault",
+    ]
+    
     for mv in range(N):
         temp = {
             "perm": x_true["perm"][mv, :, :, :, :][None, :, :, :, :],
@@ -407,13 +457,24 @@ def Forward_model_ensemble(
         }
 
         with torch.no_grad():
-            tensors = [
-                value for value in temp.values() if isinstance(value, torch.Tensor)
-            ]
-            if not tensors:
-                raise ValueError("🚨 No valid input tensors found for the model!")
+            if cfg.custom.model_type=="FNO":  
+                tensors = [
+                    value for value in temp.values() if isinstance(value, torch.Tensor)
+                ]
+                if not tensors:
+                    raise ValueError("🚨 No valid input tensors found for the model!")
 
-            input_tensor = torch.cat(tensors, dim=1)
+                input_tensor = torch.cat(tensors, dim=1)
+            else:
+                vars_for_cat = []
+                for key in input_keys:
+                    tok = temp[key]  # (B, steppi, nz, nx, ny)
+                    tok = tok.unsqueeze(-1)  # (B, steppi, nz, nx, ny, 1)
+                    vars_for_cat.append(tok)
+
+                # input_temp: (B, steppi, nz, nx, ny, C)
+                input_tensor = torch.cat(vars_for_cat, dim=-1)  
+                
             nz_current = input_tensor.shape[2]
 
             # Setup chunking - only if nz > 30
@@ -431,8 +492,10 @@ def Forward_model_ensemble(
                 current_chunk_size = end_idx - start_idx
 
                 # Extract chunk
-                input_temp = input_tensor[:, :, start_idx:end_idx, :, :]
-
+                if cfg.custom.model_type=="FNO":
+                    input_temp = input_tensor[:, :, start_idx:end_idx, :, :]
+                else:
+                    input_temp = input_tensor[:, :, start_idx:end_idx, :, :,:]
                 # Pad if needed (only when chunking)
                 if nz_current > cfg.custom.allowable_size:
                     pad_size = chunk_size - current_chunk_size
@@ -442,16 +505,27 @@ def Forward_model_ensemble(
                         )
                 else:
                     pad_size = 0
-
                 # Model predictions
-                if "PRESSURE" in output_variables and modelP is not None:
-                    ouut_p1 = modelP(input_temp)
-                if "SGAS" in output_variables and modelG is not None:
-                    ouut_sg1 = modelG(input_temp)
-                if "SWAT" in output_variables and modelS is not None:
-                    ouut_s1 = modelS(input_temp)
-                if "SOIL" in output_variables and modelO is not None:
-                    ouut_so1 = modelO(input_temp)
+                if cfg.custom.model_type == "FNO":
+                    if "PRESSURE" in output_variables and modelP is not None:
+                        ouut_p1 = modelP(input_temp)
+                    if "SGAS" in output_variables and modelG is not None:
+                        ouut_sg1 = modelG(input_temp)
+                    if "SWAT" in output_variables and modelS is not None:
+                        ouut_s1 = modelS(input_temp)
+                    if "SOIL" in output_variables and modelO is not None:
+                        ouut_so1 = modelO(input_temp)
+                else:
+                    if "PRESSURE" in output_variables and modelP is not None:
+                        ouut_p1 = run_transolver(input_temp,steppi, modelP)
+                    if "SGAS" in output_variables and modelG is not None:
+                        ouut_sg1 = run_transolver(input_temp,steppi,modelG)
+                    if "SWAT" in output_variables and modelS is not None:
+                        ouut_s1 = run_transolver(input_temp,steppi,modelS)
+                    if "SOIL" in output_variables and modelO is not None:
+                        ouut_so1 = run_transolver(input_temp,steppi,modelO)                    
+                    
+                                       
 
                 # Remove padding if applied
                 if nz_current > cfg.custom.allowable_size and pad_size > 0:
