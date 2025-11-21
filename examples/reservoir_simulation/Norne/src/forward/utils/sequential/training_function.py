@@ -213,8 +213,10 @@ def run_training_loop(
         torch.distributed.barrier()
     training_loss, validation_loss = 0, 0
     validation_loss_history, training_loss_history = [], []
-    max_epoch = cfg.training.max_steps
-    # start_time = time.time()
+    if cfg.custom.unroll=="TRUE":
+        max_epoch = 1500
+    else:
+        max_epoch = cfg.training.max_steps    # start_time = time.time()
     for epoch in range(max(1, use_epoch + 1), max_epoch + 1):
         if "PRESSURE" in output_variables:
             surrogate_pressure.train()
@@ -266,6 +268,7 @@ def run_training_loop(
                     TARGETS,
                     cfg,
                     dist.device,
+                    input_keys,
                     output_keys_saturation,
                     steppi,
                     output_variables,
@@ -439,6 +442,7 @@ def run_training_loop(
                         TARGETS,
                         cfg,
                         dist.device,
+                        input_keys,
                         output_keys_saturation,
                         steppi,
                         output_variables,

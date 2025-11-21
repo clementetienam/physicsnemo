@@ -931,14 +931,14 @@ def load_and_setup_training_data(
             if batch_sizee < 1:
                 batch_sizee = 1
         else:
-            temp = cfg.batch_size.grid_fno
-            num_ranks = dist.world_size
-            if dist.rank == 0:
-                logger.info(f"Number of GPU ranks in use: {num_ranks}")
-            temp = temp / num_ranks
-            batch_sizee = int(temp)
-            if batch_sizee < 1:
-                batch_sizee = 1
+            # temp = cfg.batch_size.grid_fno
+            # num_ranks = dist.world_size
+            # if dist.rank == 0:
+                # logger.info(f"Number of GPU ranks in use: {num_ranks}")
+            # temp = temp / num_ranks
+            # batch_sizee = int(temp)
+            # if batch_sizee < 1:
+            batch_sizee = 1
     dataset_train = Labelledset(data, dist.device)
     train_sampler = DistributedSampler(
         dataset_train,
@@ -1080,8 +1080,8 @@ def load_and_setup_training_data(
                 out_dim=len(output_keys_pressure),
                 device=device,
                 n_layers=4,
-                n_hidden=8,
-                n_head=4,
+                n_hidden=24,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -1104,8 +1104,8 @@ def load_and_setup_training_data(
                 out_dim=len(output_keys_gas),
                 device=device,
                 n_layers=4,
-                n_hidden=8,
-                n_head=4,
+                n_hidden=24,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -1115,8 +1115,8 @@ def load_and_setup_training_data(
                 out_dim=len(output_keys_saturation),
                 device=device,
                 n_layers=4,
-                n_hidden=8,
-                n_head=4,
+                n_hidden=24,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -1127,8 +1127,8 @@ def load_and_setup_training_data(
                 out_dim=len(output_keys_oil),
                 device=device,
                 n_layers=4,
-                n_hidden=8,
-                n_head=4,
+                n_hidden=24,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -1514,7 +1514,7 @@ def load_and_setup_training_data(
     MODELS["PEACEMANN"] = surrogate_peacemann
     SCHEDULER["PEACEMANN"] = scheduler_peacemann
     #composite_model = CompositeModel(MODELS, output_variables)
-    composite_model = CompositeModel(MODELS, output_variables, model_type=cfg.custom.model_type)
+    composite_model = CompositeModel(MODELS, 1, output_variables, model_type=cfg.custom.model_type)
 
     training_setup = {
         "data_train": data,  # Training data dictionary
