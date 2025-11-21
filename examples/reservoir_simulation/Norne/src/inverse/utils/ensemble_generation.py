@@ -53,6 +53,7 @@ import torch
 from hydra.utils import to_absolute_path
 import scipy
 from physicsnemo.models.fno import FNO
+from physicsnemo.models.transolver import Transolver
 from physicsnemo.models.module import Module
 import matplotlib.pyplot as plt
 
@@ -230,6 +231,203 @@ def create_fno_model(
         num_fno_modes=num_fno_modes,
     )
 
+class TransolverModel(Module):
+    def __init__(
+        self,
+        functional_dim,
+        out_dim,
+        device,
+        embedding_dim=None,
+        n_layers=4,
+        n_hidden=60,
+        dropout=0.0,
+        n_head=12,
+        act="gelu",
+        mlp_ratio=4,
+        slice_num=32,
+        unified_pos=True,
+        ref=8,
+        structured_shape=(46, 112),
+        use_te=True,
+        time_input=False,
+    ):
+        super().__init__()
+        self.transolver = Transolver(
+            functional_dim=functional_dim,
+            out_dim=out_dim,
+            embedding_dim=embedding_dim,
+            n_layers=n_layers,
+            n_hidden=n_hidden,
+            dropout=dropout,
+            n_head=n_head,
+            act=act,
+            mlp_ratio=mlp_ratio,
+            slice_num=slice_num,
+            unified_pos=unified_pos,
+            ref=ref,
+            structured_shape=structured_shape,
+            use_te=use_te,
+            time_input=time_input,
+        ).to(torch.device(device))
+        self.meta = type("", (), {})()
+        self.meta.name = "transolver_model"
+        self.out_dim = out_dim
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x: (B, nz, nx, ny, C)
+        returns: (B, nz, nx, ny, out_dim)
+        """
+        B, nz, nx, ny, C = x.shape
+
+        # Flatten the 3D field into 2D slices to feed PhysicsNeMo Transolver
+        # x_2d: (B * nz, nx, ny, C)
+        x_2d = x.reshape(B * nz, nx, ny, C)
+
+        out_2d = self.transolver(x_2d)
+        # out_2d should be (B * nz, nx, ny, out_dim)
+
+        out_3d = out_2d.reshape(B, nz, nx, ny, self.out_dim)
+        return out_3d
+
+def create_transolver_model_batch(
+    functional_dim,
+    out_dim,
+    device,
+    embedding_dim=None,
+    n_layers=4,
+    n_hidden=60,
+    dropout=0.0,
+    n_head=12,
+    act="gelu",
+    mlp_ratio=2,
+    slice_num=32,
+    unified_pos=True,
+    ref=8,
+    structured_shape=(46, 112),
+    use_te=True,
+    time_input=False,
+):
+
+    # Validate arguments
+    if n_hidden % n_head != 0:
+        raise ValueError(f"n_hidden ({n_hidden}) must be divisible by n_head ({n_head})")
+
+    if unified_pos and structured_shape is None:
+        raise ValueError("structured_shape must be provided when unified_pos=True")
+
+    if structured_shape is not None and len(structured_shape) not in [2, 3]:
+        raise ValueError(f"structured_shape must be 2D or 3D, got {structured_shape}")
+
+    return TransolverModel(
+        functional_dim=functional_dim,
+        out_dim=out_dim,
+        device=device,
+        embedding_dim=embedding_dim,
+        n_layers=n_layers,
+        n_hidden=n_hidden,
+        dropout=dropout,
+        n_head=n_head,
+        act=act,
+        mlp_ratio=mlp_ratio,
+        slice_num=slice_num,
+        unified_pos=unified_pos,
+        ref=ref,
+        structured_shape=structured_shape,
+        use_te=use_te,
+        time_input=time_input,
+    )
+    
+    
+def create_transolver_model(
+    functional_dim,
+    out_dim,
+    device,
+    embedding_dim=None,
+    n_layers=4,
+    n_hidden=60,
+    dropout=0.0,
+    n_head=12,
+    act="gelu",
+    mlp_ratio=2,
+    slice_num=24,
+    unified_pos=True,
+    ref=8,
+    structured_shape=(46, 112),
+    use_te=True,
+    time_input=False,
+):
+    """
+    Create a Transolver model wrapped in a compatible PhyNeMo Module.
+
+    Parameters:
+    -----------
+    functional_dim : int
+        The dimension of the input values, not including any embeddings.
+    out_dim : int
+        The dimension of the output of the model.
+    device : str
+        Device to create the model on ('cpu' or 'cuda').
+    embedding_dim : int | None, optional
+        The spatial dimension of the input data embeddings. Default is None.
+    n_layers : int, optional
+        The number of transformer PhysicsAttention layers. Default is 8.
+    n_hidden : int, optional
+        The hidden dimension of the transformer. Default is 256.
+    dropout : float, optional
+        The dropout rate. Default is 0.0.
+    n_head : int, optional
+        The number of attention heads. Default is 8.
+    act : str, optional
+        The activation function. Default is "gelu".
+    mlp_ratio : int, optional
+        The ratio of hidden dimension in the MLP. Default is 4.
+    slice_num : int, optional
+        The number of slices in the PhysicsAttention layers. Default is 32.
+    unified_pos : bool, optional
+        Whether to use unified positional embeddings. Default is True.
+    ref : int, optional
+        The reference dimension size when using unified positions. Default is 8.
+    structured_shape : tuple, optional
+        The shape of the latent space for structured data. Default is (46, 112).
+    use_te : bool, optional
+        Whether to use transformer engine backend. Default is True.
+    time_input : bool, optional
+        Whether to include time embeddings. Default is False.
+
+    Returns:
+    --------
+    transolver_model : TransolverModel
+        Initialized Transolver model ready for inference or training.
+    """
+    # Validate arguments
+    if n_hidden % n_head != 0:
+        raise ValueError(f"n_hidden ({n_hidden}) must be divisible by n_head ({n_head})")
+
+    if unified_pos and structured_shape is None:
+        raise ValueError("structured_shape must be provided when unified_pos=True")
+
+    if structured_shape is not None and len(structured_shape) not in [2, 3]:
+        raise ValueError(f"structured_shape must be 2D or 3D, got {structured_shape}")
+
+    return TransolverModel(
+        functional_dim=functional_dim,
+        out_dim=out_dim,
+        device=device,
+        embedding_dim=embedding_dim,
+        n_layers=n_layers,
+        n_hidden=n_hidden,
+        dropout=dropout,
+        n_head=n_head,
+        act=act,
+        mlp_ratio=mlp_ratio,
+        slice_num=slice_num,
+        unified_pos=unified_pos,
+        ref=ref,
+        structured_shape=structured_shape,
+        use_te=use_te,
+        time_input=time_input,
+    )
 
 def Get_Time(nx, ny, nz, steppi, steppi_indices, N):
     """Return tiled time volume and shape helpers for dataset construction."""
@@ -407,279 +605,621 @@ def setup_models_and_data(
         output_keys_oil.append("oil_sat")
     # input_keys_peacemann = ["X"]
     output_keys_peacemann = ["Y"]
-    if "PRESSURE" in output_variables:
-        fno_supervised_pressure = create_fno_model(
-            len(input_keys),
-            steppi,
-            len(output_keys_pressure),
-            device,
-            num_fno_modes=16,
-            latent_channels=32,
+    if cfg.custom.model_type == "FNO":    
+        if "PRESSURE" in output_variables:
+            fno_supervised_pressure = create_fno_model(
+                len(input_keys),
+                steppi,
+                len(output_keys_pressure),
+                device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
+            )
+        if "SGAS" in output_variables:
+            fno_supervised_gas = create_fno_model(
+                len(input_keys),
+                steppi,
+                len(output_keys_gas),
+                device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
+            )
+
+        fno_supervised_peacemann = create_fno_model(
+            2 + (4 * N_pr),
+            lenwels * N_pr,
+            len(output_keys_peacemann),
+            dist.device,
+            num_fno_modes=13,
+            latent_channels=64,
             decoder_layer_size=32,
-            padding=22,
+            padding=20,
+            num_fno_layers=5,
             decoder_layers=4,
-            dimension=3,
-        )
-    if "SGAS" in output_variables:
-        fno_supervised_gas = create_fno_model(
-            len(input_keys),
-            steppi,
-            len(output_keys_gas),
-            device,
-            num_fno_modes=16,
-            latent_channels=32,
-            decoder_layer_size=32,
-            padding=22,
-            decoder_layers=4,
-            dimension=3,
-        )
-    fno_supervised_peacemann = create_fno_model(
-        2 + (4 * N_pr),
-        (lenwels * N_pr),
-        len(output_keys_peacemann),
-        device,
-        num_fno_modes=13,
-        latent_channels=64,
-        decoder_layer_size=32,
-        padding=20,
-        decoder_layers=4,
-        num_fno_layers=5,
-        dimension=1,
-    )
-    if "SWAT" in output_variables:
-        fno_supervised_saturation = create_fno_model(
-            len(input_keys),
-            steppi,
-            len(output_keys_saturation),
-            device,
-            num_fno_modes=16,
-            latent_channels=32,
-            decoder_layer_size=32,
-            padding=22,
-            decoder_layers=4,
-            dimension=3,
+            dimension=1,
         )
 
-    if "SOIL" in output_variables:
-        fno_supervised_oil = create_fno_model(
-            len(input_keys),
-            steppi,
-            len(output_keys_oil),
+        if "SWAT" in output_variables:
+            fno_supervised_saturation = create_fno_model(
+                len(input_keys),
+                steppi,
+                len(output_keys_saturation),
+                device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
+            )
+
+        if "SOIL" in output_variables:
+            fno_supervised_oil = create_fno_model(
+                len(input_keys),
+                steppi,
+                len(output_keys_oil),
+                device,
+                num_fno_modes=16,
+                latent_channels=32,
+                decoder_layer_size=32,
+                padding=22,
+                decoder_layers=4,
+                dimension=3,
+            )
+    else:
+        if "PRESSURE" in output_variables:
+            fno_supervised_pressure = create_transolver_model_batch(
+                functional_dim=len(input_keys),
+                out_dim=steppi,          # multi-step
+                embedding_dim=64,
+                device=device,
+                n_layers=8,
+                n_hidden=64,
+                n_head=8,
+                mlp_ratio=4,
+                slice_num=64,
+                structured_shape=(nx, ny),
+                use_te=True,
+            ) 
+        if "SGAS" in output_variables:
+            fno_supervised_gas = create_transolver_model_batch(
+                functional_dim=len(input_keys),
+                out_dim=steppi,          # multi-step
+                embedding_dim=64,
+                device=device,
+                n_layers=8,
+                n_hidden=64,
+                n_head=8,
+                mlp_ratio=4,
+                slice_num=64,
+                structured_shape=(nx, ny),
+                use_te=True,
+            ) 
+        fno_supervised_peacemann = create_fno_model(
+            2 + (4 * N_pr),
+            (lenwels * N_pr),
+            len(output_keys_peacemann),
             device,
-            num_fno_modes=16,
-            latent_channels=32,
+            num_fno_modes=13,
+            latent_channels=64,
             decoder_layer_size=32,
-            padding=22,
+            padding=20,
             decoder_layers=4,
-            dimension=3,
+            num_fno_layers=5,
+            dimension=1,
         )
+        if "SWAT" in output_variables:
+            fno_supervised_saturation = create_transolver_model_batch(
+                functional_dim=len(input_keys),
+                out_dim=steppi,          # multi-step
+                embedding_dim=64,
+                device=device,
+                n_layers=8,
+                n_hidden=64,
+                n_head=8,
+                mlp_ratio=4,
+                slice_num=64,
+                structured_shape=(nx, ny),
+                use_te=True,
+            ) 
+        if "SOIL" in output_variables:
+            fno_supervised_oil = create_transolver_model_batch(
+                functional_dim=len(input_keys),
+                out_dim=steppi,          # multi-step
+                embedding_dim=64,
+                device=device,
+                n_layers=8,
+                n_hidden=64,
+                n_head=8,
+                mlp_ratio=4,
+                slice_num=64,
+                structured_shape=(nx, ny),
+                use_te=True,
+            ) 
     if dist.rank == 0:
         logger.info(
             "*******************Load the trained Forward models*******************"
         )
-    if cfg.custom.fno_type == "FNO":
-        os.chdir("../MODELS/FNO")
-        logger.info(
-            "|   PRESSURE MODEL = FNO;   SATUARATION MODEL = FNO; PEACEMAN MODEL = FNO |"
-        )
-        models = {}
-        base_paths = {
-            "pressure": "./checkpoints_pressure",
-            "gas": "./checkpoints_gas",
-            "peacemann": "./checkpoints_peacemann",
-            "saturation": "./checkpoints_saturation",
-            "oil": "./checkpoints_oil",
-        }
-        if "PRESSURE" in output_variables:
-            logger.info("🟢 Loading Surrogate Model for Pressure")
+    if cfg.custom.model_type == "FNO":        
+        if cfg.custom.fno_type == "FNO":
+            os.chdir("../MODELS/FNO")
+            logger.info(
+                "|-----------------------------------------------------------------|"
+            )
+            logger.info(
+                "|                     FNO MODEL LEARNING    :                     |"
+            )
+            logger.info(
+                "|-----------------------------------------------------------------|"
+            )
+
+            logger.info(
+                "|-------------------------------------------------------------------------|"
+            )
+            logger.info(
+                "|   PRESSURE MODEL = FNO;   SATUARATION MODEL = FNO; PEACEMAN MODEL = FNO |"
+            )
+            logger.info(
+                "|-------------------------------------------------------------------------|"
+            )
+            models = {}
+            base_paths = {
+                "pressure": "./checkpoints_pressure",
+                "gas": "./checkpoints_gas",
+                "peacemann": "./checkpoints_peacemann",
+                "saturation": "./checkpoints_saturation",
+                "oil": "./checkpoints_oil",
+            }
+            if "PRESSURE" in output_variables:
+                logger.info("🟢 Loading Surrogate Model for Pressure")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["pressure"], "fno_pressure_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["pressure"], "checkpoint.pth")
+                fno_supervised_pressure = load_modell(
+                    fno_supervised_pressure,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "PRESSURE",
+                )
+                models["pressure"] = fno_supervised_pressure
+            if "SGAS" in output_variables:
+                logger.info("🟠 Loading Surrogate Model for Gas")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["gas"], "fno_gas_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["gas"], "checkpoint.pth")
+
+                fno_supervised_gas = load_modell(
+                    fno_supervised_gas,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SGAS",
+                )
+                models["gas"] = fno_supervised_gas
+            logger.info("🔵 Loading Surrogate Model for Peacemann")
             if excel == 1:
                 model_path = os.path.join(
-                    base_paths["pressure"], "fno_pressure_forward_model.pth"
+                    base_paths["peacemann"], "fno_peacemann_forward_model.pth"
                 )
             else:
-                model_path = os.path.join(base_paths["pressure"], "checkpoint.pth")
-            fno_supervised_pressure = load_modell(
-                fno_supervised_pressure,
+                model_path = os.path.join(base_paths["peacemann"], "checkpoint.pth")
+            fno_supervised_peacemann = load_modell(
+                fno_supervised_peacemann,
                 model_path,
                 cfg.custom.model_Distributed,
                 device,
                 excel,
-                "PRESSURE",
+                "PEACEMANN",
             )
-            models["pressure"] = fno_supervised_pressure
-        if "SGAS" in output_variables:
-            logger.info("🟠 Loading Surrogate Model for Gas")
-            if excel == 1:
-                model_path = os.path.join(
-                    base_paths["gas"], "fno_gas_forward_model.pth"
+            models["peacemann"] = fno_supervised_peacemann
+            if "SWAT" in output_variables:
+                logger.info("🟣 Loading Surrogate Model for Saturation")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["saturation"], "fno_saturation_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(
+                        base_paths["saturation"], "checkpoint.pth"
+                    )
+                fno_supervised_saturation = load_modell(
+                    fno_supervised_saturation,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SWAT",
                 )
-            else:
-                model_path = os.path.join(base_paths["gas"], "checkpoint.pth")
-            fno_supervised_gas = load_modell(
-                fno_supervised_gas,
-                model_path,
-                cfg.custom.model_Distributed,
-                device,
-                excel,
-                "SGAS",
-            )
-            models["gas"] = fno_supervised_gas
-        logger.info("🔵 Loading Surrogate Model for Peacemann")
-        if excel == 1:
-            model_path = os.path.join(
-                base_paths["peacemann"], "fno_peacemann_forward_model.pth"
-            )
+                models["saturation"] = fno_supervised_saturation
+            if "SOIL" in output_variables:
+                logger.info("🟣 Loading Surrogate Model for oil")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["oil"], "fno_oil_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["oil"], "checkpoint.pth")
+                fno_supervised_oil = load_modell(
+                    fno_supervised_oil,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SOIL",
+                )
+                models["oil"] = fno_supervised_oil
         else:
-            model_path = os.path.join(base_paths["peacemann"], "checkpoint.pth")
-        fno_supervised_peacemann = load_modell(
-            fno_supervised_peacemann,
-            model_path,
-            cfg.custom.model_Distributed,
-            device,
-            excel,
-            "PEACEMANN",
-        )
-        models["peacemann"] = fno_supervised_peacemann
-        if "SWAT" in output_variables:
-            logger.info("🟣 Loading Surrogate Model for Saturation")
-            if excel == 1:
-                model_path = os.path.join(
-                    base_paths["saturation"], "fno_saturation_forward_model.pth"
-                )
-            else:
-                model_path = os.path.join(base_paths["saturation"], "checkpoint.pth")
-            fno_supervised_saturation = load_modell(
-                fno_supervised_saturation,
-                model_path,
-                cfg.custom.model_Distributed,
-                device,
-                excel,
-                "SWAT",
+            os.chdir("../MODELS/PINO")
+            logger.info(
+                "|-----------------------------------------------------------------|"
             )
-            models["saturation"] = fno_supervised_saturation
-        if "SOIL" in output_variables:
-            logger.info("🟣 Loading Surrogate Model for oil")
-            if excel == 1:
-                model_path = os.path.join(
-                    base_paths["oil"], "fno_oil_forward_model.pth"
-                )
-            else:
-                model_path = os.path.join(base_paths["oil"], "checkpoint.pth")
+            logger.info(
+                "|                     PINO MODEL LEARNING    :                     |"
+            )
+            logger.info(
+                "|-----------------------------------------------------------------|"
+            )
 
-            fno_supervised_oil = load_modell(
-                fno_supervised_oil,
-                model_path,
-                cfg.custom.model_Distributed,
-                device,
-                excel,
-                "SOIL",
+            logger.info(
+                "|-------------------------------------------------------------------------|"
             )
-            models["oil"] = fno_supervised_oil
-    else:
-        os.chdir("../MODELS/PINO")
-        logger.info(
-            "|   PRESSURE MODEL = PINO;   SATUARATION MODEL = PINO; PEACEMAN MODEL = PINO |"
-        )
-        models = {}
-        base_paths = {
-            "pressure": "./checkpoints_pressure",
-            "gas": "./checkpoints_gas",
-            "peacemann": "./checkpoints_peacemann",
-            "saturation": "./checkpoints_saturation",
-            "oil": "./checkpoints_oil",
-        }
-        if "PRESSURE" in output_variables:
-            logger.info("🟢 Loading Surrogate Model for Pressure")
+            logger.info(
+                "|   PRESSURE MODEL = FNO;   SATUARATION MODEL = FNO; PEACEMAN MODEL = FNO |"
+            )
+            logger.info(
+                "|-------------------------------------------------------------------------|"
+            )
+
+            models = {}
+            base_paths = {
+                "pressure": "./checkpoints_pressure",
+                "gas": "./checkpoints_gas",
+                "peacemann": "./checkpoints_peacemann",
+                "saturation": "./checkpoints_saturation",
+                "oil": "./checkpoints_oil",
+            }
+            if "PRESSURE" in output_variables:
+                logger.info("🟢 Loading Surrogate Model for Pressure")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["pressure"], "pino_pressure_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["pressure"], "checkpoint.pth")
+
+                fno_supervised_pressure = load_modell(
+                    fno_supervised_pressure,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "PRESSURE",
+                )
+                models["pressure"] = fno_supervised_pressure
+            if "SGAS" in output_variables:
+                logger.info("🟠 Loading Surrogate Model for Gas")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["gas"], "pino_gas_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["gas"], "checkpoint.pth")
+                fno_supervised_gas = load_modell(
+                    fno_supervised_gas,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SGAS",
+                )
+                models["gas"] = fno_supervised_gas
+            logger.info("🔵 Loading Surrogate Model for Peacemann")
             if excel == 1:
                 model_path = os.path.join(
-                    base_paths["pressure"], "pino_pressure_forward_model.pth"
+                    base_paths["peacemann"], "pino_peacemann_forward_model.pth"
                 )
             else:
-                model_path = os.path.join(base_paths["pressure"], "checkpoint.pth")
-
-            fno_supervised_pressure = load_modell(
-                fno_supervised_pressure,
+                model_path = os.path.join(base_paths["peacemann"], "checkpoint.pth")
+            fno_supervised_peacemann = load_modell(
+                fno_supervised_peacemann,
                 model_path,
                 cfg.custom.model_Distributed,
                 device,
                 excel,
-                "PRESSURE",
+                "PEACEMANN",
             )
-            models["pressure"] = fno_supervised_pressure
-        if "SGAS" in output_variables:
-            logger.info("🟠 Loading Surrogate Model for Gas")
+            models["peacemann"] = fno_supervised_peacemann
+            if "SWAT" in output_variables:
+                logger.info("🟣 Loading Surrogate Model for Saturation")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["saturation"], "pino_saturation_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["saturation"], "checkpoint.pth")
+                fno_supervised_saturation = load_modell(
+                    fno_supervised_saturation,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SWAT",
+                )
+                models["saturation"] = fno_supervised_saturation
+            if "SOIL" in output_variables:
+                logger.info("🟣 Loading Surrogate Model for oil")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["oil"], "pino_oil_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["oil"], "checkpoint.pth")
+                fno_supervised_oil = load_modell(
+                    fno_supervised_oil,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SOIL",
+                )
+                models["oil"] = fno_supervised_oil
+
+    else:        
+        if cfg.custom.fno_type == "FNO":
+            os.chdir("../MODELS/TRANSOLVER")
+            logger.info(
+                "|-----------------------------------------------------------------|"
+            )
+            logger.info(
+                "|                     TRANSOLVER MODEL LEARNING    :              |"
+            )
+            logger.info(
+                "|-----------------------------------------------------------------|"
+            )
+
+            logger.info(
+                "|-------------------------------------------------------------------------|"
+            )
+            logger.info(
+                "| PRESSURE MODEL = TRANSOLVER;  SATUARATION MODEL = TRANSOLVER; PEACEMAN MODEL = FNO |"
+            )
+            logger.info(
+                "|-------------------------------------------------------------------------|"
+            )
+            models = {}
+            base_paths = {
+                "pressure": "./checkpoints_pressure",
+                "gas": "./checkpoints_gas",
+                "peacemann": "./checkpoints_peacemann",
+                "saturation": "./checkpoints_saturation",
+                "oil": "./checkpoints_oil",
+            }
+            if "PRESSURE" in output_variables:
+                logger.info("🟢 Loading Surrogate Model for Pressure")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["pressure"], "transolver_pressure_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["pressure"], "checkpoint.pth")
+                fno_supervised_pressure = load_modell(
+                    fno_supervised_pressure,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "PRESSURE",
+                )
+                models["pressure"] = fno_supervised_pressure
+            if "SGAS" in output_variables:
+                logger.info("🟠 Loading Surrogate Model for Gas")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["gas"], "transolver_gas_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["gas"], "checkpoint.pth")
+
+                fno_supervised_gas = load_modell(
+                    fno_supervised_gas,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SGAS",
+                )
+                models["gas"] = fno_supervised_gas
+            logger.info("🔵 Loading Surrogate Model for Peacemann")
             if excel == 1:
                 model_path = os.path.join(
-                    base_paths["gas"], "pino_gas_forward_model.pth"
+                    base_paths["peacemann"], "fno_peacemann_forward_model.pth"
                 )
             else:
-                model_path = os.path.join(base_paths["gas"], "checkpoint.pth")
-
-            fno_supervised_gas = load_modell(
-                fno_supervised_gas,
+                model_path = os.path.join(base_paths["peacemann"], "checkpoint.pth")
+            fno_supervised_peacemann = load_modell(
+                fno_supervised_peacemann,
                 model_path,
                 cfg.custom.model_Distributed,
                 device,
                 excel,
-                "SGAS",
+                "PEACEMANN",
             )
-            models["gas"] = fno_supervised_gas
-        logger.info("🔵 Loading Surrogate Model for Peacemann")
-        if excel == 1:
-            model_path = os.path.join(
-                base_paths["peacemann"], "pino_peacemann_forward_model.pth"
-            )
+            models["peacemann"] = fno_supervised_peacemann
+            if "SWAT" in output_variables:
+                logger.info("🟣 Loading Surrogate Model for Saturation")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["saturation"], "transolver_saturation_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(
+                        base_paths["saturation"], "checkpoint.pth"
+                    )
+
+                fno_supervised_saturation = load_modell(
+                    fno_supervised_saturation,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SWAT",
+                )
+                models["saturation"] = fno_supervised_saturation
+            if "SOIL" in output_variables:
+                logger.info("🟣 Loading Surrogate Model for oil")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["oil"], "transolver_oil_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["oil"], "checkpoint.pth")
+                fno_supervised_oil = load_modell(
+                    fno_supervised_oil,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SOIL",
+                )
+                models["oil"] = fno_supervised_oil
         else:
-            model_path = os.path.join(base_paths["peacemann"], "checkpoint.pth")
-        fno_supervised_peacemann = load_modell(
-            fno_supervised_peacemann,
-            model_path,
-            cfg.custom.model_Distributed,
-            device,
-            excel,
-            "PEACEMANN",
-        )
-        models["peacemann"] = fno_supervised_peacemann
-        if "SWAT" in output_variables:
-            logger.info("🟣 Loading Surrogate Model for Saturation")
+            os.chdir("../MODELS/PI-TRANSOLVER")
+            logger.info(
+                "|-----------------------------------------------------------------|"
+            )
+            logger.info(
+                "|                     PI-TRANSOLVER MODEL LEARNING    :           |"
+            )
+            logger.info(
+                "|-----------------------------------------------------------------|"
+            )
+
+            logger.info(
+                "|-------------------------------------------------------------------------|"
+            )
+            logger.info(
+                "|   PRESSURE MODEL = PI-TRANSOLVER;   SATUARATION MODEL = PI-TRANSOLVER; PEACEMAN MODEL = FNO |"
+            )
+            logger.info(
+                "|-------------------------------------------------------------------------|"
+            )
+
+            models = {}
+            base_paths = {
+                "pressure": "./checkpoints_pressure",
+                "gas": "./checkpoints_gas",
+                "peacemann": "./checkpoints_peacemann",
+                "saturation": "./checkpoints_saturation",
+                "oil": "./checkpoints_oil",
+            }
+            if "PRESSURE" in output_variables:
+                logger.info("🟢 Loading Surrogate Model for Pressure")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["pressure"], "pi-transolver_pressure_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["pressure"], "checkpoint.pth")
+
+                fno_supervised_pressure = load_modell(
+                    fno_supervised_pressure,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "PRESSURE",
+                )
+                models["pressure"] = fno_supervised_pressure
+            if "SGAS" in output_variables:
+                logger.info("🟠 Loading Surrogate Model for Gas")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["gas"], "pi-transolver_gas_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["gas"], "checkpoint.pth")
+                fno_supervised_gas = load_modell(
+                    fno_supervised_gas,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SGAS",
+                )
+                models["gas"] = fno_supervised_gas
+            logger.info("🔵 Loading Surrogate Model for Peacemann")
             if excel == 1:
                 model_path = os.path.join(
-                    base_paths["saturation"], "fno_saturation_forward_model.pth"
+                    base_paths["peacemann"], "pino_peacemann_forward_model.pth"
                 )
             else:
-                model_path = os.path.join(base_paths["saturation"], "checkpoint.pth")
-            fno_supervised_saturation = load_modell(
-                fno_supervised_saturation,
+                model_path = os.path.join(base_paths["peacemann"], "checkpoint.pth")
+            fno_supervised_peacemann = load_modell(
+                fno_supervised_peacemann,
                 model_path,
                 cfg.custom.model_Distributed,
                 device,
                 excel,
-                "SWAT",
+                "PEACEMANN",
             )
-            models["saturation"] = fno_supervised_saturation
-        if "SOIL" in output_variables:
-            logger.info("🟣 Loading Surrogate Model for oil")
-            if excel == 1:
-                model_path = os.path.join(
-                    base_paths["oil"], "fno_oil_forward_model.pth"
+            models["peacemann"] = fno_supervised_peacemann
+            if "SWAT" in output_variables:
+                logger.info("🟣 Loading Surrogate Model for Saturation")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["saturation"], "pi-transolver_saturation_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["saturation"], "checkpoint.pth")
+                fno_supervised_saturation = load_modell(
+                    fno_supervised_saturation,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SWAT",
                 )
-            else:
-                model_path = os.path.join(base_paths["oil"], "checkpoint.pth")
-            fno_supervised_oil = load_modell(
-                fno_supervised_oil,
-                model_path,
-                cfg.custom.model_Distributed,
-                device,
-                excel,
-                "SOIL",
-            )
-            models["oil"] = fno_supervised_oil
+                models["saturation"] = fno_supervised_saturation
+            if "SOIL" in output_variables:
+                logger.info("🟣 Loading Surrogate Model for oil")
+                if excel == 1:
+                    model_path = os.path.join(
+                        base_paths["oil"], "pi-transolver_oil_forward_model.pth"
+                    )
+                else:
+                    model_path = os.path.join(base_paths["oil"], "checkpoint.pth")
+                fno_supervised_oil = load_modell(
+                    fno_supervised_oil,
+                    model_path,
+                    cfg.custom.model_Distributed,
+                    device,
+                    excel,
+                    "SOIL",
+                )
+                models["oil"] = fno_supervised_oil  
     os.chdir(oldfolder)
-    if DEFAULT == "Yes":
-        Trainmoe = "MoE"  # FNO #MoE
-        logger.info("Inference peacemann with Mixture of Experts")
-    else:
-        Trainmoe = cfg.custom.INVERSE_PROBLEM.Train_Moe
+    # if DEFAULT == "Yes":
+        # Trainmoe = "MoE"  # FNO #MoE
+        # logger.info("Inference peacemann with Mixture of Experts")
+    # else:
+    Trainmoe = cfg.custom.INVERSE_PROBLEM.Train_Moe
     if Trainmoe == "MoE":
         TEMPLATEFILE["Peaceman modelling inference"] = (
             "Inference peacemann = Mixture of Experts"
