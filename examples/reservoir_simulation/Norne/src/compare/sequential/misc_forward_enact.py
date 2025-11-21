@@ -864,32 +864,52 @@ def convert_backs(rescaled_tensor, max_val, N_pr, lenwels):
 
 def run_transolver(x, model):
 
-    B, num_channels, nz, nx, ny = x.shape
-    
-    all_predictions = []
-    
-    for i in range(B):
-        sample = x[i:i+1]
-        
-        # Reshape
-        x2d = sample.permute(0, 2, 1, 3, 4).contiguous()
-        x2d = x2d.view(1 * nz, num_channels, nx, ny)
-        x2d = x2d.permute(0, 2, 3, 1).contiguous()
+    B, steppi, nz, nx, ny, C = x.shape
 
-        # Forward pass
-        pred2d = model(x2d)
-        
-        # Handle output
-        if pred2d.dim() == 4 and pred2d.shape[-1] == 1:
-            pred2d = pred2d.permute(0, 3, 1, 2).contiguous()
+    batch_chunk_size = 2
+    time_chunk_size = 3
 
-        pred_sample = pred2d.view(1, nz, 1, nx, ny).permute(0, 2, 1, 3, 4).contiguous()
-        all_predictions.append(pred_sample)
-        
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-    
-    return torch.cat(all_predictions, dim=0)
+    # Output: (B, steppi, nz, nx, ny)
+    output = torch.zeros(B, steppi, nz, nx, ny, device=x.device)
+
+    total_chunks = (
+        (B + batch_chunk_size - 1) // batch_chunk_size
+        * (steppi + time_chunk_size - 1)
+        // time_chunk_size
+    )
+    current_chunk = 0
+
+    for batch_start in range(0, B, batch_chunk_size):
+        batch_end = min(batch_start + batch_chunk_size, B)
+
+        for time_start in range(0, steppi, time_chunk_size):
+            time_end = min(time_start + time_chunk_size, steppi)
+
+            current_chunk += 1
+
+            # input_chunk: (b, t, nz, nx, ny, C)
+            input_chunk = x[batch_start:batch_end, time_start:time_end]
+            b, t, nz_c, nx_c, ny_c, C_c = input_chunk.shape
+
+            # Merge batch and time for TransolverModel:
+            # x_5d: (b * t, nz, nx, ny, C)
+            x_5d = input_chunk.view(b * t, nz_c, nx_c, ny_c, C_c)
+
+            # model(...) returns (b * t, nz, nx, ny, out_dim)
+            pred_5d = model(x_5d)
+
+            # Remove out_dim=1 and restore (b, t, nz, nx, ny)
+            pred_5d = pred_5d.squeeze(-1)
+            pred_3d = pred_5d.view(b, t, nz_c, nx_c, ny_c)
+
+            output[batch_start:batch_end, time_start:time_end] = pred_3d
+
+            # Clean up
+            del input_chunk, x_5d, pred_5d, pred_3d
+            if current_chunk % 3 == 0:
+                torch.cuda.empty_cache()
+
+    return output
 
 def Forward_model_ensemble(
     N,
@@ -1011,9 +1031,9 @@ def Forward_model_ensemble(
     Q = Q / maxQ
     Qg = Qg / maxQg
     Qw = Qw / maxQw
-    Q[Q == 0] = 1.0
-    Qw[Qw == 0] = 1.0
-    Qg[Qg == 0] = 1.0
+    Q[Q == 0] = 0.1
+    Qw[Qw == 0] = 0.1
+    Qg[Qg == 0] = 0.1
 
     # Time setup
     Timeafter = Time
@@ -1024,6 +1044,21 @@ def Forward_model_ensemble(
     Time = Time / maxT
     dt_full = torch.from_numpy(dt).to(device, dtype=torch.float32)
     t_full = torch.from_numpy(Time).to(device, dtype=torch.float32)
+        
+    input_keys = [
+        "perm",
+        "poro",
+        "pini",
+        "sini",
+        "sgini",
+        "soini",
+        "fault",
+        "Q",
+        "Qg",
+        "Qw",
+        "dt",
+        "t",
+    ]
 
     # Sequential forwarding with chunking
     for i in range(N):
@@ -1057,13 +1092,26 @@ def Forward_model_ensemble(
             }
 
             with torch.no_grad():
-                tensors = [
-                    value for value in temp.values() if isinstance(value, torch.Tensor)
-                ]
-                if not tensors:
-                    raise ValueError("🚨 No valid input tensors found for the model!")
 
-                input_tensor = torch.cat(tensors, dim=1)
+                if cfg.custom.model_type=="FNO":                   
+                    tensors = [
+                        value for value in temp.values() if isinstance(value, torch.Tensor)
+                    ]
+                    if not tensors:
+                        raise ValueError("🚨 No valid input tensors found for the model!")
+
+                    input_tensor = torch.cat(tensors, dim=1)
+                else:
+
+                    vars_for_cat = []
+                    for key in input_keys:
+                        tok = temp[key]  # (B, steppi, nz, nx, ny)
+                        tok = tok.unsqueeze(-1)  # (B, steppi, nz, nx, ny, 1)
+                        vars_for_cat.append(tok)
+
+                    # input_temp: (B, steppi, nz, nx, ny, C)
+                    input_tensor = torch.cat(vars_for_cat, dim=-1)                
+                                                
                 nz_current = input_tensor.shape[2]
 
                 # Model predictions

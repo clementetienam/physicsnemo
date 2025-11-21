@@ -775,10 +775,10 @@ class TransolverModel(Module):
         out_dim,
         device,
         embedding_dim=None,
-        n_layers=8,
-        n_hidden=256,
+        n_layers=4,
+        n_hidden=60,
         dropout=0.0,
-        n_head=8,
+        n_head=12,
         act="gelu",
         mlp_ratio=4,
         slice_num=32,
@@ -805,12 +805,27 @@ class TransolverModel(Module):
             structured_shape=structured_shape,
             use_te=use_te,
             time_input=time_input,
-        ).to(torch.device(device))  # Explicit device conversion
-        self.meta = type("", (), {})()  # Empty object
+        ).to(torch.device(device))
+        self.meta = type("", (), {})()
         self.meta.name = "transolver_model"
+        self.out_dim = out_dim
 
-    def forward(self, x):
-        return self.transolver(x)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x: (B, nz, nx, ny, C)
+        returns: (B, nz, nx, ny, out_dim)
+        """
+        B, nz, nx, ny, C = x.shape
+
+        # Flatten the 3D field into 2D slices to feed PhysicsNeMo Transolver
+        # x_2d: (B * nz, nx, ny, C)
+        x_2d = x.reshape(B * nz, nx, ny, C)
+
+        out_2d = self.transolver(x_2d)
+        # out_2d should be (B * nz, nx, ny, out_dim)
+
+        out_3d = out_2d.reshape(B, nz, nx, ny, self.out_dim)
+        return out_3d
 
 
 def create_transolver_model(
@@ -818,13 +833,13 @@ def create_transolver_model(
     out_dim,
     device,
     embedding_dim=None,
-    n_layers=8,
-    n_hidden=16,
+    n_layers=4,
+    n_hidden=60,
     dropout=0.0,
-    n_head=8,
+    n_head=12,
     act="gelu",
-    mlp_ratio=4,
-    slice_num=16,
+    mlp_ratio=2,
+    slice_num=24,
     unified_pos=True,
     ref=8,
     structured_shape=(46, 112),
@@ -877,10 +892,10 @@ def create_transolver_model(
     # Validate arguments
     if n_hidden % n_head != 0:
         raise ValueError(f"n_hidden ({n_hidden}) must be divisible by n_head ({n_head})")
-    
+
     if unified_pos and structured_shape is None:
         raise ValueError("structured_shape must be provided when unified_pos=True")
-    
+
     if structured_shape is not None and len(structured_shape) not in [2, 3]:
         raise ValueError(f"structured_shape must be 2D or 3D, got {structured_shape}")
 
