@@ -655,8 +655,8 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 out_dim=len(output_keys_pressure),
                 device=device,
                 n_layers=4,
-                n_hidden=8,
-                n_head=4,
+                n_hidden=24,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -666,8 +666,8 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 out_dim=len(output_keys_gas),
                 device=device,
                 n_layers=4,
-                n_hidden=8,
-                n_head=4,
+                n_hidden=24,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -690,8 +690,8 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 out_dim=len(output_keys_saturation),
                 device=device,
                 n_layers=4,
-                n_hidden=8,
-                n_head=4,
+                n_hidden=24,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
             )
@@ -701,8 +701,8 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
                 out_dim=len(output_keys_oil),
                 device=device,
                 n_layers=4,
-                n_hidden=8,
-                n_head=4,
+                n_hidden=24,
+                n_head=12,
                 structured_shape=(nx, ny),
                 use_te=True,
     
@@ -1233,7 +1233,7 @@ Gaussian Process Experts. arXiv preprint arXiv:2006.13309, 2020.\n"
     )
     elapsed_time_secs2 = time.time() - start_time_plots2
     msg = (
-        "Reservoir simulation with NVidia PhyNeMo (CCR - Hard prediction)  took: %s secs (Wall clock time)"
+        "Reservoir simulation with Nvidia PhyNeMo (CCR - Hard prediction)  took: %s secs (Wall clock time)"
         % timedelta(seconds=round(elapsed_time_secs2))
     )
     logger.info(msg)

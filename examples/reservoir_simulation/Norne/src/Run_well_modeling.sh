@@ -90,16 +90,16 @@ fi
 echo "🖥️  Detected $NUM_GPUS GPU(s) on this node."
 
 # === Prompt user to enter number of MPI ranks ===
-echo "🔢 Please enter the number of MPI ranks to use (1 to $NUM_GPUS):"
+echo "🔢 Please enter the number of GPU ranks to use (1 to $NUM_GPUS):"
 read -r NUM_MPI_RANKS
 
 # Validate input is a positive integer and within [1, NUM_GPUS]
 if ! [[ "$NUM_MPI_RANKS" =~ ^[1-9][0-9]*$ ]]; then
-  echo "❌ Error: Invalid number of MPI ranks. Please enter a positive integer."
+  echo "❌ Error: Invalid number of GPU ranks. Please enter a positive integer."
   exit 1
 fi
 if (( NUM_MPI_RANKS < 1 || NUM_MPI_RANKS > NUM_GPUS )); then
-  echo "❌ Error: MPI ranks must be between 1 and $NUM_GPUS."
+  echo "❌ Error: GPU ranks must be between 1 and $NUM_GPUS."
   exit 1
 fi
 

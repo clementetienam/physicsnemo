@@ -590,6 +590,7 @@ def main(cfg: DictConfig) -> None:
         TARGETS,
         cfg,
         device,
+        input_keys,
         output_keys_saturation,
         steppi,
         output_variables,
@@ -599,6 +600,8 @@ def main(cfg: DictConfig) -> None:
         epoch,
     ):
         # Prepare input tensors
+        if cfg.custom.unroll == "TRUE":
+            cfg.training.max_steps = 1500
         input_tensor_p = inputin_p["X"]
         # Initialize accumulators
         loss = 0
@@ -645,12 +648,25 @@ def main(cfg: DictConfig) -> None:
                             "dt": inputin["dt"][:, x:x+1, ...],
                             "t": inputin["t"][:, x:x+1, ...],
                         }
-                        
-                    tensors_ar = [
-                        value for value in inputin_t.values() if isinstance(value, torch.Tensor)
-                    ]
-                    input_temp = torch.cat(tensors_ar, dim=1)
+                    
+                    if cfg.custom.model_type=="FNO":                   
+                        tensors_ar = [
+                            value for value in inputin_t.values() if isinstance(value, torch.Tensor)
+                        ]
+                        input_temp = torch.cat(tensors_ar, dim=1)
+                    else:
 
+                        # === KEY FIX: build input_temp with channels LAST (B, steppi, nz, nx, ny, C) ===
+                        vars_for_cat = []
+                        for key in input_keys:
+                            t = inputin_t[key]  # (B, steppi, nz, nx, ny)
+                            t = t.unsqueeze(-1)  # (B, steppi, nz, nx, ny, 1)
+                            vars_for_cat.append(t)
+
+                        # input_temp: (B, steppi, nz, nx, ny, C)
+                        input_temp = torch.cat(vars_for_cat, dim=-1) 
+                        # print("here1")
+                        # print(input_temp.shape)                        
                     target_chunks = {}
 
                     # Extract target chunks
@@ -814,10 +830,24 @@ def main(cfg: DictConfig) -> None:
                         else:
                             # static or already right shape
                             inputin_t[k] = v
-                    tensors = [
-                        value for value in inputin_t.values() if isinstance(value, torch.Tensor)
-                    ]
-                    input_tensor = torch.cat(tensors, dim=1)
+                                                
+                    if cfg.custom.model_type=="FNO":                   
+                        tensors = [
+                            value for value in inputin_t.values() if isinstance(value, torch.Tensor)
+                        ]
+                        input_temp = torch.cat(tensors, dim=1)
+                    else:
+
+                        # === KEY FIX: build input_temp with channels LAST (B, steppi, nz, nx, ny, C) ===
+                        vars_for_cat = []
+                        for key in input_keys:
+                            t = inputin_t[key]  # (B, steppi, nz, nx, ny)
+                            t = t.unsqueeze(-1)  # (B, steppi, nz, nx, ny, 1)
+                            vars_for_cat.append(t)
+
+                        # input_temp: (B, steppi, nz, nx, ny, C)
+                        input_temp = torch.cat(vars_for_cat, dim=-1)                     
+                    
                                           
                     nz = input_tensor.shape[2]
 
@@ -1064,11 +1094,23 @@ def main(cfg: DictConfig) -> None:
                     
                     # Store current predictions for next timestep
                     predictions_prev = predictions.copy()  
-        else:
-            tensors = [
-                value for value in inputin.values() if isinstance(value, torch.Tensor)
-            ]
-            input_tensor = torch.cat(tensors, dim=1)
+        else:            
+            if cfg.custom.model_type=="FNO":                   
+                tensors = [
+                    value for value in inputin.values() if isinstance(value, torch.Tensor)
+                ]
+                input_tensor = torch.cat(tensors, dim=1)
+            else:
+
+                # === KEY FIX: build input_temp with channels LAST (B, steppi, nz, nx, ny, C) ===
+                vars_for_cat = []
+                for key in input_keys:
+                    t = inputin[key]  # (B, steppi, nz, nx, ny)
+                    t = t.unsqueeze(-1)  # (B, steppi, nz, nx, ny, 1)
+                    vars_for_cat.append(t)
+
+                # input_temp: (B, steppi, nz, nx, ny, C)
+                input_tensor = torch.cat(vars_for_cat, dim=-1)                
                       
             #input_tensor_p = inputin_p["X"]
             nz = input_tensor.shape[2]
@@ -1314,6 +1356,7 @@ def main(cfg: DictConfig) -> None:
         TARGETS,
         cfg,
         device,
+        input_keys,
         output_keys_saturation,
         steppi,
         output_variables,
@@ -1322,6 +1365,8 @@ def main(cfg: DictConfig) -> None:
         val_step_metrics,
     ):
         # Prepare input tensors
+        if cfg.custom.unroll == "TRUE":
+            cfg.training.max_steps = 1500
         input_tensor_p = inputin_p["X"]
         # Initialize accumulators
         loss = 0
@@ -1341,10 +1386,24 @@ def main(cfg: DictConfig) -> None:
                     else:
                         # static or already right shape
                         inputin_t[k] = v
-                tensors = [
-                    value for value in inputin_t.values() if isinstance(value, torch.Tensor)
-                ]
-                input_tensor = torch.cat(tensors, dim=1)
+                        
+                
+                if cfg.custom.model_type=="FNO":                   
+                    tensors = [
+                        value for value in inputin_t.values() if isinstance(value, torch.Tensor)
+                    ]
+                    input_tensor = torch.cat(tensors, dim=1)
+                else:
+
+                    # === KEY FIX: build input_temp with channels LAST (B, steppi, nz, nx, ny, C) ===
+                    vars_for_cat = []
+                    for key in input_keys:
+                        t = inputin_t[key]  # (B, steppi, nz, nx, ny)
+                        t = t.unsqueeze(-1)  # (B, steppi, nz, nx, ny, 1)
+                        vars_for_cat.append(t)
+
+                    # input_temp: (B, steppi, nz, nx, ny, C)
+                    input_tensor = torch.cat(vars_for_cat, dim=-1)                  
                                       
                 nz = input_tensor.shape[2]
 
@@ -1432,11 +1491,23 @@ def main(cfg: DictConfig) -> None:
                     metrics_accumulator["gas_loss"] += gas_loss.item()
                        
         else:
-            tensors = [
-                value for value in inputin.values() if isinstance(value, torch.Tensor)
-            ]
-            input_tensor = torch.cat(tensors, dim=1)
-                      
+            if cfg.custom.model_type=="FNO":                   
+                tensors = [
+                    value for value in inputin.values() if isinstance(value, torch.Tensor)
+                ]
+                input_tensor = torch.cat(tensors, dim=1)
+            else:
+
+                # === KEY FIX: build input_temp with channels LAST (B, steppi, nz, nx, ny, C) ===
+                vars_for_cat = []
+                for key in input_keys:
+                    t = inputin[key]  # (B, steppi, nz, nx, ny)
+                    t = t.unsqueeze(-1)  # (B, steppi, nz, nx, ny, 1)
+                    vars_for_cat.append(t)
+
+                # input_temp: (B, steppi, nz, nx, ny, C)
+                input_tensor = torch.cat(vars_for_cat, dim=-1)                
+                                  
             #input_tensor_p = inputin_p["X"]
             nz = input_tensor.shape[2]
 

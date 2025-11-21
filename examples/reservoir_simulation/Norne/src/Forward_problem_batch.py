@@ -287,22 +287,40 @@ def main(cfg: DictConfig) -> None:
         logger.info(
             "|-----------------------------------------------------------------|"
         )
-    if cfg.custom.fno_type == "FNO":
-        folders_to_create = [
-            "../MODELS/FNO/checkpoints_saturation",
-            "../MODELS/FNO/checkpoints_oil",
-            "../MODELS/FNO/checkpoints_pressure",
-            "../MODELS/FNO/checkpoints_gas",
-            "../MODELS/FNO/checkpoints_peacemann",
-        ]
+    if cfg.custom.model_type == "FNO":
+        if cfg.custom.fno_type == "FNO":
+            folders_to_create = [
+                "../MODELS/FNO/checkpoints_saturation",
+                "../MODELS/FNO/checkpoints_oil",
+                "../MODELS/FNO/checkpoints_pressure",
+                "../MODELS/FNO/checkpoints_gas",
+                "../MODELS/FNO/checkpoints_peacemann",
+            ]
+        else:
+            folders_to_create = [
+                "../MODELS/PINO/checkpoints_saturation",
+                "../MODELS/PINO/checkpoints_oil",
+                "../MODELS/PINO/checkpoints_pressure",
+                "../MODELS/PINO/checkpoints_gas",
+                "../MODELS/PINO/checkpoints_peacemann",
+            ]
     else:
-        folders_to_create = [
-            "../MODELS/PINO/checkpoints_saturation",
-            "../MODELS/PINO/checkpoints_oil",
-            "../MODELS/PINO/checkpoints_pressure",
-            "../MODELS/PINO/checkpoints_gas",
-            "../MODELS/PINO/checkpoints_peacemann",
-        ]
+        if cfg.custom.fno_type == "FNO":
+            folders_to_create = [
+                "../MODELS/TRANSOLVER/checkpoints_saturation",
+                "../MODELS/TRANSOLVER/checkpoints_oil",
+                "../MODELS/TRANSOLVER/checkpoints_pressure",
+                "../MODELS/TRANSOLVER/checkpoints_gas",
+                "../MODELS/TRANSOLVER/checkpoints_peacemann",
+            ]
+        else:
+            folders_to_create = [
+                "../MODELS/PI-TRANSOLVER/checkpoints_saturation",
+                "../MODELS/PI-TRANSOLVER/checkpoints_oil",
+                "../MODELS/PI-TRANSOLVER/checkpoints_pressure",
+                "../MODELS/PI-TRANSOLVER/checkpoints_gas",
+                "../MODELS/PI-TRANSOLVER/checkpoints_peacemann",
+            ] 
     if dist.rank == 0:
         logger.info(
             "|-----------------------------------------------------------------|"
@@ -542,6 +560,7 @@ def main(cfg: DictConfig) -> None:
         TARGETS,
         cfg,
         device,
+        input_keys,
         output_keys_saturation,
         steppi,
         output_variables,
@@ -585,11 +604,21 @@ def main(cfg: DictConfig) -> None:
         epoch,
     ):
         # Prepare input tensors
-        # max_epoch = cfg.training.max_steps
-        tensors = [
-            value for value in inputin.values() if isinstance(value, torch.Tensor)
-        ]
-        input_tensor = torch.cat(tensors, dim=1)
+        if cfg.custom.model_type=="FNO":                   
+            tensors = [
+                value for value in inputin.values() if isinstance(value, torch.Tensor)
+            ]
+            input_tensor = torch.cat(tensors, dim=1)
+        else:
+            vars_for_cat = []
+            for key in input_keys:
+                tok = inputin[key]  # (B, steppi, nz, nx, ny)
+                tok = tok.unsqueeze(-1)  # (B, steppi, nz, nx, ny, 1)
+                vars_for_cat.append(tok)
+
+            # input_temp: (B, steppi, nz, nx, ny, C)
+            input_tensor = torch.cat(vars_for_cat, dim=-1)#.squeeze(1)
+
         input_tensor_p = inputin_p["X"]
         nz = input_tensor.shape[2]
         # batch_size = input_tensor.shape[0]
@@ -624,7 +653,11 @@ def main(cfg: DictConfig) -> None:
             current_chunk_size = end_idx - start_idx
 
             # Extract chunks
-            input_temp = input_tensor[:, :, start_idx:end_idx, :, :]
+            if cfg.custom.model_type=="FNO": 
+                input_temp = input_tensor[:, :, start_idx:end_idx, ...]
+            else:
+                input_temp = input_tensor[:, :, start_idx:end_idx, ...] 
+
             target_chunks = {}
 
             # Extract target chunks
@@ -887,6 +920,7 @@ def main(cfg: DictConfig) -> None:
         TARGETS,
         cfg,
         device,
+        input_keys,
         output_keys_saturation,
         steppi,
         output_variables,
@@ -894,10 +928,22 @@ def main(cfg: DictConfig) -> None:
     ):
         # Prepare input tensors
         # batch_size = input_tensor.shape[0]
-        tensors = [
-            value for value in inputin.values() if isinstance(value, torch.Tensor)
-        ]
-        input_tensor = torch.cat(tensors, dim=1)
+        if cfg.custom.model_type=="FNO":                   
+            tensors = [
+                value for value in inputin.values() if isinstance(value, torch.Tensor)
+            ]
+            input_tensor = torch.cat(tensors, dim=1)
+        else:
+            vars_for_cat = []
+            for key in input_keys:
+                tok = inputin[key]  # (B, steppi, nz, nx, ny)
+                tok = tok.unsqueeze(-1)  # (B, steppi, nz, nx, ny, 1)
+                vars_for_cat.append(tok)
+
+            # input_temp: (B, steppi, nz, nx, ny, C)
+            input_tensor = torch.cat(vars_for_cat, dim=-1)
+
+        
         input_tensor_p = inputin_p["X"]
         nz = input_tensor.shape[2]
         # batch_size = input_tensor.shape[0]
@@ -924,7 +970,11 @@ def main(cfg: DictConfig) -> None:
             current_chunk_size = end_idx - start_idx
 
             # Extract chunks
-            input_temp = input_tensor[:, :, start_idx:end_idx, :, :]
+            if cfg.custom.model_type=="FNO": 
+                input_temp = input_tensor[:, :, start_idx:end_idx, ...]
+            else:
+                input_temp = input_tensor[:, :, start_idx:end_idx, ...]            
+            
             target_chunks = {}
 
             # Extract target chunks
