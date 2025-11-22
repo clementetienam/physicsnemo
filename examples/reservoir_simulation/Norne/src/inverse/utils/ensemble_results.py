@@ -34,6 +34,7 @@ Key Features:
 
 # 🛠 Standard Library
 import os
+import re
 import time
 import pickle
 import gzip
