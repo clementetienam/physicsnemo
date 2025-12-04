@@ -851,7 +851,7 @@ def main(cfg: DictConfig) -> None:
                 # ---- unroll_cost != "AUTO": K-window BPTT with your existing AR logic ----
                 predictions_prev = None
                 loss_window = 0.0
-                loss_autoregressive = 0.0  # you were using this without initializing
+                loss_autoregressive = 0.0  
 
                 for x in range(steppi):
                     inputin_t = {}
@@ -1805,3 +1805,4 @@ def main(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     main()
+
