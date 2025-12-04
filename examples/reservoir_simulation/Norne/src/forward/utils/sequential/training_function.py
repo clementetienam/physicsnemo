@@ -242,6 +242,15 @@ def run_training_loop(
             total_losspet = 0
             d3, d4, d6, d7 = 0, 0, 0, 0
             for data, datape in zip(labelled_loader_train, labelled_loader_trainp):
+            if "PRESSURE" in output_variables:
+                optimizer_pressure.zero_grad()
+            if "SGAS" in output_variables:
+                optimizer_gas.zero_grad()
+            if "SWAT" in output_variables:
+                optimizer_saturation.zero_grad()
+            if "SOIL" in output_variables:
+                optimizer_oil.zero_grad()
+            optimizer_peacemann.zero_grad()
                 inputin = {key: data[key] for key in input_keys}
                 inputin_p = {key: datape[key] for key in input_keys_peacemann}
                 TARGETS = {}
@@ -279,20 +288,25 @@ def run_training_loop(
                 )
                 if "PRESSURE" in output_variables:
                     total_losspt += training_step_metrics.get("pressure_loss", None)
+                    optimizer_pressure.step()
                 if "SWAT" in output_variables:
                     total_losswt += training_step_metrics.get("water_loss", None)
+                    optimizer_saturation.step()
                 if "SOIL" in output_variables:
                     total_lossot += training_step_metrics.get("oil_loss", None)
+                    optimizer_oil.step()
                 if "SGAS" in output_variables:
                     total_lossgt += training_step_metrics.get("gas_loss", None)
+                    optimizer_gas.step()
                 total_losspet += training_step_metrics.get("peacemann_loss", None)
+                optimizer_peacemann.step()
                 num_batchest += 1
                 if cfg.custom.fno_type == "PINO":
                     d3 += training_step_metrics.get("pressured", None)
                     d4 += training_step_metrics.get("saturationd", None)
                     d6 += training_step_metrics.get("gasd", None)
                     d7 += training_step_metrics.get("peacemanned", None)
-                total_losst += loss.item()
+                total_losst += loss#.item()
                 if "PRESSURE" in output_variables:
                     scheduler_pressure.step()
                 if "SWAT" in output_variables:
