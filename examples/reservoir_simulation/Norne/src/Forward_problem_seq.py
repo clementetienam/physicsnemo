@@ -575,14 +575,6 @@ def main(cfg: DictConfig) -> None:
     scheduler_peacemann = SCHEDULER["PEACEMANN"]
 
 
-        
-    @StaticCaptureTraining(
-        model=composite_model,
-        optim=combined_optimizer,
-        logger=logger,
-        use_amp=False,
-        use_graphs=True,
-    )
     def training_step(
         model,
         inputin,
@@ -603,8 +595,9 @@ def main(cfg: DictConfig) -> None:
         if cfg.custom.unroll == "TRUE":
             cfg.training.max_steps = 1500
         input_tensor_p = inputin_p["X"]
+
         # Initialize accumulators
-        loss = 0
+        loss = 0  # will be used only in non-unroll branch for real graph
         metrics_accumulator = {
             f"{var}_loss": 0.0
             for var in ["pressure", "water", "oil", "gas", "peacemann"]
@@ -618,12 +611,26 @@ def main(cfg: DictConfig) -> None:
                 "gasd": 0.0,
                 "peacemanned": 0.0,
             }
-       
-        if cfg.custom.unroll=="TRUE":
-            if cfg.custom.unroll_cost=="AUTO":
+
+        # ---- K-step truncated BPTT config ----
+        # K = window length (number of timesteps per backward)
+        # If not defined in cfg, default to full unroll (no truncation).
+        if cfg.custom.unroll == "TRUE":
+            K = getattr(cfg.custom, "K_unroll", steppi)
+            if K < 1:
+                K = 1
+            if K > steppi:
+                K = steppi
+            loss_value = 0.0  # numeric logging for unroll branch
+
+        if cfg.custom.unroll == "TRUE":
+            if cfg.custom.unroll_cost == "AUTO":
                 predictions_prev = None  # Initialize predictions_prev
-                for x in range(steppi):                
-                    if x ==0:
+                loss_window = 0.0        # accumulates loss over a K-window
+
+                for x in range(steppi):
+                    # --------- build per-timestep inputs ----------
+                    if x == 0:
                         inputin_t = {}
                         for k, v in inputin.items():
                             if isinstance(v, torch.Tensor) and v.dim() == 5:
@@ -632,13 +639,13 @@ def main(cfg: DictConfig) -> None:
                             else:
                                 # static or already right shape
                                 inputin_t[k] = v
-                    else: 
+                    else:
                         # Create input using model's previous predictions
                         inputin_t = {
                             "perm": inputin["perm"][:, x:x+1, ...],
                             "poro": inputin["poro"][:, x:x+1, ...],
                             "pini": predictions_prev["pressure"],
-                            "sini": predictions_prev["water"], 
+                            "sini": predictions_prev["water"],
                             "sgini": predictions_prev["gas"],
                             "soini": predictions_prev["oil"],
                             "fault": inputin["fault"][:, x:x+1, ...],
@@ -648,14 +655,16 @@ def main(cfg: DictConfig) -> None:
                             "dt": inputin["dt"][:, x:x+1, ...],
                             "t": inputin["t"][:, x:x+1, ...],
                         }
-                    
-                    if cfg.custom.model_type=="FNO":                   
+
+                    # --------- build model input ----------
+                    if cfg.custom.model_type == "FNO":
                         tensors_ar = [
-                            value for value in inputin_t.values() if isinstance(value, torch.Tensor)
+                            value
+                            for value in inputin_t.values()
+                            if isinstance(value, torch.Tensor)
                         ]
                         input_temp = torch.cat(tensors_ar, dim=1)
                     else:
-
                         # === KEY FIX: build input_temp with channels LAST (B, steppi, nz, nx, ny, C) ===
                         vars_for_cat = []
                         for key in input_keys:
@@ -664,12 +673,12 @@ def main(cfg: DictConfig) -> None:
                             vars_for_cat.append(t)
 
                         # input_temp: (B, steppi, nz, nx, ny, C)
-                        input_temp = torch.cat(vars_for_cat, dim=-1) 
-                        # print("here1")
-                        # print(input_temp.shape)                        
-                    target_chunks = {}
+                        input_temp = torch.cat(vars_for_cat, dim=-1)
 
-                    # Extract target chunks
+                    target_chunks = {}
+                    step_loss = 0.0  # tensor accumulator for this timestep
+
+                    # --------- targets ----------
                     if "PRESSURE" in output_variables:
                         target_chunks["pressure"] = {
                             "pressure": TARGETS["PRESSURE"]["pressure"][:, x:x+1, ...]
@@ -687,10 +696,12 @@ def main(cfg: DictConfig) -> None:
                             "gas_sat": TARGETS["GAS"]["gas_sat"][:, x:x+1, ...]
                         }
 
-                    # Model predictions
+                    # --------- model predictions ----------
                     predictions = {}
                     if "PRESSURE" in output_variables:
-                        predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+                        predictions["pressure"] = model(input_temp, mode="pressure")[
+                            "pressure"
+                        ]
                     if "SGAS" in output_variables:
                         predictions["gas"] = model(input_temp, mode="gas")["gas"]
                     if "SWAT" in output_variables:
@@ -699,8 +710,8 @@ def main(cfg: DictConfig) -> None:
                         ]
                     if "SOIL" in output_variables:
                         predictions["oil"] = model(input_temp, mode="oil")["oil"]
-          
-                    # Compute losses
+
+                    # --------- supervised losses ----------
                     if "PRESSURE" in output_variables:
                         pressure_loss = loss_func(
                             predictions["pressure"],
@@ -709,7 +720,7 @@ def main(cfg: DictConfig) -> None:
                             cfg.loss.weights.pressure,
                             p=2.0,
                         )
-                        loss += pressure_loss
+                        step_loss = step_loss + pressure_loss
                         metrics_accumulator["pressure_loss"] += pressure_loss.item()
 
                     if "SWAT" in output_variables:
@@ -720,7 +731,7 @@ def main(cfg: DictConfig) -> None:
                             cfg.loss.weights.water_sat,
                             p=2.0,
                         )
-                        loss += water_loss
+                        step_loss = step_loss + water_loss
                         metrics_accumulator["water_loss"] += water_loss.item()
 
                     if "SOIL" in output_variables:
@@ -731,7 +742,7 @@ def main(cfg: DictConfig) -> None:
                             cfg.loss.weights.oil_sat,
                             p=2.0,
                         )
-                        loss += oil_loss
+                        step_loss = step_loss + oil_loss
                         metrics_accumulator["oil_loss"] += oil_loss.item()
 
                     if "SGAS" in output_variables:
@@ -742,10 +753,10 @@ def main(cfg: DictConfig) -> None:
                             cfg.loss.weights.gas_sat,
                             p=2.0,
                         )
-                        loss += gas_loss
+                        step_loss = step_loss + gas_loss
                         metrics_accumulator["gas_loss"] += gas_loss.item()
-                                         
-                    # PINO physics loss
+
+                    # --------- PINO physics loss ----------
                     if (
                         cfg.custom.fno_type == "PINO"
                         and epoch % max(1, int(0.01 * cfg.training.max_steps)) == 0
@@ -810,17 +821,38 @@ def main(cfg: DictConfig) -> None:
                         f_water2 = loss_func_physics(
                             evaluate["saturationd"], cfg.loss.weights.saturationd
                         )
-                        f_gas2 = loss_func_physics(evaluate["gasd"], cfg.loss.weights.gasd)
+                        f_gas2 = loss_func_physics(
+                            evaluate["gasd"], cfg.loss.weights.gasd
+                        )
 
-                        loss += f_pressure2 + f_water2 + f_gas2
+                        step_loss = step_loss + f_pressure2 + f_water2 + f_gas2
                         pino_metrics["pressured"] += f_pressure2.item()
                         pino_metrics["saturationd"] += f_water2.item()
-                        pino_metrics["gasd"] += f_gas2.item()                
-                    
-                    predictions_prev = predictions.copy()
-                    #predictions_prev = {k: v.detach() for k, v in predictions.items()}  
+                        pino_metrics["gasd"] += f_gas2.item()
+
+                    # --------- accumulate into K-window and do backward when window ends ----------
+                    loss_window = loss_window + step_loss
+                    is_window_end = ((x + 1) % K == 0) or (x == steppi - 1)
+
+                    if is_window_end:
+                        # scale by steppi so overall grad is comparable to averaging over time
+                        (loss_window / steppi).backward()
+                        loss_value += loss_window.detach().item()
+                        loss_window = 0.0
+                        # detach state for next window (truncate BPTT here)
+                        predictions_prev = {
+                            k: v.detach() for k, v in predictions.items()
+                        }
+                    else:
+                        # keep graph within this window
+                        predictions_prev = predictions.copy()
+
             else:
-                predictions_prev = None  # Initialize predictions_prev
+                # ---- unroll_cost != "AUTO": K-window BPTT with your existing AR logic ----
+                predictions_prev = None
+                loss_window = 0.0
+                loss_autoregressive = 0.0  # you were using this without initializing
+
                 for x in range(steppi):
                     inputin_t = {}
                     for k, v in inputin.items():
@@ -830,14 +862,15 @@ def main(cfg: DictConfig) -> None:
                         else:
                             # static or already right shape
                             inputin_t[k] = v
-                                                
-                    if cfg.custom.model_type=="FNO":                   
+
+                    if cfg.custom.model_type == "FNO":
                         tensors = [
-                            value for value in inputin_t.values() if isinstance(value, torch.Tensor)
+                            value
+                            for value in inputin_t.values()
+                            if isinstance(value, torch.Tensor)
                         ]
                         input_temp = torch.cat(tensors, dim=1)
                     else:
-
                         # === KEY FIX: build input_temp with channels LAST (B, steppi, nz, nx, ny, C) ===
                         vars_for_cat = []
                         for key in input_keys:
@@ -846,17 +879,14 @@ def main(cfg: DictConfig) -> None:
                             vars_for_cat.append(t)
 
                         # input_temp: (B, steppi, nz, nx, ny, C)
-                        input_temp = torch.cat(vars_for_cat, dim=-1)                     
-                    
-                                          
-                    nz = input_tensor.shape[2]
+                        input_temp = torch.cat(vars_for_cat, dim=-1)
 
+                    nz = input_temp.shape[2]
                     fno_expected_nz = chunk_size = nz
                     num_chunks = 1
 
-                    # Extract chunks
-                    input_temp = input_tensor
                     target_chunks = {}
+                    step_loss = 0.0
 
                     # Extract target chunks
                     if "PRESSURE" in output_variables:
@@ -879,7 +909,9 @@ def main(cfg: DictConfig) -> None:
                     # Model predictions
                     predictions = {}
                     if "PRESSURE" in output_variables:
-                        predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+                        predictions["pressure"] = model(input_temp, mode="pressure")[
+                            "pressure"
+                        ]
                     if "SGAS" in output_variables:
                         predictions["gas"] = model(input_temp, mode="gas")["gas"]
                     if "SWAT" in output_variables:
@@ -888,8 +920,8 @@ def main(cfg: DictConfig) -> None:
                         ]
                     if "SOIL" in output_variables:
                         predictions["oil"] = model(input_temp, mode="oil")["oil"]
-          
-                    # Compute losses
+
+                    # Supervised losses
                     if "PRESSURE" in output_variables:
                         pressure_loss = loss_func(
                             predictions["pressure"],
@@ -898,7 +930,7 @@ def main(cfg: DictConfig) -> None:
                             cfg.loss.weights.pressure,
                             p=2.0,
                         )
-                        loss += pressure_loss
+                        step_loss = step_loss + pressure_loss
                         metrics_accumulator["pressure_loss"] += pressure_loss.item()
 
                     if "SWAT" in output_variables:
@@ -909,7 +941,7 @@ def main(cfg: DictConfig) -> None:
                             cfg.loss.weights.water_sat,
                             p=2.0,
                         )
-                        loss += water_loss
+                        step_loss = step_loss + water_loss
                         metrics_accumulator["water_loss"] += water_loss.item()
 
                     if "SOIL" in output_variables:
@@ -920,7 +952,7 @@ def main(cfg: DictConfig) -> None:
                             cfg.loss.weights.oil_sat,
                             p=2.0,
                         )
-                        loss += oil_loss
+                        step_loss = step_loss + oil_loss
                         metrics_accumulator["oil_loss"] += oil_loss.item()
 
                     if "SGAS" in output_variables:
@@ -931,9 +963,9 @@ def main(cfg: DictConfig) -> None:
                             cfg.loss.weights.gas_sat,
                             p=2.0,
                         )
-                        loss += gas_loss
+                        step_loss = step_loss + gas_loss
                         metrics_accumulator["gas_loss"] += gas_loss.item()
-                                         
+
                     # PINO physics loss
                     if (
                         cfg.custom.fno_type == "PINO"
@@ -999,21 +1031,22 @@ def main(cfg: DictConfig) -> None:
                         f_water2 = loss_func_physics(
                             evaluate["saturationd"], cfg.loss.weights.saturationd
                         )
-                        f_gas2 = loss_func_physics(evaluate["gasd"], cfg.loss.weights.gasd)
+                        f_gas2 = loss_func_physics(
+                            evaluate["gasd"], cfg.loss.weights.gasd
+                        )
 
-                        loss += f_pressure2 + f_water2 + f_gas2
+                        step_loss = step_loss + f_pressure2 + f_water2 + f_gas2
                         pino_metrics["pressured"] += f_pressure2.item()
                         pino_metrics["saturationd"] += f_water2.item()
                         pino_metrics["gasd"] += f_gas2.item()
-                    
-                    # Compute losses with model's own outputs as inputs (autoregressive)
-                    if x > 0 and predictions_prev is not None: 
-                        # Create input using model's previous predictions
+
+                    # Autoregressive loss (your existing logic)
+                    if x > 0 and predictions_prev is not None:
                         input_autoregressive = {
                             "perm": inputin["perm"][:, x:x+1, ...],
                             "poro": inputin["poro"][:, x:x+1, ...],
                             "pini": predictions_prev["pressure"],
-                            "sini": predictions_prev["water"], 
+                            "sini": predictions_prev["water"],
                             "sgini": predictions_prev["gas"],
                             "soini": predictions_prev["oil"],
                             "fault": inputin["fault"][:, x:x+1, ...],
@@ -1023,26 +1056,34 @@ def main(cfg: DictConfig) -> None:
                             "dt": inputin["dt"][:, x:x+1, ...],
                             "t": inputin["t"][:, x:x+1, ...],
                         }
-                        
-                        # Prepare autoregressive input tensor
+
                         tensors_ar = [
-                            value for value in input_autoregressive.values() if isinstance(value, torch.Tensor)
+                            value
+                            for value in input_autoregressive.values()
+                            if isinstance(value, torch.Tensor)
                         ]
                         input_tensor_ar = torch.cat(tensors_ar, dim=1)
-                        
-                        # Get predictions using autoregressive inputs
+
                         predictions_ar = {}
                         if "PRESSURE" in output_variables:
-                            predictions_ar["pressure"] = model(input_tensor_ar, mode="pressure")["pressure"]
+                            predictions_ar["pressure"] = model(
+                                input_tensor_ar, mode="pressure"
+                            )["pressure"]
                         if "SGAS" in output_variables:
-                            predictions_ar["gas"] = model(input_tensor_ar, mode="gas")["gas"]
+                            predictions_ar["gas"] = model(
+                                input_tensor_ar, mode="gas"
+                            )["gas"]
                         if "SWAT" in output_variables:
-                            predictions_ar["water"] = model(input_tensor_ar, mode="saturation")["saturation"]
+                            predictions_ar["water"] = model(
+                                input_tensor_ar, mode="saturation"
+                            )["saturation"]
                         if "SOIL" in output_variables:
-                            predictions_ar["oil"] = model(input_tensor_ar, mode="oil")["oil"]
-                        
-                        # Calculate autoregressive loss for this timestep
+                            predictions_ar["oil"] = model(
+                                input_tensor_ar, mode="oil"
+                            )["oil"]
+
                         predictions = predictions_ar  # Replace with autoregressive predictions
+
                         autoregressive_timestep_loss = 0
                         if "PRESSURE" in output_variables:
                             pressure_loss_ar = loss_func(
@@ -1086,22 +1127,38 @@ def main(cfg: DictConfig) -> None:
                                 p=2.0,
                             )
                             autoregressive_timestep_loss += gas_loss_ar
-                            metrics_accumulator["gas_loss"] += gas_loss_ar.item()  
-                        
-                        # Add weighted autoregressive loss for this timestep
+                            metrics_accumulator["gas_loss"] += gas_loss_ar.item()
+
                         loss_autoregressive += autoregressive_timestep_loss
-                        loss += autoregressive_timestep_loss * cfg.loss.weights.get('autoregressive_weight', 0.1)
-                    
-                    # Store current predictions for next timestep
-                    predictions_prev = predictions.copy()  
-        else:            
-            if cfg.custom.model_type=="FNO":                   
+                        step_loss = step_loss + (
+                            autoregressive_timestep_loss
+                            * cfg.loss.weights.get("autoregressive_weight", 0.1)
+                        )
+
+                    # accumulate into K-window and backward
+                    loss_window = loss_window + step_loss
+                    is_window_end = ((x + 1) % K == 0) or (x == steppi - 1)
+
+                    if is_window_end:
+                        (loss_window / steppi).backward()
+                        loss_value += loss_window.detach().item()
+                        loss_window = 0.0
+                        predictions_prev = {
+                            k: v.detach() for k, v in predictions.items()
+                        }
+                    else:
+                        predictions_prev = predictions.copy()
+
+        else:
+            # ------------------ non-unroll branch: unchanged (single backward outside) ------------------
+            if cfg.custom.model_type == "FNO":
                 tensors = [
-                    value for value in inputin.values() if isinstance(value, torch.Tensor)
+                    value
+                    for value in inputin.values()
+                    if isinstance(value, torch.Tensor)
                 ]
                 input_tensor = torch.cat(tensors, dim=1)
             else:
-
                 # === KEY FIX: build input_temp with channels LAST (B, steppi, nz, nx, ny, C) ===
                 vars_for_cat = []
                 for key in input_keys:
@@ -1110,14 +1167,11 @@ def main(cfg: DictConfig) -> None:
                     vars_for_cat.append(t)
 
                 # input_temp: (B, steppi, nz, nx, ny, C)
-                input_tensor = torch.cat(vars_for_cat, dim=-1)                
-                      
-            #input_tensor_p = inputin_p["X"]
-            nz = input_tensor.shape[2]
+                input_tensor = torch.cat(vars_for_cat, dim=-1)
 
+            nz = input_tensor.shape[2]
             fno_expected_nz = chunk_size = nz
             num_chunks = 1
-            # Extract chunks
             input_temp = input_tensor
             target_chunks = {}
 
@@ -1131,18 +1185,16 @@ def main(cfg: DictConfig) -> None:
                     "water_sat": TARGETS["SATURATION"]["water_sat"]
                 }
             if "SOIL" in output_variables:
-                target_chunks["oil"] = {
-                    "oil_sat": TARGETS["OIL"]["oil_sat"]
-                }
+                target_chunks["oil"] = {"oil_sat": TARGETS["OIL"]["oil_sat"]}
             if "SGAS" in output_variables:
-                target_chunks["gas"] = {
-                    "gas_sat": TARGETS["GAS"]["gas_sat"]
-                }
+                target_chunks["gas"] = {"gas_sat": TARGETS["GAS"]["gas_sat"]}
 
             # Model predictions
             predictions = {}
             if "PRESSURE" in output_variables:
-                predictions["pressure"] = model(input_temp, mode="pressure")["pressure"]
+                predictions["pressure"] = model(input_temp, mode="pressure")[
+                    "pressure"
+                ]
             if "SGAS" in output_variables:
                 predictions["gas"] = model(input_temp, mode="gas")["gas"]
             if "SWAT" in output_variables:
@@ -1151,7 +1203,7 @@ def main(cfg: DictConfig) -> None:
                 ]
             if "SOIL" in output_variables:
                 predictions["oil"] = model(input_temp, mode="oil")["oil"]
-      
+
             if "PRESSURE" in output_variables:
                 pressure_loss = loss_func(
                     predictions["pressure"],
@@ -1196,7 +1248,6 @@ def main(cfg: DictConfig) -> None:
                 loss += gas_loss
                 metrics_accumulator["gas_loss"] += gas_loss.item()
 
-                                 
             # PINO physics loss
             if (
                 cfg.custom.fno_type == "PINO"
@@ -1262,16 +1313,21 @@ def main(cfg: DictConfig) -> None:
                 f_water2 = loss_func_physics(
                     evaluate["saturationd"], cfg.loss.weights.saturationd
                 )
-                f_gas2 = loss_func_physics(evaluate["gasd"], cfg.loss.weights.gasd)
+                f_gas2 = loss_func_physics(
+                    evaluate["gasd"], cfg.loss.weights.gasd
+                )
 
                 loss += f_pressure2 + f_water2 + f_gas2
                 pino_metrics["pressured"] += f_pressure2.item()
                 pino_metrics["saturationd"] += f_water2.item()
                 pino_metrics["gasd"] += f_gas2.item()
-                
-        if cfg.custom.unroll=="TRUE":  
-            loss = loss/steppi
-            
+
+        # ---- scale / aggregate loss for logging ----
+        if cfg.custom.unroll == "TRUE":
+            # loss_value already includes all time + physics + AR from K-window backward
+            loss = loss_value / steppi
+
+        # ---- Peacemann head ----
         outputs_p = model(input_tensor_p, mode="peacemann")
         peacemann_pred = outputs_p["peacemann"]
         target_peacemann = {
@@ -1279,10 +1335,20 @@ def main(cfg: DictConfig) -> None:
         }
 
         peacemann_loss = loss_func(
-            peacemann_pred, target_peacemann["Y"], "peaceman", cfg.loss.weights.Y, p=2.0
+            peacemann_pred,
+            target_peacemann["Y"],
+            "peaceman",
+            cfg.loss.weights.Y,
+            p=2.0,
         )
-        loss += peacemann_loss
         metrics_accumulator["peacemann_loss"] = peacemann_loss.item()
+
+        if cfg.custom.unroll == "TRUE":
+            # include Peacemann in grads and logging
+            peacemann_loss.backward()
+            loss += peacemann_loss.item()
+        else:
+            loss += peacemann_loss  # keep original behaviour
 
         # Peacemann physics
         if (
@@ -1322,11 +1388,15 @@ def main(cfg: DictConfig) -> None:
             f_peacemann2 = loss_func_physics(
                 evaluate["peacemanned"], cfg.loss.weights.peacemanned
             )
-            loss += f_peacemann2
             pino_metrics["peacemanned"] = f_peacemann2.item()
 
-        # Average metrics
+            if cfg.custom.unroll == "TRUE":
+                f_peacemann2.backward()
+                loss += f_peacemann2.item()
+            else:
+                loss += f_peacemann2
 
+        # Average metrics
         if cfg.custom.unroll == "TRUE":
             denom = steppi
         else:
@@ -1336,7 +1406,7 @@ def main(cfg: DictConfig) -> None:
             training_step_metrics[key] = metrics_accumulator[key] / (
                 denom if key != "peacemann_loss" else 1
             )
-            
+
         if cfg.custom.fno_type == "PINO":
             for key in pino_metrics:
                 training_step_metrics[key] = pino_metrics[key] / (
@@ -1344,7 +1414,7 @@ def main(cfg: DictConfig) -> None:
                 )
 
         return loss
-        
+       
         
     @StaticCaptureEvaluateNoGrad(
         model=composite_model, logger=logger, use_amp=False, use_graphs=True
