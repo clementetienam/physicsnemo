@@ -242,15 +242,15 @@ def run_training_loop(
             total_losspet = 0
             d3, d4, d6, d7 = 0, 0, 0, 0
             for data, datape in zip(labelled_loader_train, labelled_loader_trainp):
-            if "PRESSURE" in output_variables:
-                optimizer_pressure.zero_grad()
-            if "SGAS" in output_variables:
-                optimizer_gas.zero_grad()
-            if "SWAT" in output_variables:
-                optimizer_saturation.zero_grad()
-            if "SOIL" in output_variables:
-                optimizer_oil.zero_grad()
-            optimizer_peacemann.zero_grad()
+                if "PRESSURE" in output_variables:
+                    optimizer_pressure.zero_grad()
+                if "SGAS" in output_variables:
+                    optimizer_gas.zero_grad()
+                if "SWAT" in output_variables:
+                    optimizer_saturation.zero_grad()
+                if "SOIL" in output_variables:
+                    optimizer_oil.zero_grad()
+                optimizer_peacemann.zero_grad()
                 inputin = {key: data[key] for key in input_keys}
                 inputin_p = {key: datape[key] for key in input_keys_peacemann}
                 TARGETS = {}
