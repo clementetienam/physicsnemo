@@ -306,7 +306,7 @@ def run_training_loop(
                     d4 += training_step_metrics.get("saturationd", None)
                     d6 += training_step_metrics.get("gasd", None)
                     d7 += training_step_metrics.get("peacemanned", None)
-                total_losst += loss#.item()
+                total_losst += loss.item()
                 if "PRESSURE" in output_variables:
                     scheduler_pressure.step()
                 if "SWAT" in output_variables:
