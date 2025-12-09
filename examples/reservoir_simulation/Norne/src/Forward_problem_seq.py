@@ -1150,7 +1150,7 @@ def main(cfg: DictConfig) -> None:
                         predictions_prev = predictions.copy()
 
         else:
-            # ------------------ non-unroll branch: unchanged (single backward outside) ------------------
+            # ------------------ non-unroll branch: unchanged ------------------
             if cfg.custom.model_type == "FNO":
                 tensors = [
                     value
@@ -1348,7 +1348,7 @@ def main(cfg: DictConfig) -> None:
             peacemann_loss.backward()
             loss += peacemann_loss.item()
         else:
-            loss += peacemann_loss  # keep original behaviour
+            loss += peacemann_loss  
 
         # Peacemann physics
         if (
@@ -1412,7 +1412,9 @@ def main(cfg: DictConfig) -> None:
                 training_step_metrics[key] = pino_metrics[key] / (
                     num_chunks if key != "peacemanned" else 1
                 )
-
+        if cfg.custom.unroll == "FALSE":
+            loss.backward()
+            loss = loss.detach().item()
         return loss
        
         
@@ -1805,4 +1807,5 @@ def main(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     main()
+
 
