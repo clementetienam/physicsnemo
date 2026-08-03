@@ -56,29 +56,87 @@ Sparse Control-Point Morphing
 This allows an optimizer—or a model producing the control displacements—to
 learn a deformation from a differentiable objective on ``morphed``.
 
+Global Radial-Basis Deformation
+-------------------------------
+
+.. autofunction:: physicsnemo.nn.functional.radial_basis_function_deform_points
+
+.. code:: python
+
+    import torch
+    from physicsnemo.nn.functional import radial_basis_function_deform_points
+
+    points = torch.tensor(
+        [[0.25, 0.25], [0.75, 0.25], [0.75, 0.75], [0.25, 0.75]],
+        requires_grad=True,
+    )
+    controls = torch.tensor(
+        [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+        requires_grad=True,
+    )
+    control_displacements = torch.tensor(
+        [[0.0, 0.0], [0.0, 0.0], [0.15, 0.25], [0.0, 0.0]],
+        requires_grad=True,
+    )
+
+    exact = radial_basis_function_deform_points(
+        points,
+        controls,
+        control_displacements,
+        kernel="thin_plate_spline",
+        polynomial=True,
+        smoothing=0.0,
+    )
+    exact.square().mean().backward()
+
+With zero smoothing and a nonsingular control layout, the fitted field
+interpolates every control displacement up to solver precision. The affine
+polynomial tail also reproduces affine displacement fields. A positive
+``smoothing`` value adds diagonal regularization and relaxes interpolation.
+Thin-plate-spline fields have global support, unlike the compact Shepard field
+used by :func:`~physicsnemo.nn.functional.morph_points`. This formulation
+follows the thin-plate-spline interpolant described by Bookstein [1].
+
+[1] F. L. Bookstein, "Principal warps: thin-plate splines and the decomposition
+of deformations," IEEE Transactions on Pattern Analysis and Machine
+Intelligence, vol. 11, no. 6, pp. 567-585, 1989.
+https://doi.org/10.1109/34.24792
+
 Performance and Compilation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Dense point displacement uses Torch on every device. Morphing uses Torch by
-default on CPU and Warp by default on CUDA for sparse control sets. If Warp is
-unavailable, automatic CUDA dispatch falls back to Torch, while explicitly
-requesting ``implementation="warp"`` for morphing raises an ``ImportError``.
-For a repeatedly evaluated, fixed-shape CUDA morph wrapped in
-:func:`torch.compile`, benchmark ``implementation="torch"`` as well; compiler
+Dense point displacement uses Torch on every device. Compact morphing and
+radial-basis deformation use Torch by default on CPU and Warp by default on
+CUDA. If Warp is unavailable, automatic CUDA dispatch falls back to Torch,
+while explicitly requesting ``implementation="warp"`` raises an
+``ImportError``.
+For a repeatedly evaluated, fixed-shape CUDA deformation wrapped in
+:func:`torch.compile`, benchmark ``implementation="torch"`` as well. Compiler
 fusion can make that path faster after its one-time compilation cost. Keep the
 backend explicit when comparing compiled and eager runs.
 
-Morphing evaluates every query/control pair and therefore has computational
-cost proportional to ``batch_size * n_points * n_controls * n_spatial_dims``.
-Pass all simultaneous controls in one call. For a
+Compact morphing and radial-basis deformation evaluate every query/control pair.
+Their computational cost is proportional to
+``batch_size * n_points * n_controls * n_spatial_dims``. Pass all simultaneous
+controls in one call. For a
 :class:`~physicsnemo.mesh.domain_mesh.DomainMesh`, the object API combines its
 interior and boundary queries into one field evaluation before rebuilding the
 individual component meshes.
 
+Radial-basis deformation additionally solves a dense control system with cubic
+cost in ``n_controls``. Both backends use the same differentiable PyTorch solve.
+``implementation="warp"`` selects a fused Warp evaluator for the point/control
+evaluation phase. The checked coefficient solve is not supported inside CUDA
+Graph capture. Use :func:`torch.compile` when compiled execution is needed.
+
 For connectivity-preserving object APIs, use
 :meth:`~physicsnemo.mesh.mesh.Mesh.displace`,
 :meth:`~physicsnemo.mesh.mesh.Mesh.morph`, or
-:meth:`~physicsnemo.mesh.domain_mesh.DomainMesh.morph`.
+:meth:`~physicsnemo.mesh.mesh.Mesh.radial_basis_function_deform`. A
+:class:`~physicsnemo.mesh.domain_mesh.DomainMesh` provides
+:meth:`~physicsnemo.mesh.domain_mesh.DomainMesh.morph` and
+:meth:`~physicsnemo.mesh.domain_mesh.DomainMesh.radial_basis_function_deform`
+for shared sparse fields across all components.
 
 Lattice Free-Form Deformation
 -----------------------------
@@ -154,6 +212,78 @@ require substantially more peak memory when compiled.
 For connectivity-preserving object APIs, use
 :meth:`~physicsnemo.mesh.mesh.Mesh.free_form_deform` or
 :meth:`~physicsnemo.mesh.domain_mesh.DomainMesh.free_form_deform`.
+
+Deformation Energies
+--------------------
+
+The deformation-energy functionals compare current point coordinates with a
+fixed reference configuration and topology. They return differentiable penalty
+objectives for use in an optimization loop. They do not solve a constrained
+deformation problem or enforce hard constraints.
+
+For a :class:`~physicsnemo.mesh.mesh.Mesh`, the wrappers in
+:mod:`physicsnemo.mesh.deformation` validate and cache connectivity and build
+triangle hinges automatically.
+
+.. autofunction:: physicsnemo.nn.functional.simplex_strain_energy
+
+.. autofunction:: physicsnemo.nn.functional.simplex_measure_energy
+
+.. autofunction:: physicsnemo.nn.functional.total_measure_energy
+
+.. autofunction:: physicsnemo.nn.functional.simplex_inversion_energy
+
+.. autofunction:: physicsnemo.nn.functional.surface_bending_energy
+
+.. autofunction:: physicsnemo.nn.functional.closed_surface_volume_energy
+
+.. code:: python
+
+    from physicsnemo.nn.functional import (
+        simplex_inversion_energy,
+        simplex_strain_energy,
+        total_measure_energy,
+    )
+
+    loss = (
+        simplex_strain_energy(points, reference_points, cells)
+        + 40.0 * total_measure_energy(points, reference_points, cells)
+        + 10.0 * simplex_inversion_energy(points, reference_points, cells)
+    )
+    loss.backward()
+
+The simplex functionals accept unbatched ``(n_points, n_spatial_dims)`` or
+batched ``(batch_size, n_points, n_spatial_dims)`` coordinates with shared
+integer topology. Coordinates must use matching ``torch.float32`` or
+``torch.float64`` dtypes. ``reduction="none"`` returns one value per simplex or
+hinge. For ``total_measure_energy`` and ``closed_surface_volume_energy``, it
+returns one global value per batch item. ``"sum"`` and ``"mean"`` reduce all
+values to one scalar.
+
+``simplex_measure_energy`` constrains each element separately, whereas
+``total_measure_energy`` permits local redistribution and constrains only the
+sum. Full-dimensional measure ratios retain the orientation relative to each
+reference simplex. Embedded-simplex ratios are unsigned. The St.
+Venant--Kirchhoff strain formulation used by
+``simplex_strain_energy`` is reflection-blind. Add
+``simplex_inversion_energy`` when full-dimensional simplex orientation matters.
+Closed-surface volume requires one edge-connected, edge-closed, consistently
+oriented 3D triangle surface. The low-level functional assumes that contract
+without checking it. Surface bending is a geometric hinge regularizer rather
+than a material shell model.
+
+The tensor functionals validate topology shape, dtype, and device without
+scanning index values, which would synchronize a CUDA device on every call.
+Indices must therefore be distinct and in range as documented. Invalid index
+values are outside the tensor API contract. Use the mesh wrappers when cached
+value validation is needed. Direct tensor calls accept int32 or int64
+connectivity, but normalize int32 connectivity on every call. Use int64 for
+repeated direct calls. Mesh wrappers cache this normalization with the
+topology.
+
+Torch provides higher-order derivatives. Warp provides a first-order CUDA
+path. Because its backward uses atomic accumulation at shared vertices, Warp
+gradient results can have small run-to-run floating-point differences.
 
 Mesh Poisson Disk Sample
 ------------------------

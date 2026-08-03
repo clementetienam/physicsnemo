@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Adds `zenith_azimuth_angles` and `zenith_azimuth_angles_from_timestamp` to
+  `physicsnemo.utils.zenith_angle`, returning
+  `(sin_zenith, cos_zenith, sin_azimuth, cos_azimuth)` alongside the existing
+  `cos_zenith_angle` / `cos_zenith_angle_from_timestamp` helpers. The azimuth
+  follows the north-clockwise convention.
 - Adds `physicsnemo.nn.shrink_and_perturb_`, an in-place shrink-and-perturb
   weight re-initialization for warm-starting from pretrained weights.
 - Adds dimension-generic volume mesh generation for implicit domains to
@@ -47,11 +52,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adds differentiable mesh morphing: Torch-backed dense ``displace_points`` /
   ``Mesh.displace`` and Torch/NVIDIA Warp compact sparse-control
   ``morph_points`` / ``Mesh.morph`` / ``DomainMesh.morph``.
+- Adds thin-plate-spline radial-basis deformation through
+  `radial_basis_function_deform_points`,
+  `Mesh.radial_basis_function_deform`, and
+  `DomainMesh.radial_basis_function_deform`. PyTorch performs the differentiable
+  coefficient solve. Torch and fused NVIDIA Warp backends evaluate the field.
 - Adds differentiable lattice free-form deformation with Torch and NVIDIA Warp
   backends: dimension-generic ``free_form_deform_points`` /
   ``Mesh.free_form_deform`` / ``DomainMesh.free_form_deform`` with Bernstein
   (classic FFD) and locally supported uniform cubic B-spline bases, plus
   node-interpolating `linear`, `cubic_hermite`, and `quintic_hermite` modes.
+- Adds fixed-topology ``simplex_strain_energy``, ``simplex_measure_energy``,
+  ``total_measure_energy``, ``simplex_inversion_energy``,
+  ``closed_surface_volume_energy``, and ``surface_bending_energy`` to
+  ``physicsnemo.nn.functional``, with mesh-aware wrappers in
+  ``physicsnemo.mesh.deformation``. Torch supports higher-order derivatives,
+  and Warp provides first-order GPU kernels.
 - Adds `uniform_grid_divergence`, `uniform_grid_curl`, and
   `uniform_grid_laplacian` to `physicsnemo.nn.functional`, with Torch and fused
   Warp implementations for periodic Cartesian grids.
@@ -243,9 +259,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cells, return self), matching its type hint and `slice_points`;
   `gaussian_curvature_cells` reuses the cached `gaussian_curvature_vertices`
   property instead of recomputing it.
-- `physicsnemo.mesh`: `validate_mesh(check_self_intersection=True)` now raises
+- `physicsnemo.mesh.Mesh` convenience methods now directly reuse shared
+  canonical functions, removing duplicate implementation bodies and docstrings.
+  This includes geometric, deformation (including radial-basis-function
+  deformation), calculus, topology, visualization, and validation operations.
+- `physicsnemo.mesh`: `draw` and `validate` are now the canonical standalone
+  names matching `Mesh.draw` and `Mesh.validate`. The `draw_mesh` and
+  `validate_mesh` remain as pending-deprecation compatibility names.
+  `Mesh.validate` and `DomainMesh.validate` share the canonical validation
+  option order, preserve the historical positional `tolerance` argument, and
+  expose the new `check_self_intersection` option as keyword-only.
+- `physicsnemo.mesh`: `validate(check_self_intersection=True)` now raises
   `NotImplementedError` (the check is unimplemented) instead of silently returning a
   `None` sentinel that masquerades as "no self-intersections found".
+- `physicsnemo.mesh` quality metrics now use a normalized
+  aspect ratio of longest edge to minimum altitude. The metric is dimensionless and
+  scale-invariant for simplices of every manifold dimension, and a regular
+  simplex now has `aspect_ratio=1` and `quality_score=1`. This intentionally
+  corrects the previous erroneous aspect-ratio and quality-score values.
+- `Mesh.quality_metrics` and `Mesh.statistics` again use explicit property
+  getters so their class-facing documentation describes argument-free property
+  access. Configurable statistics tolerance remains available through the
+  standalone `compute_mesh_statistics` function.
 - Performance improvements in the diffusion module: reduced peak memory of
   DPS-guided diffusion sampling most notably for multi-diffusion at large
   domains. A guided `sample()` loop run under `torch.no_grad()` now detaches the
@@ -270,6 +305,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   norms, but a custom `norm` that relies on unobserved entries being zeroed
   before the call may differ. The integer `norm` selector (e.g. `norm=2`) is
   unaffected.
+- `Mesh.transform` and `compute_cotan_weights_fem` now use the non-checking
+  `torch.linalg.inv_ex` / `solve_ex` solvers, and build their index tensors on
+  device. The checked solvers read a status code back to the host on every call,
+  which synchronizes on CUDA; removing that and the index-tensor uploads takes
+  `Mesh.transform` on a cached codimension-one mesh from three host
+  synchronizations to one, and `compute_cotan_weights_fem` from six to three. As
+  a consequence,
+  `Mesh.transform(..., assume_invertible=True)` no longer raises when the matrix
+  is in fact singular: it propagates NaN caches instead, as its docstring now
+  documents. The default `assume_invertible=None` still tests the determinant
+  and is unaffected.
 
 ### Deprecated
 
@@ -282,6 +328,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `compute_cotan_weights_fem`, and the calculus, curvature, and smoothing
+  routines built on it such as `Mesh.laplacian`, no longer fail on degenerate
+  cells in float32. The Gram-matrix regularization is now scale-free, so it also
+  covers cells with no extent — including the null cells that `Mesh.pad` and
+  `Mesh.pad_to_next_power` insert — and flat cells at large coordinate values,
+  both of which previously raised a singular-matrix `_LinAlgError` from
+  `torch.linalg.inv`. Weights for non-degenerate cells are unchanged bit for bit.
+- Multinomial index sampling now uses one shared `weighted_multinomial`
+  functional across datapipes, DoMINO, and remeshing. Its core API follows
+  `torch.multinomial`, adds allocation-free integer input for uniform
+  populations, and supports sampling with or without replacement. Exact
+  sampling without replacement uses `torch.randperm` or a chunked exponential
+  race, with an explicit low-memory Poisson-gap approximation for uniform
+  sampling. This removes the `torch.multinomial` `2^24` category limit for
+  sampling without replacement, consolidates duplicated Poisson index
+  samplers, and fixes incorrect chunk-local indices and biased per-chunk quotas
+  in DoMINO.
 - Unified external aerodynamics recipe: the aggregate metrics reported for
   vector fields under the bare field name (e.g. `wss_l2`, likewise `_l1` /
   `_mae`) were computed on per-point vector magnitudes, so direction errors
