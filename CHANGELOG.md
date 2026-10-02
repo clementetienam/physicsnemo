@@ -53,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Refresh core, optional, development, and container dependency versions.
+  Require PyTorch 2.13 or newer and TensorDict 0.14.2 or newer;
+  use PyTorch 2.13's CUDA 12.9 wheels for the CUDA 12 backend. NATTEN
+  extras select PyTorch 2.13 to match their prebuilt kernels. Python support remains
+  3.11 through 3.14.
+
 - Mesh integration uses a shared `_effective_measure` field for complete cell
   and point measures. Cell measures fall back to geometry; point measures are
   explicit and independent of connectivity. `Mesh.integrate_samples` evaluates
@@ -113,6 +119,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     file; PyVista reads and writes OBJ, VTP and STL.
 
 ### Fixed
+
+- Mesh slicing reuses integer indices across connectivity, fields, and caches
+  to avoid repeated CUDA synchronization for the same boolean mask.
+  Point slicing skips mask processing when the output has no cells because
+  the input has no cells or the point selection is empty.
+
+- Triangle areas use direct area components and a rescaled norm, preserving
+  thin faces and their quadrature measures without Gram cancellation or
+  overflow/underflow in the norm.
 
 - Fixes mesh dtype handling: preserves integer-coordinate precision, normalizes
   connectivity safely, and rejects integer `.to()` casts. Floating/complex casts
