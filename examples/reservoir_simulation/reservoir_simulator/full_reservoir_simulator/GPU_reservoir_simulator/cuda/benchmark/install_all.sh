@@ -49,7 +49,6 @@
 #                                              nvrs_cuda_tc (JACOBIAN TENSORCORE)
 #   FORCE_HYPRE=1 FORCE_AMGX=1 FORCE_GINKGO=1 FORCE_OPM=1
 #                                              rebuild one
-#   CUDA_ARCH=100                              pin the GPU architecture
 #   AMGX_PREFIX=/somewhere                     where AmgX lives
 #   GINKGO_PREFIX=/somewhere                   where Ginkgo lives
 set -uo pipefail
@@ -246,7 +245,7 @@ do_build() {
   if [[ "${TENSORCORE:-0}" == "1" ]]; then
     local cut="${CUTLASS_DIR:-$CUDA_DIR/../../cutlass}"
     if [[ ! -f "$cut/include/cutlass/cutlass.h" ]]; then
-      git clone --depth 1 --branch v3.5.1 https://github.com/NVIDIA/cutlass.git "$cut" || return $?
+      git clone --depth 1 --branch v4.8.1 https://github.com/NVIDIA/cutlass.git "$cut" || return $?
     fi
     ( cd "$CUDA_DIR" && make -j"$(nproc)" TENSORCORE=1 CUTLASS_DIR="$cut" ) || return $?
   fi

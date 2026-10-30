@@ -60,7 +60,7 @@ make -j FP64_PRECOND=1                        # nvrs_cuda_fp64, fully FP64 preco
 make -j TENSORCORE=1 CUTLASS_DIR=<checkout>   # nvrs_cuda_tc, adds JACOBIAN TENSORCORE
 ```
 
-The CUDA architecture is detected from your GPU; `CUDA_ARCH=100` pins it. The scripts
+The CUDA architecture is detected from your GPU. The scripts
 run the binary `make` writes in this folder. Read the AmgX line the build prints:
 `AmgX: not found -- HYPRE only` means a run labelled AmgX would measure BoomerAMG.
 

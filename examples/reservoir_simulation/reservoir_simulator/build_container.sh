@@ -3,14 +3,13 @@
 # Authors: Clement Etienam, Tsubasa Onishi, Oleg Ovcharenko,
 #          Nick Luiken, Issam Said
 #
-# build_container.sh -- build and enter the container these results came from.
+# build_container.sh -- build and enter the container for this machine.
 #
-# The image is CUDA 12.8 on Ubuntu 22.04 with UCX, PMIx and OpenMPI built from
-# source, so that MPI is CUDA-aware and Slurm-aware.  That is the whole reason
-# it exists rather than a stock image: NVRS is an MPI program whose ranks
-# exchange DEVICE buffers, and a stock OpenMPI stages those through host memory.
-# It still runs, and it is quietly several times slower -- which is the worst
-# kind of difference, because nothing fails and the numbers look plausible.
+# It reads the CUDA version your driver supports from nvidia-smi and builds on the
+# matching NVIDIA HPC SDK image, which brings nvcc, the CUDA libraries and a
+# CUDA-aware OpenMPI (HPC-X).  NVRS is an MPI program whose ranks exchange DEVICE
+# buffers, and a stock OpenMPI stages those through host memory: it still runs,
+# and it is quietly several times slower.
 #
 #   ./build_container.sh                 # build (if needed), then open a shell
 #   ./build_container.sh build           # build only
@@ -20,7 +19,8 @@
 #   ./build_container.sh rebuild         # build from scratch, no layer cache
 #
 # Environment overrides:
-#   IMAGE=name:tag     image name           (default nvrs/cuda:12.8)
+#   NVHPC_IMAGE=tag    base image, instead of choosing from nvidia-smi
+#   IMAGE=name:tag     image name           (default follows the base image)
 #   NAME=container     running container    (default nvrs)
 #   GPUS=all|"0,1"     which GPUs to expose (default all)
 #   MOUNT=/path        host dir to mount    (default this repository)
@@ -31,7 +31,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE="${IMAGE:-nvrs/cuda:12.8}"
+IMAGE="${IMAGE:-}"
+NVHPC_IMAGE="${NVHPC_IMAGE:-}"
 NAME="${NAME:-nvrs}"
 GPUS="${GPUS:-all}"
 MOUNT="${MOUNT:-$HERE}"
@@ -75,6 +76,50 @@ can_reach_daemon() {
   exit 1
 }
 
+# --- which NVIDIA HPC SDK ----------------------------------------------------
+#
+# A program built with a CUDA newer than the driver supports may not start, and
+# nvidia-smi's header states the newest the driver supports.  So this machine's
+# answer selects the SDK.  The newest targeted is CUDA 13.2.  CUDA 13 dropped the
+# oldest GPUs, so those stay on CUDA 12.9, the last release that builds for them.
+pick_nvhpc() {
+  local smi cuda cap major minor n sdk
+  if [ -z "$NVHPC_IMAGE" ]; then
+    if ! smi="$(nvidia-smi 2>/dev/null)"; then
+      echo "ERROR: nvidia-smi did not run, so there is no GPU to build for." >&2
+      echo "  Install the NVIDIA driver and check that nvidia-smi works." >&2
+      echo "  To build the image anyway, name one:" >&2
+      echo "    NVHPC_IMAGE=nvcr.io/nvidia/nvhpc:26.5-devel-cuda13.2-ubuntu22.04 ./build_container.sh build" >&2
+      exit 1
+    fi
+    cuda="$(printf '%s\n' "$smi" | sed -n 's/.*CUDA Version: *\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p')"
+    cuda="${cuda%%$'\n'*}"
+    if [ -z "$cuda" ]; then
+      echo "ERROR: nvidia-smi did not report a CUDA version. Set NVHPC_IMAGE to choose one." >&2
+      exit 1
+    fi
+    major="${cuda%%.*}"; minor="${cuda#*.}"
+    n=$((10#$major * 100 + 10#$minor))
+    cap="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null || true)"
+    cap="${cap%%$'\n'*}"; cap="${cap//[. ]/}"
+    if [ -n "$cap" ] && [ "$cap" -lt 75 ] && [ "$n" -ge 1300 ]; then n=1209; fi
+    if   [ "$n" -ge 1302 ]; then sdk=26.5-devel-cuda13.2
+    elif [ "$n" -ge 1301 ]; then sdk=26.3-devel-cuda13.1
+    elif [ "$n" -ge 1300 ]; then sdk=25.11-devel-cuda13.0
+    elif [ "$n" -ge 1209 ]; then sdk=25.7-devel-cuda12.9
+    elif [ "$n" -ge 1208 ]; then sdk=25.3-devel-cuda12.8
+    elif [ "$n" -ge 1206 ]; then sdk=25.1-devel-cuda12.6
+    else
+      echo "ERROR: this driver supports CUDA $cuda, and the simulator needs 12.6 or newer." >&2
+      echo "  Update the NVIDIA driver, then run this again." >&2
+      exit 1
+    fi
+    NVHPC_IMAGE="nvcr.io/nvidia/nvhpc:${sdk}-ubuntu22.04"
+    echo "Driver supports CUDA $cuda, so using $NVHPC_IMAGE"
+  fi
+  [ -n "$IMAGE" ] || IMAGE="nvrs/nvhpc:${NVHPC_IMAGE##*:}"
+}
+
 # --- GPU flags -------------------------------------------------------------
 #
 # Docker 19.03+ takes --gpus; older installs need --runtime=nvidia, and podman
@@ -115,13 +160,14 @@ do_build() {
   context="$(mktemp -d)"
   hr
   echo " Building $IMAGE"
+  echo "   base    : $NVHPC_IMAGE"
   echo "   runtime : $DOCKER"
   echo "   arch    : $(uname -m)"
   hr
-  # UCX, PMIx and OpenMPI are all compiled from source here, so this is tens of
-  # minutes on a first build and seconds afterwards from the layer cache.
+  # The first build downloads the SDK, about 7 GB, then installs system packages.
+  # Later builds come from the layer cache.
   # shellcheck disable=SC2086
-  if ! $DOCKER build $extra -t "$IMAGE" -f "$HERE/Dockerfile" "$context"; then
+  if ! $DOCKER build $extra --build-arg "NVHPC_IMAGE=$NVHPC_IMAGE" -t "$IMAGE" -f "$HERE/Dockerfile" "$context"; then
     rmdir "$context"
     echo "ERROR: the image did not build. The first failing step is above." >&2
     exit 1
@@ -249,7 +295,8 @@ int main(int argc,char**argv){
   cudaFree(d); MPI_Finalize(); return 0;
 }
 EOF
-    mpicc -o /tmp/t /tmp/t.c -L${CUDA_HOME}/lib64 -lcudart
+    root="$(dirname "$(dirname "$(command -v nvcc)")")"
+    mpicc -o /tmp/t /tmp/t.c -I"$root/include" -L"$root/lib64" -lcudart
     # --allow-run-as-root because the image has no unprivileged user; -np 2 so
     # the send/recv above actually crosses a rank boundary.
     mpirun --allow-run-as-root -np 2 /tmp/t \
@@ -259,14 +306,14 @@ EOF
 }
 
 case "${1:-default}" in
-  build)   need_runtime; do_build ;;
-  rebuild) need_runtime; do_build --no-cache ;;
-  shell)   need_runtime; image_exists || do_build; do_shell ;;
-  check)   need_runtime; image_exists || do_build; do_check ;;
-  run)     shift; need_runtime; image_exists || do_build; do_run "$@" ;;
-  default) need_runtime; image_exists || do_build; do_shell ;;
+  build)   need_runtime; pick_nvhpc; do_build ;;
+  rebuild) need_runtime; pick_nvhpc; do_build --no-cache ;;
+  shell)   need_runtime; pick_nvhpc; image_exists || do_build; do_shell ;;
+  check)   need_runtime; pick_nvhpc; image_exists || do_build; do_check ;;
+  run)     shift; need_runtime; pick_nvhpc; image_exists || do_build; do_run "$@" ;;
+  default) need_runtime; pick_nvhpc; image_exists || do_build; do_shell ;;
   -h|--help|help)
-    sed -n '5,29p' "${BASH_SOURCE[0]}" | sed 's|^# \{0,1\}||'
+    awk 'NR>=6 && !/^#/{exit} NR>=6{sub(/^# ?/,""); print}' "${BASH_SOURCE[0]}"
     ;;
   *)
     echo "unknown command: $1  (try: build, rebuild, shell, run, check, help)" >&2

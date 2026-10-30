@@ -1,4 +1,4 @@
-# Mixed-Precision Reservoir Simulation on GB200 and VR72
+# Mixed-Precision Reservoir Simulation
 
 **Authors:** Clement Etienam, Tsubasa Onishi, Oleg Ovcharenko, Nick Luiken, Issam Said
 
@@ -31,8 +31,8 @@ The browser panels are the interface itself, and the Tensor Core test output is 
 ## Run it: step by step
 
 Do these in order on a Linux machine with an NVIDIA GPU, Docker or Podman, and
-`nvidia-smi` working. You do not choose a CUDA architecture: the build detects
-your GPU. Set `CUDA_ARCH=100` (for example) only to pin one.
+`nvidia-smi` working. You do not choose a CUDA version or a GPU architecture: both
+are taken from your machine.
 
 **1. Get the code.**
 
@@ -42,19 +42,33 @@ git clone --branch feature/norne-examples --single-branch \
 cd physicsnemo/examples/reservoir_simulation/reservoir_simulator
 ```
 
-**2. Start the container.** The first build takes tens of minutes. You land in
-a shell at `/workspace/project`, which is this folder, mounted.
+**2. Start the container.** You land in a shell at `/workspace/project`, which is this
+folder, mounted.
 
 ```bash
 ./build_container.sh
 ```
 
-It is CUDA 12.8 on Ubuntu 22.04 with UCX, PMIx and OpenMPI built from source, so MPI is
-CUDA-aware, and your folder is mounted rather than copied. Running it again in another
-terminal joins the same container. `./build_container.sh check` proves MPI can send a GPU
-buffer, and `./build_container.sh help` lists the rest.
+It reads the CUDA version your driver supports from `nvidia-smi` and builds on the
+matching [NVIDIA HPC SDK](https://developer.nvidia.com/hpc-sdk) image, which brings `nvcc`,
+the CUDA libraries and a CUDA-aware OpenMPI:
 
-**3. Install everything.** This builds HYPRE, AmgX, Ginkgo, OPM Flow, Nsight
+| `nvidia-smi` reports CUDA | NVHPC image |
+|---|---|
+| 13.2 or newer | `nvhpc:26.5-devel-cuda13.2-ubuntu22.04` |
+| 13.1 | `nvhpc:26.3-devel-cuda13.1-ubuntu22.04` |
+| 13.0 | `nvhpc:25.11-devel-cuda13.0-ubuntu22.04` |
+| 12.9 | `nvhpc:25.7-devel-cuda12.9-ubuntu22.04` |
+| 12.8 | `nvhpc:25.3-devel-cuda12.8-ubuntu22.04` |
+| 12.6 or 12.7 | `nvhpc:25.1-devel-cuda12.6-ubuntu22.04` |
+
+The first build downloads about 7 GB. To choose an image yourself, set `NVHPC_IMAGE`. Running
+the command again in another terminal joins the same container.
+`./build_container.sh check` proves MPI can send a GPU buffer, and
+`./build_container.sh help` lists the rest.
+
+**3. Install everything.** Inside the container, where the GPU is visible, so everything
+is compiled for your GPU. This builds HYPRE, AmgX, Ginkgo, OPM Flow, Nsight
 Systems and `nvrs_cuda`. It is safe to re-run after a failure; it resumes.
 
 ```bash
@@ -172,8 +186,7 @@ Two things are handled automatically and are worth knowing about:
 **A GPU newer than any CUDA that can target it.** Vera Rubin reports compute
 capability 10.7 and no toolkit has an sm_107 target. The install scripts emit
 PTX for the newest architecture not newer than the device, which the driver
-JIT-compiles into native code at load. `CUDA_ARCH=100` pins it if you are
-cross-building. The first run pays the compile once; the benchmark scripts keep
+JIT-compiles into native code at load. The first run pays the compile once; the benchmark scripts keep
 the JIT cache on the mounted filesystem so it is not paid again, and timings
 from a JIT-compiled machine are not comparable with a natively-built one.
 

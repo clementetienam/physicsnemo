@@ -15,7 +15,7 @@
 #
 # Usage:
 #   ./install_amgx_sm100.sh
-#   AMGX_SRC=/path/AMGX AMGX_PREFIX=/path/amgx-install CUDA_ARCH=100 JOBS=16 ./install_amgx_sm100.sh
+#   AMGX_SRC=/path/AMGX AMGX_PREFIX=/path/amgx-install JOBS=16 ./install_amgx_sm100.sh
 #
 set -euo pipefail
 
@@ -54,9 +54,7 @@ CUDA_ARCH="${CUDA_ARCH:-auto}"                      # auto = ask the GPU; see re
 # of the test the variable is still undefined, so HYPRE detects and then
 # overwrites with CACHE ... FORCE.  Only a -D on the command line is defined
 # early enough.
-# sm_100 = Grace Blackwell (GB200/B200), the target this project is built
-# for and the answer whenever there is no GPU to ask.
-CUDA_ARCH_FALLBACK="${CUDA_ARCH_FALLBACK:-100}"
+CUDA_ARCH_FALLBACK="${CUDA_ARCH_FALLBACK:-}"
 resolve_cuda_arch() {
   local want="${CUDA_ARCH:-}" nvcc_bin list seen le
   # An explicit CUDA_ARCH is the caller's decision and is honoured as given.
@@ -64,7 +62,7 @@ resolve_cuda_arch() {
   nvcc_bin="$(command -v nvcc 2>/dev/null || printf '%s' "${CUDA_HOME:-}/bin/nvcc")"
   list="$("$nvcc_bin" --list-gpu-arch 2>/dev/null | sed 's/compute_//' | sort -n)"
   seen="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -1 | tr -d '. ')"
-  if [ -z "$list" ]; then printf '%s\n' "${seen:-100}"; return; fi
+  if [ -z "$list" ] && [ -n "${seen:-$CUDA_ARCH_FALLBACK}" ]; then printf '%s\n' "${seen:-$CUDA_ARCH_FALLBACK}"; return; fi
   if [ -n "$seen" ] && printf '%s\n' "$list" | grep -qx "$seen"; then
     printf '%s\n' "$seen"; return
   fi
@@ -82,18 +80,13 @@ resolve_cuda_arch() {
     echo "  sm_${seen}, or set CUDA_ARCH=<arch> to override this check." >&2
     return 1
   fi
-  # No GPU visible: a login node, or a container started without --gpus.  There
-  # is nothing to detect, so take the toolkit's newest and say so out loud.
-  # This is the one branch that guesses, and the guess is wrong whenever the
-  # machine that ends up running the binary is not the newest thing this CUDA
-  # knows about.
-  # No GPU visible: a login node, or a container started without --gpus.  Fall
-  # back to sm_100 -- Grace Blackwell, what this project actually runs on -- and
-  # NOT to the toolkit's newest.  The newest would be sm_120 under CUDA 12.8, a
-  # consumer part nobody here builds for, and it would silently change what a
-  # GPU-less container build produces.  This is the value these scripts used
-  # before any of the detection existed, so a build with nothing to detect keeps
-  # behaving exactly as it always did.
+  # No GPU visible: nothing to detect, so stop rather than build for the wrong one.
+  if [ -z "$CUDA_ARCH_FALLBACK" ]; then
+    echo "resolve_cuda_arch: no GPU is visible, so there is nothing to build for." >&2
+    echo "  Run this inside ./build_container.sh, which passes the GPU through," >&2
+    echo "  and check that nvidia-smi works there." >&2
+    return 1
+  fi
   echo "resolve_cuda_arch: no GPU visible; falling back to sm_${CUDA_ARCH_FALLBACK}." >&2
   echo "  Set CUDA_ARCH=<arch> if the target machine is something else." >&2
   printf '%s\n' "$CUDA_ARCH_FALLBACK"

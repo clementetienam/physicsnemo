@@ -8,7 +8,6 @@
 #
 #   cmake -S . -B build \
 #         -DHYPRE_DIR=$HYPRE_FP32_DIR \
-#         -DCMAKE_CUDA_ARCHITECTURES=100 \
 #         -DNVRS_MIXED_PRECISION=ON
 #   cmake --build build -j
 cmake_minimum_required(VERSION 3.18)
@@ -131,7 +130,7 @@ if(CMAKE_CUDA_ARCHITECTURES MATCHES "^[0-9]+$" AND
   message(FATAL_ERROR
     "CMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES} is below sm_60, "
     "which has no double-precision atomicAdd.  Pass the real architecture, "
-    "e.g. -DCMAKE_CUDA_ARCHITECTURES=100 for GB200.")
+    "as -DCMAKE_CUDA_ARCHITECTURES=<number>.")
 endif()
 
 project(nvrs_cuda LANGUAGES CXX CUDA)

@@ -8,7 +8,6 @@
 #
 #   source ../../../mixed_precision_emmulation/hypre_env.sh   # sets HYPRE_FP32_DIR
 #   make                                        # CUDA arch auto-detected
-#   make CUDA_ARCH=100                          # or pin it explicitly
 #   make FP64_PRECOND=1                         # all-FP64 comparison build
 #   make TENSORCORE=1 CUTLASS_DIR=<checkout>    # adds JACOBIAN TENSORCORE
 #
@@ -160,7 +159,7 @@ endif
 # surface as four overload errors deep in a kernel.
 ifneq ($(filter -arch=sm_3% -arch=sm_5%,$(ARCHFLAG)),)
   $(error $(ARCHFLAG) is below sm_60, which has no double-precision atomicAdd. \
-    Pass the real architecture, e.g. CUDA_ARCH=100 for GB200)
+    Pass the real architecture as CUDA_ARCH=<number>)
 endif
 
 $(info CUDA architecture  : $(ARCHFLAG)  [$(ARCH_ORIGIN)])

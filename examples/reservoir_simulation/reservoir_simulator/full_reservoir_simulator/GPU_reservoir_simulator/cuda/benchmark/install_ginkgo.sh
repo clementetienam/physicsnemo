@@ -9,7 +9,6 @@
 #   ./install_ginkgo.sh                     # clone, build, install beside the source
 #   GINKGO_PREFIX=/opt/ginkgo ./install_ginkgo.sh
 #   GINKGO_VERSION=v1.11.0 ./install_ginkgo.sh   # a tag or branch (default v1.11.0)
-#   CUDA_ARCH=100 ./install_ginkgo.sh       # pin the SM (default: detect, else 100)
 #   GINKGO_SRC=/path/to/ginkgo ./install_ginkgo.sh   # reuse a clone you already have
 #   JOBS=16 ./install_ginkgo.sh             # parallel compile jobs
 #
@@ -94,15 +93,15 @@ echo "cmake      : $CMAKE_BIN ($("$CMAKE_BIN" --version | head -1))"
 # The same resolution install_amgx.sh uses (see the long note there): the
 # detected architecture when this CUDA can target it, the newest one not newer
 # than the device as SASS plus PTX when the GPU is newer than the toolkit
-# (Vera Rubin's sm_107), and sm_100 when no GPU is visible.
-CUDA_ARCH_FALLBACK="${CUDA_ARCH_FALLBACK:-100}"
+# (Vera Rubin's sm_107), and a clear stop when no GPU is visible.
+CUDA_ARCH_FALLBACK="${CUDA_ARCH_FALLBACK:-}"
 resolve_cuda_arch() {
   local want="${CUDA_ARCH:-}" nvcc_bin list seen le
   if [ -n "$want" ] && [ "$want" != "auto" ]; then printf '%s\n' "$want"; return; fi
   nvcc_bin="$(command -v nvcc 2>/dev/null || printf '%s' "${CUDA_HOME:-}/bin/nvcc")"
   list="$("$nvcc_bin" --list-gpu-arch 2>/dev/null | sed 's/compute_//' | sort -n)"
   seen="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -1 | tr -d '. ')"
-  if [ -z "$list" ]; then printf '%s\n' "${seen:-100}"; return; fi
+  if [ -z "$list" ] && [ -n "${seen:-$CUDA_ARCH_FALLBACK}" ]; then printf '%s\n' "${seen:-$CUDA_ARCH_FALLBACK}"; return; fi
   if [ -n "$seen" ] && printf '%s\n' "$list" | grep -qx "$seen"; then
     printf '%s\n' "$seen"; return
   fi
@@ -111,6 +110,12 @@ resolve_cuda_arch() {
     if [ -n "$le" ]; then printf '%s-virtual\n' "$le"; return; fi
     echo "resolve_cuda_arch: the GPU reports ${seen}, older than every architecture" >&2
     echo "  this CUDA can target.  Set CUDA_ARCH=<arch> to override." >&2
+    return 1
+  fi
+  if [ -z "$CUDA_ARCH_FALLBACK" ]; then
+    echo "resolve_cuda_arch: no GPU is visible, so there is nothing to build for." >&2
+    echo "  Run this inside ./build_container.sh, which passes the GPU through," >&2
+    echo "  and check that nvidia-smi works there." >&2
     return 1
   fi
   echo "resolve_cuda_arch: no GPU visible; falling back to sm_${CUDA_ARCH_FALLBACK}." >&2

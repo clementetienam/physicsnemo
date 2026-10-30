@@ -55,8 +55,7 @@ capability, never a lower one. So `compute_103` PTX is right for a 10.7 device
 and `compute_121` PTX would not run on it at all. Taking the toolkit's newest
 architecture is the obvious wrong answer.
 
-This is automatic. `CUDA_ARCH=100` pins it if you need to cross-build for a
-machine you are not sitting on; anything else lets the scripts decide.
+This is automatic.
 
 Two consequences worth knowing:
 
