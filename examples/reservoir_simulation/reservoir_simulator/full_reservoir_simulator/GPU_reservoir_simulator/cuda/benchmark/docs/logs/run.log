@@ -1,0 +1,956 @@
+========================================================================
+ NVRS-CUDA vs OPM Flow
+ started        : 2026-08-14 09:25:18 PDT
+ nvrs           : /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/build/nvrs_cuda
+ flow           : /workspace/project/opm_2024_10_src/opm-simulators/build/bin/flow
+ ranks          : OPM 8, NVRS 1
+ cases          : BENCH3P
+ transcript     : /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/logs/run_20260814_092518.log
+========================================================================
+OPM GPU solver : --accelerator-mode=cusparse + solver JSON (gpubicgstab/OPMGPUILU0)
+
+== generating decks ==
+grid override  : 46 112 22
+[decks] BENCH3P (three-phase, 46 x 112 x 22 = 113,344 cells)
+    permeability  60.53 - 376.7 mD   (mean 204)
+    porosity      0.05 - 0.3
+    well index    0.409309 - 2.54727 cP.rb/day/psi
+    pore volume   6.986e+06 bbl
+    injected      4e+06 bbl over 2000 days (57.3% of pore volume)
+    reservoir density 49.0000 lb/ft3 for all phases -> hydrostatic gradient 0.34028 psi/ft
+    saturation tables: OPM endpoint rules satisfied (13 SWOF rows, 13 SGOF rows)
+    cell size     43.48 x 17.86 x 2.727 ft
+    linear tol: NVRS 0.01, OPM 0.01; max 200 iterations
+    AMG hierarchy reused for up to 4 further Newton iterations
+    -> BENCH3P.DATA
+    -> BENCH3P_OPM.DATA  (1.8 MB)
+
+========================================================================
+ CASE BENCH3P
+========================================================================
+  OPM linear solver: GPU (blocksize 3), 1 rank
+-- OPM Flow --
+**********************************************************************
+*                                                                    *
+*                        This is flow 2024.10                        *
+*                                                                    *
+* Flow is a simulator for fully implicit three-phase black-oil flow, *
+*             including solvent and polymer capabilities.            *
+*          For more information, see https://opm-project.org         *
+*                                                                    *
+**********************************************************************
+
+Using 1 MPI processes with 2 OMP threads on each 
+
+Reading deck file '/workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA'
+    0 Reading RUNSPEC  in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 11
+    1 Reading TITLE    in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 13
+    2 Reading DIMENS   in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 16
+    3 Reading OIL      in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 19
+    4 Reading WATER    in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 20
+    5 Reading GAS      in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 21
+    6 Reading FIELD    in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 25
+    7 Reading TABDIMS  in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 27
+    8 Reading WELLDIMS in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 30
+    9 Reading START    in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 33
+   10 Reading UNIFIN   in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 36
+   11 Reading UNIFOUT  in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 37
+   12 Reading GRID     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 39
+   13 Reading INIT     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 41
+   14 Reading DXV      in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 43
+   15 Reading DYV      in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 45
+   16 Reading DZV      in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 47
+   17 Reading TOPS     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 50
+   18 Reading PERMX    in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 58
+   19 Reading COPY     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 12351
+   20 Reading MULTIPLY in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 12356
+   21 Reading PORO     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 12360
+   22 Reading PROPS    in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24653
+   23 Reading PVTW     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24657
+   24 Reading PVCDO    in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24661
+   25 Reading PVDG     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24668
+   26 Reading ROCK     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24677
+   27 Reading DENSITY  in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24681
+   28 Reading SWOF     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24687
+   29 Reading SGOF     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24704
+   30 Reading SOLUTION in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24726
+   31 Reading PRESSURE in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24732
+   32 Reading SWAT     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24735
+   33 Reading SGAS     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24738
+   34 Reading RPTRST   in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24741
+   35 Reading SUMMARY  in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24744
+   36 Reading WOPR     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24747
+   37 Reading WWPR     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24749
+   38 Reading WGPR     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24751
+   39 Reading WWCT     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24753
+   40 Reading WGOR     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24755
+   41 Reading WBHP     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24757
+   42 Reading WWIR     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24759
+   43 Reading FOPR     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24761
+   44 Reading FWPR     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24762
+   45 Reading FOPT     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24763
+   46 Reading FWPT     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24764
+   47 Reading FPR      in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24765
+   48 Reading TCPU     in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24766
+   49 Reading SCHEDULE in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24768
+   50 Reading WELSPECS in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24770
+   51 Reading COMPDAT  in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24785
+   52 Reading WCONINJE in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24942
+   53 Reading WCONPROD in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24949
+   54 Reading TSTEP    in /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24955
+
+Creating grid from keywords DX, DY, DZ and TOPS
+3 fluid phases are active
+
+Processing dynamic information from
+/workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/BENCH3P/BENCH3P_OPM.DATA line 24768
+Initializing report step 0/20 at 2020-01-01 0 DAYS line 24768
+Processing keyword WELSPECS at line 24770
+Processing keyword COMPDAT at line 24785
+Processing keyword WCONINJE at line 24942
+Processing keyword WCONPROD at line 24949
+Complete report step 1 (100 DAYS) at 2020-04-10 (0 DAYS)
+
+Initializing report step 2/20 at 2020-04-10 (0 DAYS) line 24955
+Complete report step 2 (100 DAYS) at 2020-07-19 (100 DAYS)
+
+Initializing report step 3/20 at 2020-07-19 (100 DAYS) line 24955
+Complete report step 3 (100 DAYS) at 2020-10-27 (200 DAYS)
+
+Initializing report step 4/20 at 2020-10-27 (200 DAYS) line 24955
+Complete report step 4 (100 DAYS) at 2021-02-04 (300 DAYS)
+
+Initializing report step 5/20 at 2021-02-04 (300 DAYS) line 24955
+Complete report step 5 (100 DAYS) at 2021-05-15 (400 DAYS)
+
+Processing grid
+2 pinch-out connections generated
+Total number of active cells: 113344 / total pore volume: 6986271 RB
+Name GPU: NVIDIA GB200, Compute Capability: 10.0
+
+===============Saturation Functions Diagnostics===============
+
+System:  Black-oil system.
+Relative permeability input format: Saturation Family I.
+Number of saturation regions: 1
+
+
+
+================ Starting main simulation loop ===============
+
+
+Report step  0/20 at day 0/2000, date = 01-Jan-2020
+Using Newton nonlinear solver.
+Restart file written for report step  0/20, date = 01-Jan-2020 00:00:00
+
+Starting time step 0, stepsize 1 days, at day 0/100, date = 01-Jan-2020
+Initializing GPU, matrix size: 113344 blockrows, nnz: 779092 blocks
+Maxit: 200, tolerance: 1.000000e-02
+
+ Newton its= 6, linearizations= 7 (0.5sec), linear its=179 (0.6sec)
+
+Starting time step 1, stepsize 1.8 days, at day 1/100, date = 02-Jan-2020
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=173 (0.5sec)
+
+Starting time step 2, stepsize 3.96 days, at day 2.8/100, date = 03-Jan-2020
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=186 (0.6sec)
+
+Starting time step 3, stepsize 8.712 days, at day 6.76/100, date = 07-Jan-2020
+    Oscillating behavior detected: Relaxation set to 0.900000
+ Newton its= 9, linearizations=10 (0.6sec), linear its=298 (0.9sec)
+
+Starting time step 4, stepsize 7.744 days, at day 15.472/100, date = 16-Jan-2020
+ Newton its= 6, linearizations= 7 (0.4sec), linear its=184 (0.6sec)
+
+Starting time step 5, stepsize 13.9392 days, at day 23.216/100, date = 24-Jan-2020
+ Newton its= 7, linearizations= 8 (0.4sec), linear its=178 (0.6sec)
+
+Starting time step 6, stepsize 19.5149 days, at day 37.1552/100, date = 07-Feb-2020
+ Newton its= 8, linearizations= 9 (0.5sec), linear its=264 (0.8sec)
+
+Starting time step 7, stepsize 19.5149 days, at day 56.6701/100, date = 26-Feb-2020
+ Newton its= 8, linearizations= 9 (0.5sec), linear its=273 (0.8sec)
+
+Starting time step 8, stepsize 11.9075 days, at day 76.185/100, date = 17-Mar-2020
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=181 (0.6sec)
+
+Starting time step 9, stepsize 11.9075 days, at day 88.0925/100, date = 29-Mar-2020
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=170 (0.5sec)
+
+Report step  1/20 at day 100/2000, date = 10-Apr-2020
+
+Starting time step 0, stepsize 26.1965 days, at day 100/200, date = 10-Apr-2020
+Restart file written for report step  1/20, date = 10-Apr-2020 00:00:00
+ Newton its=11, linearizations=12 (0.7sec), linear its=341 (1.1sec)
+
+Starting time step 1, stepsize 19.052 days, at day 126.197/200, date = 06-May-2020
+ Newton its=10, linearizations=11 (0.6sec), linear its=280 (0.9sec)
+
+Starting time step 2, stepsize 15.2416 days, at day 145.249/200, date = 25-May-2020
+ Newton its=11, linearizations=12 (0.7sec), linear its=275 (0.9sec)
+
+Starting time step 3, stepsize 11.0848 days, at day 160.49/200, date = 09-Jun-2020
+    Oscillating behavior detected: Relaxation set to 0.900000
+ Newton its=17, linearizations=18 (1.0sec), linear its=526 (1.6sec)
+
+Starting time step 4, stepsize 5.21639 days, at day 171.575/200, date = 20-Jun-2020
+ Newton its= 3, linearizations= 4 (0.2sec), linear its=175 (0.5sec)
+
+Starting time step 5, stepsize 11.6043 days, at day 176.791/200, date = 25-Jun-2020
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=267 (0.8sec)
+
+Starting time step 6, stepsize 11.6043 days, at day 188.396/200, date = 07-Jul-2020
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=265 (0.8sec)
+
+Report step  2/20 at day 200/2000, date = 19-Jul-2020
+
+Starting time step 0, stepsize 25.5295 days, at day 200/300, date = 19-Jul-2020
+Restart file written for report step  2/20, date = 19-Jul-2020 00:00:00
+ Newton its=17, linearizations=18 (1.0sec), linear its=495 (1.6sec)
+
+Starting time step 1, stepsize 12.0139 days, at day 225.529/300, date = 13-Aug-2020
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=324 (1.0sec)
+
+Starting time step 2, stepsize 26.4305 days, at day 237.543/300, date = 25-Aug-2020
+ Newton its=12, linearizations=13 (0.7sec), linear its=376 (1.2sec)
+
+Starting time step 3, stepsize 17.6203 days, at day 263.974/300, date = 20-Sep-2020
+ Newton its= 6, linearizations= 7 (0.4sec), linear its=236 (0.7sec)
+
+Starting time step 4, stepsize 18.4059 days, at day 281.594/300, date = 08-Oct-2020
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=274 (0.8sec)
+
+Report step  3/20 at day 300/2000, date = 27-Oct-2020
+
+Starting time step 0, stepsize 40.4929 days, at day 300/400, date = 27-Oct-2020
+Restart file written for report step  3/20, date = 27-Oct-2020 00:00:00
+ Newton its= 9, linearizations=10 (0.6sec), linear its=251 (0.9sec)
+
+Starting time step 1, stepsize 35.9937 days, at day 340.493/400, date = 06-Dec-2020
+    Oscillating behavior detected: Relaxation set to 0.900000
+    Oscillating behavior detected: Relaxation set to 0.800000
+ Newton its=17, linearizations=18 (1.0sec), linear its=464 (1.5sec)
+
+Starting time step 2, stepsize 11.7567 days, at day 376.487/400, date = 11-Jan-2021
+ Newton its= 3, linearizations= 4 (0.2sec), linear its=117 (0.4sec)
+
+Starting time step 3, stepsize 11.7567 days, at day 388.243/400, date = 23-Jan-2021
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=156 (0.5sec)
+
+Report step  4/20 at day 400/2000, date = 04-Feb-2021
+
+Starting time step 0, stepsize 30.5674 days, at day 400/500, date = 04-Feb-2021
+Restart file written for report step  4/20, date = 04-Feb-2021 00:00:00
+ Newton its= 8, linearizations= 9 (0.5sec), linear its=278 (1.0sec)
+
+Starting time step 1, stepsize 30.5674 days, at day 430.567/500, date = 06-Mar-2021
+    Oscillating behavior detected: Relaxation set to 0.900000
+ Newton its= 9, linearizations=10 (0.6sec), linear its=411 (1.3sec)
+
+Starting time step 2, stepsize 19.4326 days, at day 461.135/500, date = 06-Apr-2021
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=274 (0.8sec)
+
+Starting time step 3, stepsize 19.4326 days, at day 480.567/500, date = 25-Apr-2021
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=248 (0.8sec)
+
+Report step  5/20 at day 500/2000, date = 15-May-2021
+
+Starting time step 0, stepsize 42.7516 days, at day 500/600, date = 15-May-2021
+Restart file written for report step  5/20, date = 15-May-2021 00:00:00
+ Newton its=12, linearizations=13 (0.8sec), linear its=307 (1.1sec)
+
+Starting time step 1, stepsize 28.5011 days, at day 542.752/600, date = 26-Jun-2021
+    Oscillating behavior detected: Relaxation set to 0.900000
+ Newton its= 8, linearizations= 9 (0.5sec), linear its=367 (1.1sec)
+
+Starting time step 2, stepsize 28.7473 days, at day 571.253/600, date = 25-Jul-2021
+ Newton its= 7, linearizations= 8 (0.4sec), linear its=309 (0.9sec)
+
+Report step  6/20 at day 600/2000, date = 23-Aug-2021
+
+Starting time step 0, stepsize 40.2462 days, at day 600/700, date = 23-Aug-2021
+Restart file written for report step  6/20, date = 23-Aug-2021 00:00:00
+    Oscillating behavior detected: Relaxation set to 0.900000
+ Newton its=11, linearizations=12 (0.7sec), linear its=256 (0.9sec)
+
+Starting time step 1, stepsize 29.27 days, at day 640.246/700, date = 02-Oct-2021
+ Newton its=10, linearizations=11 (0.6sec), linear its=284 (0.9sec)
+
+Starting time step 2, stepsize 15.2419 days, at day 669.516/700, date = 31-Oct-2021
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=195 (0.6sec)
+
+Starting time step 3, stepsize 15.2419 days, at day 684.758/700, date = 15-Nov-2021
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=173 (0.5sec)
+
+Report step  7/20 at day 700/2000, date = 01-Dec-2021
+
+Starting time step 0, stepsize 39.629 days, at day 700/800, date = 01-Dec-2021
+Restart file written for report step  7/20, date = 01-Dec-2021 00:00:00
+ Newton its=11, linearizations=12 (0.7sec), linear its=282 (0.9sec)
+
+Starting time step 1, stepsize 28.8211 days, at day 739.629/800, date = 09-Jan-2022
+ Newton its=10, linearizations=11 (0.6sec), linear its=311 (1.0sec)
+
+Starting time step 2, stepsize 15.7749 days, at day 768.45/800, date = 07-Feb-2022
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=278 (0.8sec)
+
+Starting time step 3, stepsize 15.7749 days, at day 784.225/800, date = 23-Feb-2022
+ Newton its= 9, linearizations=10 (0.6sec), linear its=278 (0.9sec)
+
+Report step  8/20 at day 800/2000, date = 11-Mar-2022
+
+Starting time step 0, stepsize 14.0222 days, at day 800/900, date = 11-Mar-2022
+Restart file written for report step  8/20, date = 11-Mar-2022 00:00:00
+    Oscillating behavior detected: Relaxation set to 0.900000
+ Newton its=12, linearizations=13 (0.8sec), linear its=383 (1.3sec)
+
+Starting time step 1, stepsize 9.34812 days, at day 814.022/900, date = 25-Mar-2022
+ Newton its= 7, linearizations= 8 (0.5sec), linear its=292 (0.9sec)
+
+Starting time step 2, stepsize 13.0874 days, at day 823.37/900, date = 03-Apr-2022
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=211 (0.6sec)
+
+Starting time step 3, stepsize 34.0271 days, at day 836.458/900, date = 16-Apr-2022
+ Newton its= 7, linearizations= 8 (0.4sec), linear its=255 (0.8sec)
+
+Starting time step 4, stepsize 29.5152 days, at day 870.485/900, date = 20-May-2022
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=259 (0.8sec)
+
+Report step  9/20 at day 900/2000, date = 19-Jun-2022
+
+Starting time step 0, stepsize 64.9335 days, at day 900/1000, date = 19-Jun-2022
+Restart file written for report step  9/20, date = 19-Jun-2022 00:00:00
+    Oscillating behavior detected: Relaxation set to 0.900000
+    Oscillating behavior detected: Relaxation set to 0.800000
+    Oscillating behavior detected: Relaxation set to 0.700000
+[35;1m
+Problem: Solver convergence failure - Iteration limit reached
+Timestep chopped to 21.428040 days
+[0m
+
+Starting time step 0, stepsize 21.428 days, at day 900/1000, date = 19-Jun-2022
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=193 (0.6sec)
+
+Starting time step 1, stepsize 42.8561 days, at day 921.428/1000, date = 10-Jul-2022
+ Newton its=14, linearizations=15 (0.8sec), linear its=392 (1.2sec)
+
+Starting time step 2, stepsize 17.8579 days, at day 964.284/1000, date = 22-Aug-2022
+ Newton its= 6, linearizations= 7 (0.4sec), linear its=288 (0.9sec)
+
+Starting time step 3, stepsize 17.8579 days, at day 982.142/1000, date = 09-Sep-2022
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=172 (0.5sec)
+
+Report step 10/20 at day 1000/2000, date = 27-Sep-2022
+
+Starting time step 0, stepsize 46.4306 days, at day 1000/1100, date = 27-Sep-2022
+Restart file written for report step 10/20, date = 27-Sep-2022 00:00:00
+ Newton its=17, linearizations=18 (1.0sec), linear its=348 (1.2sec)
+
+Starting time step 1, stepsize 21.8497 days, at day 1046.43/1100, date = 12-Nov-2022
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=199 (0.6sec)
+
+Starting time step 2, stepsize 31.7196 days, at day 1068.28/1100, date = 04-Dec-2022
+ Newton its= 6, linearizations= 7 (0.4sec), linear its=227 (0.7sec)
+
+Report step 11/20 at day 1100/2000, date = 05-Jan-2023
+
+Starting time step 0, stepsize 57.0954 days, at day 1100/1200, date = 05-Jan-2023
+Restart file written for report step 11/20, date = 05-Jan-2023 00:00:00
+    Oscillating behavior detected: Relaxation set to 0.900000
+ Newton its=20, linearizations=21 (1.2sec), linear its=537 (1.8sec)
+
+Starting time step 1, stepsize 22.8381 days, at day 1157.1/1200, date = 03-Mar-2023
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=255 (0.8sec)
+
+Starting time step 2, stepsize 20.0665 days, at day 1179.93/1200, date = 25-Mar-2023
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=234 (0.7sec)
+
+Report step 12/20 at day 1200/2000, date = 15-Apr-2023
+
+Starting time step 0, stepsize 44.1463 days, at day 1200/1300, date = 15-Apr-2023
+Restart file written for report step 12/20, date = 15-Apr-2023 00:00:00
+ Newton its=12, linearizations=13 (0.8sec), linear its=358 (1.2sec)
+
+Starting time step 1, stepsize 29.4309 days, at day 1244.15/1300, date = 29-May-2023
+ Newton its= 7, linearizations= 8 (0.5sec), linear its=325 (1.0sec)
+
+Starting time step 2, stepsize 26.4228 days, at day 1273.58/1300, date = 27-Jun-2023
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=276 (0.8sec)
+
+Report step 13/20 at day 1300/2000, date = 24-Jul-2023
+
+Starting time step 0, stepsize 58.1302 days, at day 1300/1400, date = 24-Jul-2023
+Restart file written for report step 13/20, date = 24-Jul-2023 00:00:00
+    Oscillating behavior detected: Relaxation set to 0.900000
+    Oscillating behavior detected: Relaxation set to 0.800000
+    Oscillating behavior detected: Relaxation set to 0.700000
+    Oscillating behavior detected: Relaxation set to 0.600000
+[35;1m
+Problem: Solver convergence failure - Iteration limit reached
+Timestep chopped to 19.182954 days
+[0m
+
+Starting time step 0, stepsize 19.183 days, at day 1300/1400, date = 24-Jul-2023
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=149 (0.5sec)
+
+Starting time step 1, stepsize 38.3659 days, at day 1319.18/1400, date = 12-Aug-2023
+ Newton its= 9, linearizations=10 (0.6sec), linear its=294 (0.9sec)
+
+Starting time step 2, stepsize 21.2256 days, at day 1357.55/1400, date = 19-Sep-2023
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=200 (0.6sec)
+
+Starting time step 3, stepsize 21.2256 days, at day 1378.77/1400, date = 10-Oct-2023
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=257 (0.8sec)
+
+Report step 14/20 at day 1400/2000, date = 01-Nov-2023
+
+Starting time step 0, stepsize 46.6963 days, at day 1400/1500, date = 01-Nov-2023
+Restart file written for report step 14/20, date = 01-Nov-2023 00:00:00
+    Oscillating behavior detected: Relaxation set to 0.900000
+ Newton its=15, linearizations=16 (0.9sec), linear its=486 (1.6sec)
+
+Starting time step 1, stepsize 24.9047 days, at day 1446.7/1500, date = 17-Dec-2023
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=191 (0.6sec)
+
+Starting time step 2, stepsize 28.3991 days, at day 1471.6/1500, date = 11-Jan-2024
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=265 (0.8sec)
+
+Report step 15/20 at day 1500/2000, date = 09-Feb-2024
+
+Starting time step 0, stepsize 62.478 days, at day 1500/1600, date = 09-Feb-2024
+Restart file written for report step 15/20, date = 09-Feb-2024 00:00:00
+ Newton its= 8, linearizations= 9 (0.5sec), linear its=310 (1.1sec)
+
+Starting time step 1, stepsize 37.522 days, at day 1562.48/1600, date = 11-Apr-2024
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=255 (0.8sec)
+
+Report step 16/20 at day 1600/2000, date = 19-May-2024
+
+Starting time step 0, stepsize 50 days, at day 1600/1700, date = 19-May-2024
+Restart file written for report step 16/20, date = 19-May-2024 00:00:00
+ Newton its= 7, linearizations= 8 (0.5sec), linear its=339 (1.1sec)
+
+Starting time step 1, stepsize 50 days, at day 1650/1700, date = 08-Jul-2024
+    Oscillating behavior detected: Relaxation set to 0.900000
+    Oscillating behavior detected: Relaxation set to 0.800000
+ Newton its=14, linearizations=15 (0.8sec), linear its=519 (1.6sec)
+
+Report step 17/20 at day 1700/2000, date = 27-Aug-2024
+
+Starting time step 0, stepsize 28.5714 days, at day 1700/1800, date = 27-Aug-2024
+Restart file written for report step 17/20, date = 27-Aug-2024 00:00:00
+ Newton its= 4, linearizations= 5 (0.3sec), linear its=165 (0.5sec)
+
+Starting time step 1, stepsize 71.4286 days, at day 1728.57/1800, date = 24-Sep-2024
+ Newton its=15, linearizations=16 (0.9sec), linear its=286 (0.9sec)
+
+Report step 18/20 at day 1800/2000, date = 05-Dec-2024
+
+Starting time step 0, stepsize 38.0952 days, at day 1800/1900, date = 05-Dec-2024
+Restart file written for report step 18/20, date = 05-Dec-2024 00:00:00
+ Newton its= 5, linearizations= 6 (0.4sec), linear its=265 (0.9sec)
+
+Starting time step 1, stepsize 61.9048 days, at day 1838.1/1900, date = 12-Jan-2025
+ Newton its= 5, linearizations= 6 (0.3sec), linear its=205 (0.6sec)
+
+Report step 19/20 at day 1900/2000, date = 15-Mar-2025
+
+Starting time step 0, stepsize 100 days, at day 1900/2000, date = 15-Mar-2025
+Restart file written for report step 19/20, date = 15-Mar-2025 00:00:00
+    Oscillating behavior detected: Relaxation set to 0.900000
+ Newton its=13, linearizations=14 (0.8sec), linear its=487 (1.6sec)
+Restart file written for report step 20/20, date = 23-Jun-2025 00:00:00
+
+
+================    End of simulation     ===============
+
+Number of MPI processes:         1
+Threads per MPI process:         2
+Setup time:                      0.92 s
+  Deck input:                    0.27 s
+Number of timesteps:            77
+Simulation time:               157.20 s
+  Assembly time:                40.58 s (Wasted: 2.4 s; 6.0%)
+    Well assembly:               0.84 s (Wasted: 0.0 s; 5.0%)
+  Linear solve time:            69.38 s (Wasted: 2.6 s; 3.8%)
+    Linear setup:                0.00 s (Wasted: 0.0 s; 6.2%)
+  Props/update time:            42.81 s (Wasted: 2.8 s; 6.6%)
+  Pre/post step:                 3.78 s (Wasted: 0.0 s; 0.6%)
+  Output write time:             0.27 s
+Overall Linearizations:        705      (Wasted:    42; 6.0%)
+Overall Newton Iterations:     630      (Wasted:    42; 6.7%)
+Overall Linear Iterations:   21776      (Wasted:   740; 3.4%)
+
+-- OPM Flow finished rc=0 in 161.602 s --
+
+-- NVRS-CUDA --
+******************************************************************************
+*                                                                            *
+*              N V R S   R E S E R V O I R   S I M U L A T O R               *
+*                                                                            *
+*        GPU-native black-oil and compositional reservoir simulation         *
+*        Mixed-precision CPR: HYPRE BoomerAMG + block-Jacobi on CUDA         *
+*                                                                            *
+*           C. Etienam  |  O. Ovcharenko  |  N. Luiken  |  I. Said           *
+*                                                                            *
+******************************************************************************
+  Launched : 2026-08-14 09:28:07 PDT
+  Host     : gpu-node
+  Parallel : 1 MPI rank, one GPU per rank
+  Precision: FP64 outer Krylov, FP32 CPR preconditioner
+  HYPRE    : v3.1.0, MPI, CUDA, GPU-aware MPI
+[rank 0/1] gpu-node local_rank=0/1 -> GPU 0 of 4 (NVIDIA GB200, sm_100)
+======================================================
+  NVRS-CUDA  —  BENCH3P
+------------------------------------------------------
+  Model        : BLACK-OIL (3-phase)
+  Grid         : 46 x 112 x 22  (113344 cells)
+  Cell size    : 43.4783 x 17.8571 x 2.72727 ft
+  Solver       : CPR  +  FGMRES  [mixed FP32 AMG, df64-emulated operator]
+  Wells        : 4 injectors, 3 producers
+  Time         : 0 → 2000 days, report every 100 days
+======================================================
+
+--- FORWARDING: 20 report steps of 100 days (to 2000 days) ---
+  Newton : tol 5.00e-03 (relative), max 20 iterations/step
+  Linear : tol 1.00e-02, max 200 iterations, FGMRES restart 30
+  Solver : CPR preconditioner, FP32 AMG (compile-time), df64-emulated FP64 operator
+  AMG    : hierarchy reused for up to 4 further Newton iterations, rebuilt early if Krylov exceeds 1.3x the fresh count (AMGREUSE)
+
+  step  time[d]    |R|_start      |R|_end         rel newt krylov wall[s]  progress
+  ------------------------------------------------------------------------------------------------
+  [chop] step 1 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 1 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 1 converged at dt = 25 days; starting the next step there
+  1       100.0   3.0374e+01   6.8903e-02   2.268e-03   48    281     4.0  [#-------------------]   5% 
+  [chop] step 2 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 2 converged at dt = 6.25 days; starting the next step there
+  2       200.0   2.7257e+01   1.5345e-03   5.630e-05   56    267     8.5  [##------------------]  10% 
+  [chop] step 3 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 3 converged at dt = 6.25 days; starting the next step there
+  3       300.0   2.2332e+01   1.4456e-03   6.473e-05   54    268    10.6  [###-----------------]  15% 
+  [dt] step 4 converged at dt = 12.5 days; starting the next step there
+  4       400.0   1.9309e+01   1.8825e-03   9.749e-05   31    181    11.7  [####----------------]  20% 
+  [dt] step 5 converged at dt = 25 days; starting the next step there
+  5       500.0   1.6681e+01   1.8617e-02   1.116e-03   25    148    12.5  [#####---------------]  25% 
+  [chop] step 6 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 6 converged at dt = 25 days; starting the next step there
+  6       600.0   1.5532e+01   2.3184e-03   1.493e-04   25    152    14.2  [######--------------]  30% 
+  [chop] step 7 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 7 converged at dt = 25 days; starting the next step there
+  7       700.0   1.5262e+01   3.3411e-02   2.189e-03   21    133    15.6  [#######-------------]  35% 
+  [chop] step 8 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 8 converged at dt = 6.25 days; starting the next step there
+  8       800.0   1.6152e+01   4.2513e-02   2.632e-03   51    242    20.5  [########------------]  40% 
+  [dt] step 9 converged at dt = 12.5 days; starting the next step there
+  9       900.0   1.4977e+01   1.1640e-02   7.772e-04   24    136    21.3  [#########-----------]  45% 
+  [dt] step 10 converged at dt = 25 days; starting the next step there
+  10     1000.0   1.4008e+01   2.9300e-02   2.092e-03   20    111    22.0  [##########----------]  50% 
+  [chop] step 11 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 11 converged at dt = 25 days; starting the next step there
+  11     1100.0   1.3385e+01   5.3730e-02   4.014e-03   17    107    23.4  [###########---------]  55% 
+  [chop] step 12 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 12 converged at dt = 25 days; starting the next step there
+  12     1200.0   1.3059e+01   2.5151e-02   1.926e-03   24    150    24.9  [############--------]  60% 
+  [chop] step 13 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 13 converged at dt = 25 days; starting the next step there
+  13     1300.0   1.1724e+01   4.7526e-02   4.054e-03   19    139    26.6  [#############-------]  65% 
+  [chop] step 14 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 14 converged at dt = 25 days; starting the next step there
+  14     1400.0   1.0299e+01   1.0886e-03   1.057e-04   17    132    28.1  [##############------]  70% 
+  [chop] step 15 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 15 converged at dt = 25 days; starting the next step there
+  15     1500.0   8.8770e+00   7.2949e-04   8.218e-05   16    129    29.7  [###############-----]  75% 
+  [dt] step 16 converged at dt = 50 days; starting the next step there
+  16     1600.0   7.9248e+00   2.2356e-02   2.821e-03   19    148    30.5  [################----]  80% 
+  [chop] step 17 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 17 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 17 converged at dt = 25 days; starting the next step there
+  17     1700.0   7.0721e+00   1.1896e-03   1.682e-04   14    114    32.8  [#################---]  85% 
+  [dt] step 18 converged at dt = 50 days; starting the next step there
+  18     1800.0   6.2467e+00   3.1957e-04   5.116e-05   11    131    33.5  [##################--]  90% 
+  [chop] step 19 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [dt] step 19 converged at dt = 50 days; starting the next step there
+  19     1900.0   4.5202e+00   6.8175e-04   1.508e-04    8     87    35.0  [###################-]  95% 
+  20     2000.0   3.9531e+00   6.1512e-03   1.556e-03    8     90    35.6  [####################] 100% 
+  ------------------------------------------------------------------------------------------------
+  simulation finished in 35.56 s (1.78 s per report step)
+  AMG setup: 232 of 995 rebuilt (763 reused, 70 cut short by the growth guard), 30.9 ms each, 7.16 s total
+-- NVRS-CUDA finished rc=0 in 38.674 s --
+========================================================================
+ NVRS-CUDA STRONG SCALING - BENCH3P on 1 2 4 GPU(s)
+========================================================================
+
+-- NVRS-CUDA on 1 GPU(s) --
+******************************************************************************
+*                                                                            *
+*              N V R S   R E S E R V O I R   S I M U L A T O R               *
+*                                                                            *
+*        GPU-native black-oil and compositional reservoir simulation         *
+*        Mixed-precision CPR: HYPRE BoomerAMG + block-Jacobi on CUDA         *
+*                                                                            *
+*           C. Etienam  |  O. Ovcharenko  |  N. Luiken  |  I. Said           *
+*                                                                            *
+******************************************************************************
+  Launched : 2026-08-14 09:28:45 PDT
+  Host     : gpu-node
+  Parallel : 1 MPI rank, one GPU per rank
+  Precision: FP64 outer Krylov, FP32 CPR preconditioner
+  HYPRE    : v3.1.0, MPI, CUDA, GPU-aware MPI
+[rank 0/1] gpu-node local_rank=0/1 -> GPU 0 of 4 (NVIDIA GB200, sm_100)
+======================================================
+  NVRS-CUDA  —  BENCH3P
+------------------------------------------------------
+  Model        : BLACK-OIL (3-phase)
+  Grid         : 46 x 112 x 22  (113344 cells)
+  Cell size    : 43.4783 x 17.8571 x 2.72727 ft
+  Solver       : CPR  +  FGMRES  [mixed FP32 AMG, df64-emulated operator]
+  Wells        : 4 injectors, 3 producers
+  Time         : 0 → 2000 days, report every 100 days
+======================================================
+
+--- FORWARDING: 20 report steps of 100 days (to 2000 days) ---
+  Newton : tol 5.00e-03 (relative), max 20 iterations/step
+  Linear : tol 1.00e-02, max 200 iterations, FGMRES restart 30
+  Solver : CPR preconditioner, FP32 AMG (compile-time), df64-emulated FP64 operator
+  AMG    : hierarchy reused for up to 4 further Newton iterations, rebuilt early if Krylov exceeds 1.3x the fresh count (AMGREUSE)
+
+  step  time[d]    |R|_start      |R|_end         rel newt krylov wall[s]  progress
+  ------------------------------------------------------------------------------------------------
+  [chop] step 1 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 1 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 1 converged at dt = 25 days; starting the next step there
+  1       100.0   3.0374e+01   6.8903e-02   2.268e-03   48    281     4.0  [#-------------------]   5% 
+  [chop] step 2 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 2 converged at dt = 6.25 days; starting the next step there
+  2       200.0   2.7257e+01   1.5345e-03   5.630e-05   56    267     8.5  [##------------------]  10% 
+  [chop] step 3 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 3 converged at dt = 6.25 days; starting the next step there
+  3       300.0   2.2332e+01   1.4456e-03   6.473e-05   54    268    10.6  [###-----------------]  15% 
+  [dt] step 4 converged at dt = 12.5 days; starting the next step there
+  4       400.0   1.9309e+01   1.8825e-03   9.749e-05   31    181    11.7  [####----------------]  20% 
+  [dt] step 5 converged at dt = 25 days; starting the next step there
+  5       500.0   1.6681e+01   1.8617e-02   1.116e-03   25    148    12.5  [#####---------------]  25% 
+  [chop] step 6 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 6 converged at dt = 25 days; starting the next step there
+  6       600.0   1.5532e+01   2.3184e-03   1.493e-04   25    152    14.2  [######--------------]  30% 
+  [chop] step 7 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 7 converged at dt = 25 days; starting the next step there
+  7       700.0   1.5262e+01   3.3411e-02   2.189e-03   21    133    15.6  [#######-------------]  35% 
+  [chop] step 8 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 8 converged at dt = 6.25 days; starting the next step there
+  8       800.0   1.6152e+01   4.2513e-02   2.632e-03   51    242    20.5  [########------------]  40% 
+  [dt] step 9 converged at dt = 12.5 days; starting the next step there
+  9       900.0   1.4977e+01   1.1640e-02   7.772e-04   24    136    21.3  [#########-----------]  45% 
+  [dt] step 10 converged at dt = 25 days; starting the next step there
+  10     1000.0   1.4008e+01   2.9300e-02   2.092e-03   20    111    22.0  [##########----------]  50% 
+  [chop] step 11 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 11 converged at dt = 25 days; starting the next step there
+  11     1100.0   1.3385e+01   5.3730e-02   4.014e-03   17    107    23.4  [###########---------]  55% 
+  [chop] step 12 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 12 converged at dt = 25 days; starting the next step there
+  12     1200.0   1.3059e+01   2.5151e-02   1.926e-03   24    150    24.9  [############--------]  60% 
+  [chop] step 13 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 13 converged at dt = 25 days; starting the next step there
+  13     1300.0   1.1724e+01   4.7526e-02   4.054e-03   19    139    26.6  [#############-------]  65% 
+  [chop] step 14 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 14 converged at dt = 25 days; starting the next step there
+  14     1400.0   1.0299e+01   1.0886e-03   1.057e-04   17    132    28.1  [##############------]  70% 
+  [chop] step 15 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 15 converged at dt = 25 days; starting the next step there
+  15     1500.0   8.8770e+00   7.2949e-04   8.218e-05   16    129    29.7  [###############-----]  75% 
+  [dt] step 16 converged at dt = 50 days; starting the next step there
+  16     1600.0   7.9248e+00   2.2356e-02   2.821e-03   19    148    30.5  [################----]  80% 
+  [chop] step 17 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 17 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 17 converged at dt = 25 days; starting the next step there
+  17     1700.0   7.0721e+00   1.1896e-03   1.682e-04   14    114    32.9  [#################---]  85% 
+  [dt] step 18 converged at dt = 50 days; starting the next step there
+  18     1800.0   6.2467e+00   3.1957e-04   5.116e-05   11    131    33.5  [##################--]  90% 
+  [chop] step 19 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [dt] step 19 converged at dt = 50 days; starting the next step there
+  19     1900.0   4.5202e+00   6.8175e-04   1.508e-04    8     87    35.1  [###################-]  95% 
+  20     2000.0   3.9531e+00   6.1512e-03   1.556e-03    8     90    35.6  [####################] 100% 
+  ------------------------------------------------------------------------------------------------
+  simulation finished in 35.57 s (1.78 s per report step)
+  AMG setup: 232 of 995 rebuilt (763 reused, 70 cut short by the growth guard), 30.9 ms each, 7.17 s total
+-- 1 GPU(s): rc=0 in 38.642 s --
+
+-- NVRS-CUDA on 2 GPU(s) --
+******************************************************************************
+*                                                                            *
+*              N V R S   R E S E R V O I R   S I M U L A T O R               *
+*                                                                            *
+*        GPU-native black-oil and compositional reservoir simulation         *
+*        Mixed-precision CPR: HYPRE BoomerAMG + block-Jacobi on CUDA         *
+*                                                                            *
+*           C. Etienam  |  O. Ovcharenko  |  N. Luiken  |  I. Said           *
+*                                                                            *
+******************************************************************************
+  Launched : 2026-08-14 09:29:24 PDT
+  Host     : gpu-node
+  Parallel : 2 MPI ranks, one GPU per rank
+  Precision: FP64 outer Krylov, FP32 CPR preconditioner
+  HYPRE    : v3.1.0, MPI, CUDA, GPU-aware MPI
+[rank 1/2] gpu-node local_rank=1/2 -> GPU 1 of 4 (NVIDIA GB200, sm_100)
+[rank 0/2] gpu-node local_rank=0/2 -> GPU 0 of 4 (NVIDIA GB200, sm_100)
+======================================================
+  NVRS-CUDA  —  BENCH3P
+------------------------------------------------------
+  Model        : BLACK-OIL (3-phase)
+  Grid         : 46 x 112 x 22  (113344 cells)
+  Cell size    : 43.4783 x 17.8571 x 2.72727 ft
+  Solver       : CPR  +  FGMRES  [mixed FP32 AMG, df64-emulated operator]
+  Wells        : 4 injectors, 3 producers
+  Time         : 0 → 2000 days, report every 100 days
+======================================================
+
+--- FORWARDING: 20 report steps of 100 days (to 2000 days) ---
+  Newton : tol 5.00e-03 (relative), max 20 iterations/step
+  Linear : tol 1.00e-02, max 200 iterations, FGMRES restart 30
+  Solver : CPR preconditioner, FP32 AMG (compile-time), df64-emulated FP64 operator
+  AMG    : hierarchy reused for up to 4 further Newton iterations, rebuilt early if Krylov exceeds 1.3x the fresh count (AMGREUSE)
+
+  step  time[d]    |R|_start      |R|_end         rel newt krylov wall[s]  progress
+  ------------------------------------------------------------------------------------------------
+  [chop] step 1 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 1 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 1 converged at dt = 25 days; starting the next step there
+  1       100.0   3.0374e+01   7.2083e-02   2.373e-03   43    255     6.8  [#-------------------]   5% 
+  [chop] step 2 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 2 converged at dt = 6.25 days; starting the next step there
+  2       200.0   2.7257e+01   5.2969e-04   1.943e-05   56    268    15.3  [##------------------]  10% 
+  [chop] step 3 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 3 converged at dt = 6.25 days; starting the next step there
+  3       300.0   2.2332e+01   1.4785e-03   6.621e-05   54    269    19.4  [###-----------------]  15% 
+  [dt] step 4 converged at dt = 12.5 days; starting the next step there
+  4       400.0   1.9309e+01   2.1923e-03   1.135e-04   31    181    21.4  [####----------------]  20% 
+  [dt] step 5 converged at dt = 25 days; starting the next step there
+  5       500.0   1.6681e+01   1.8763e-02   1.125e-03   25    150    23.0  [#####---------------]  25% 
+  [chop] step 6 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 6 converged at dt = 25 days; starting the next step there
+  6       600.0   1.5532e+01   2.2762e-03   1.465e-04   25    154    25.9  [######--------------]  30% 
+  [chop] step 7 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 7 converged at dt = 25 days; starting the next step there
+  7       700.0   1.5262e+01   3.3123e-02   2.170e-03   21    135    28.4  [#######-------------]  35% 
+  [chop] step 8 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 8 converged at dt = 6.25 days; starting the next step there
+  8       800.0   1.6151e+01   4.1298e-02   2.557e-03   51    242    37.9  [########------------]  40% 
+  [dt] step 9 converged at dt = 12.5 days; starting the next step there
+  9       900.0   1.4977e+01   1.1611e-02   7.753e-04   24    139    39.5  [#########-----------]  45% 
+  [dt] step 10 converged at dt = 25 days; starting the next step there
+  10     1000.0   1.4008e+01   2.9155e-02   2.081e-03   20    111    40.8  [##########----------]  50% 
+  [chop] step 11 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 11 converged at dt = 25 days; starting the next step there
+  11     1100.0   1.3385e+01   5.3156e-02   3.971e-03   17    108    43.1  [###########---------]  55% 
+  [chop] step 12 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 12 converged at dt = 25 days; starting the next step there
+  12     1200.0   1.3059e+01   2.3467e-02   1.797e-03   24    151    45.9  [############--------]  60% 
+  [chop] step 13 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 13 converged at dt = 25 days; starting the next step there
+  13     1300.0   1.1724e+01   4.7557e-02   4.056e-03   19    141    48.6  [#############-------]  65% 
+  [chop] step 14 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 14 converged at dt = 25 days; starting the next step there
+  14     1400.0   1.0299e+01   1.1760e-03   1.142e-04   17    129    51.2  [##############------]  70% 
+  [chop] step 15 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 15 converged at dt = 25 days; starting the next step there
+  15     1500.0   8.8770e+00   7.0680e-04   7.962e-05   16    128    53.8  [###############-----]  75% 
+  [dt] step 16 converged at dt = 50 days; starting the next step there
+  16     1600.0   7.9249e+00   2.2417e-02   2.829e-03   19    144    55.2  [################----]  80% 
+  [chop] step 17 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 17 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 17 converged at dt = 25 days; starting the next step there
+  17     1700.0   7.0720e+00   1.1916e-03   1.685e-04   14    112    59.3  [#################---]  85% 
+  [dt] step 18 converged at dt = 50 days; starting the next step there
+  18     1800.0   6.2467e+00   3.3683e-04   5.392e-05   11    131    60.3  [##################--]  90% 
+  [chop] step 19 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [dt] step 19 converged at dt = 50 days; starting the next step there
+  19     1900.0   4.5202e+00   6.7612e-04   1.496e-04    8     89    63.0  [###################-]  95% 
+  20     2000.0   3.9530e+00   4.8092e-03   1.217e-03    8     91    63.8  [####################] 100% 
+  ------------------------------------------------------------------------------------------------
+  simulation finished in 63.78 s (3.19 s per report step)
+  AMG setup: 234 of 991 rebuilt (757 reused, 80 cut short by the growth guard), 103.6 ms each, 24.25 s total
+-- 2 GPU(s): rc=0 in 67.533 s --
+
+-- NVRS-CUDA on 4 GPU(s) --
+******************************************************************************
+*                                                                            *
+*              N V R S   R E S E R V O I R   S I M U L A T O R               *
+*                                                                            *
+*        GPU-native black-oil and compositional reservoir simulation         *
+*        Mixed-precision CPR: HYPRE BoomerAMG + block-Jacobi on CUDA         *
+*                                                                            *
+*           C. Etienam  |  O. Ovcharenko  |  N. Luiken  |  I. Said           *
+*                                                                            *
+******************************************************************************
+  Launched : 2026-08-14 09:30:32 PDT
+  Host     : gpu-node
+  Parallel : 4 MPI ranks, one GPU per rank
+  Precision: FP64 outer Krylov, FP32 CPR preconditioner
+  HYPRE    : v3.1.0, MPI, CUDA, GPU-aware MPI
+[rank 2/4] gpu-node local_rank=2/4 -> GPU 2 of 4 (NVIDIA GB200, sm_100)
+[rank 0/4] gpu-node local_rank=0/4 -> GPU 0 of 4 (NVIDIA GB200, sm_100)
+======================================================
+  NVRS-CUDA  —  BENCH3P
+------------------------------------------------------
+  Model        : BLACK-OIL (3-phase)
+  Grid         : 46 x 112 x 22  (113344 cells)
+  Cell size    : 43.4783 x 17.8571 x 2.72727 ft
+  Solver       : CPR  +  FGMRES  [mixed FP32 AMG, df64-emulated operator]
+  Wells        : 4 injectors, 3 producers
+  Time         : 0 → 2000 days, report every 100 days
+======================================================
+[rank 1/4] gpu-node local_rank=1/4 -> GPU 1 of 4 (NVIDIA GB200, sm_100)
+[rank 3/4] gpu-node local_rank=3/4 -> GPU 3 of 4 (NVIDIA GB200, sm_100)
+
+--- FORWARDING: 20 report steps of 100 days (to 2000 days) ---
+  Newton : tol 5.00e-03 (relative), max 20 iterations/step
+  Linear : tol 1.00e-02, max 200 iterations, FGMRES restart 30
+  Solver : CPR preconditioner, FP32 AMG (compile-time), df64-emulated FP64 operator
+  AMG    : hierarchy reused for up to 4 further Newton iterations, rebuilt early if Krylov exceeds 1.3x the fresh count (AMGREUSE)
+
+  step  time[d]    |R|_start      |R|_end         rel newt krylov wall[s]  progress
+  ------------------------------------------------------------------------------------------------
+  [chop] step 1 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 1 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 1 converged at dt = 25 days; starting the next step there
+  1       100.0   3.0374e+01   7.3816e-02   2.430e-03   43    256     9.3  [#-------------------]   5% 
+  [chop] step 2 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 2 converged at dt = 6.25 days; starting the next step there
+  2       200.0   2.7257e+01   4.9318e-04   1.809e-05   56    268    21.2  [##------------------]  10% 
+  [chop] step 3 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 3 converged at dt = 6.25 days; starting the next step there
+  3       300.0   2.2332e+01   1.5147e-03   6.783e-05   54    268    27.1  [###-----------------]  15% 
+  [dt] step 4 converged at dt = 12.5 days; starting the next step there
+  4       400.0   1.9310e+01   1.8477e-03   9.569e-05   32    189    29.9  [####----------------]  20% 
+  [dt] step 5 converged at dt = 25 days; starting the next step there
+  5       500.0   1.6681e+01   1.8879e-02   1.132e-03   25    149    32.0  [#####---------------]  25% 
+  [chop] step 6 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 6 converged at dt = 25 days; starting the next step there
+  6       600.0   1.5532e+01   2.5184e-03   1.621e-04   25    153    36.1  [######--------------]  30% 
+  [chop] step 7 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 7 converged at dt = 25 days; starting the next step there
+  7       700.0   1.5262e+01   3.3303e-02   2.182e-03   21    135    39.5  [#######-------------]  35% 
+  [chop] step 8 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 8 converged at dt = 6.25 days; starting the next step there
+  8       800.0   1.6151e+01   6.0628e-02   3.754e-03   51    240    52.2  [########------------]  40% 
+  [dt] step 9 converged at dt = 12.5 days; starting the next step there
+  9       900.0   1.4977e+01   1.1456e-02   7.649e-04   24    138    54.5  [#########-----------]  45% 
+  [dt] step 10 converged at dt = 25 days; starting the next step there
+  10     1000.0   1.4008e+01   2.9365e-02   2.096e-03   20    110    56.2  [##########----------]  50% 
+  [chop] step 11 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 11 converged at dt = 25 days; starting the next step there
+  11     1100.0   1.3385e+01   5.2578e-02   3.928e-03   17    111    59.4  [###########---------]  55% 
+  [chop] step 12 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 12 converged at dt = 25 days; starting the next step there
+  12     1200.0   1.3059e+01   2.5026e-02   1.916e-03   24    151    63.1  [############--------]  60% 
+  [chop] step 13 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 13 converged at dt = 25 days; starting the next step there
+  13     1300.0   1.1724e+01   4.7490e-02   4.051e-03   19    141    66.8  [#############-------]  65% 
+  [chop] step 14 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 14 converged at dt = 25 days; starting the next step there
+  14     1400.0   1.0299e+01   1.1886e-03   1.154e-04   17    130    70.4  [##############------]  70% 
+  [chop] step 15 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 15 converged at dt = 25 days; starting the next step there
+  15     1500.0   8.8770e+00   5.7181e-04   6.441e-05   16    130    74.0  [###############-----]  75% 
+  [dt] step 16 converged at dt = 50 days; starting the next step there
+  16     1600.0   7.9248e+00   2.2382e-02   2.824e-03   19    148    75.9  [################----]  80% 
+  [chop] step 17 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 17 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 17 converged at dt = 25 days; starting the next step there
+  17     1700.0   7.0720e+00   1.1697e-03   1.654e-04   14    114    81.4  [#################---]  85% 
+  [dt] step 18 converged at dt = 50 days; starting the next step there
+  18     1800.0   6.2467e+00   3.1832e-04   5.096e-05   11    131    82.8  [##################--]  90% 
+  [chop] step 19 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [dt] step 19 converged at dt = 50 days; starting the next step there
+  19     1900.0   4.5202e+00   6.6887e-04   1.480e-04    8     89    85.9  [###################-]  95% 
+  20     2000.0   3.9531e+00   6.0930e-03   1.541e-03    8     90    86.9  [####################] 100% 
+  ------------------------------------------------------------------------------------------------
+  simulation finished in 86.92 s (4.35 s per report step)
+  AMG setup: 229 of 991 rebuilt (762 reused, 69 cut short by the growth guard), 161.2 ms each, 36.92 s total
+-- 4 GPU(s): rc=0 in 91.695 s --
+[scale] ranks  seconds  speed-up  efficiency
+[scale]     1    38.64     1.00x     100.0%
+[scale]     2    67.53     0.57x      28.6%
+[scale]     4    91.69     0.42x      10.5%
+
+========================================================================
+ building the comparison report
+========================================================================
+[cmp] BENCH2P: OPM=BENCH2P_OPM  NVRS=BENCH2P
+[cmp]   21 report step(s) matched of 21 (OPM) and 21 (NVRS)
+[cmp]   BENCH2P: 21 panels x 3 rows on 12 worker(s)
+[cmp]   BENCH2P: [--------------------]   4.8%
+[cmp]   BENCH2P: [#-------------------]   9.5%
+[cmp]   BENCH2P: [##------------------]  14.3%
+[cmp]   BENCH2P: [###-----------------]  19.0%
+[cmp]   BENCH2P: [####----------------]  23.8%
+[cmp]   BENCH2P: [#####---------------]  28.6%
+[cmp]   BENCH2P: [######--------------]  33.3%
+[cmp]   BENCH2P: [#######-------------]  38.1%
+[cmp]   BENCH2P: [########------------]  42.9%
+[cmp]   BENCH2P: [#########-----------]  47.6%
+[cmp]   BENCH2P: [##########----------]  52.4%
+[cmp]   BENCH2P: [###########---------]  57.1%
+[cmp]   BENCH2P: [############--------]  61.9%
+[cmp]   BENCH2P: [#############-------]  66.7%
+[cmp]   BENCH2P: [##############------]  71.4%
+[cmp]   BENCH2P: [###############-----]  76.2%
+[cmp]   BENCH2P: [################----]  81.0%
+[cmp]   BENCH2P: [#################---]  85.7%
+[cmp]   BENCH2P: [##################--]  90.5%
+[cmp]   BENCH2P: [###################-]  95.2%
+[cmp]   BENCH2P: [####################] 100.0%
+[cmp] BENCH3P: OPM=BENCH3P_OPM  NVRS=BENCH3P
+[cmp]   21 report step(s) matched of 21 (OPM) and 21 (NVRS)
+[cmp]   BENCH3P: 21 panels x 4 rows on 12 worker(s)
+[cmp]   BENCH3P: [--------------------]   4.8%
+[cmp]   BENCH3P: [#-------------------]   9.5%
+[cmp]   BENCH3P: [##------------------]  14.3%
+[cmp]   BENCH3P: [###-----------------]  19.0%
+[cmp]   BENCH3P: [####----------------]  23.8%
+[cmp]   BENCH3P: [#####---------------]  28.6%
+[cmp]   BENCH3P: [######--------------]  33.3%
+[cmp]   BENCH3P: [#######-------------]  38.1%
+[cmp]   BENCH3P: [########------------]  42.9%
+[cmp]   BENCH3P: [#########-----------]  47.6%
+[cmp]   BENCH3P: [##########----------]  52.4%
+[cmp]   BENCH3P: [###########---------]  57.1%
+[cmp]   BENCH3P: [############--------]  61.9%
+[cmp]   BENCH3P: [#############-------]  66.7%
+[cmp]   BENCH3P: [##############------]  71.4%
+[cmp]   BENCH3P: [###############-----]  76.2%
+[cmp]   BENCH3P: [################----]  81.0%
+[cmp]   BENCH3P: [#################---]  85.7%
+[cmp]   BENCH3P: [##################--]  90.5%
+[cmp]   BENCH3P: [###################-]  95.2%
+[cmp]   BENCH3P: [####################] 100.0%
+[cmp] BENCH3P_XL: missing NVRS output; skipping
+[cmp] report: 5.3 MB embedded, 0 figure(s) too large to inline
+[cmp]   animation re-encoded at 85% -> 3.9 MB
+[cmp] report: 6.9 MB embedded, 0 figure(s) too large to inline
+[cmp] done in 230.4 s
+[cmp]   /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/compare_BENCH2P.html   7.1 MB
+[cmp]   /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/compare_BENCH3P.html   9.2 MB
+[cmp] open one with:  xdg-open /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/compare_BENCH2P.html
+
+Reports: /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/compare_<CASE>.html
+Logs   : /workspace/project/full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/logs
+  transcript   run_20260814_092518.log
+  per phase    <CASE>_opm_20260814_092518.log, <CASE>_nvrs_20260814_092518.log

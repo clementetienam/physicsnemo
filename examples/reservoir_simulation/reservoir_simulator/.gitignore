@@ -1,0 +1,10 @@
+# Built by ./nvrs.sh install and by a run; none of it is source.
+*.o
+*.d
+build_*/
+.build_config*
+__pycache__/
+full_reservoir_simulator/cutlass/
+full_reservoir_simulator/GPU_reservoir_simulator/cuda/nvrs_cuda*
+full_reservoir_simulator/GPU_reservoir_simulator/cuda/test_tc_jacobian
+full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/runs/

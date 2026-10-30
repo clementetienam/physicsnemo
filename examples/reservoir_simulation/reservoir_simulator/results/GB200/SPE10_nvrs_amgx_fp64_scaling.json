@@ -1,0 +1,16 @@
+[
+  {
+    "gpus": 1,
+    "wall": 52.8053,
+    "linear": 28.1712,
+    "setup": 8.28196,
+    "rest_of_linear": 19.88924,
+    "nonlinear": 24.634100000000004,
+    "newton": 352,
+    "krylov": 13429,
+    "rebuilds": 352,
+    "reuses": 0,
+    "cells": 1122000,
+    "host_staged": false
+  }
+]

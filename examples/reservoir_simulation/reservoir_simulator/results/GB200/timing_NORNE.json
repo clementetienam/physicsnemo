@@ -1,0 +1,163 @@
+{
+  "opm": {
+    "seconds": 488.51,
+    "ranks": "1",
+    "solver": "gpuistl: gpubicgstab + OPMGPUILU0, FP32 factors (GPU), CPU fallback cpr_quasiimpes",
+    "hardware": "CPU/GPU per solver",
+    "breakdown": {
+      "setup": 3.78,
+      "simulation": 488.51,
+      "assembly": 87.93,
+      "linear": 97.22,
+      "linear_setup": 0.0,
+      "props": 181.39,
+      "prepost": 113.42,
+      "output": 6.25
+    },
+    "wall_including_output": 496.506
+  },
+  "nvrs_amgx": {
+    "seconds": 44.9524,
+    "ranks": "1",
+    "solver": "CPR: AmgX AMG (FP32) + block-Jacobi",
+    "hardware": "GPU",
+    "breakdown": {
+      "assembly_seconds": 2.89751,
+      "linear_seconds": 23.5959,
+      "amg_setup_seconds": 1.76114,
+      "amg_solve_seconds": 12.7974,
+      "stage2_seconds": 2.61016,
+      "spmv_seconds": 0.988679,
+      "ortho_seconds": 1.9174,
+      "ijvec_seconds": 0,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 44.9524,
+      "amg_setups": 172,
+      "amg_applications": 41114,
+      "amg_cycles": 0,
+      "amg_reuses": 1325,
+      "amg_reuse_aborts": 63
+    },
+    "wall_including_output": 506.663
+  },
+  "nvrs_hypre": {
+    "seconds": 71.5123,
+    "ranks": "1",
+    "solver": "CPR: HYPRE BoomerAMG (FP32) + block-Jacobi",
+    "hardware": "GPU",
+    "breakdown": {
+      "assembly_seconds": 2.93276,
+      "linear_seconds": 49.9066,
+      "amg_setup_seconds": 2.39831,
+      "amg_solve_seconds": 31.7193,
+      "stage2_seconds": 4.72438,
+      "spmv_seconds": 1.81626,
+      "ortho_seconds": 3.72898,
+      "ijvec_seconds": 0,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 71.5123,
+      "amg_setups": 166,
+      "amg_applications": 72715,
+      "amg_cycles": 72715,
+      "amg_reuses": 1340,
+      "amg_reuse_aborts": 46
+    },
+    "wall_including_output": 533.777
+  },
+  "nvrs_ginkgo": {
+    "seconds": 80.5461,
+    "ranks": "1",
+    "solver": "CPR: Ginkgo PGM AMG (FP16) + block-Jacobi",
+    "hardware": "GPU",
+    "breakdown": {
+      "assembly_seconds": 3.92746,
+      "linear_seconds": 56.3034,
+      "amg_setup_seconds": 3.73715,
+      "amg_solve_seconds": 37.7872,
+      "stage2_seconds": 3.1532,
+      "spmv_seconds": 1.40242,
+      "ortho_seconds": 2.62718,
+      "ijvec_seconds": 3.05995,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 80.5461,
+      "amg_setups": 188,
+      "amg_applications": 58439,
+      "amg_cycles": 58439,
+      "amg_reuses": 1638,
+      "amg_reuse_aborts": 33
+    },
+    "wall_including_output": 536.967
+  },
+  "nvrs_ginkgo32": {
+    "seconds": 70.4152,
+    "ranks": "1",
+    "solver": "CPR: Ginkgo PGM AMG (FP32) + block-Jacobi",
+    "hardware": "GPU",
+    "breakdown": {
+      "assembly_seconds": 2.76261,
+      "linear_seconds": 48.5127,
+      "amg_setup_seconds": 4.91193,
+      "amg_solve_seconds": 31.2384,
+      "stage2_seconds": 2.70528,
+      "spmv_seconds": 1.16221,
+      "ortho_seconds": 2.24785,
+      "ijvec_seconds": 2.51426,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 70.4152,
+      "amg_setups": 145,
+      "amg_applications": 48209,
+      "amg_cycles": 48209,
+      "amg_reuses": 1292,
+      "amg_reuse_aborts": 24
+    },
+    "wall_including_output": 529.318
+  },
+  "nvrs_ginkgo_abj": {
+    "seconds": 76.6055,
+    "ranks": "1",
+    "solver": "CPR: Ginkgo PGM AMG (FP16) + Ginkgo adaptive-precision block-Jacobi",
+    "hardware": "GPU",
+    "breakdown": {
+      "assembly_seconds": 2.754,
+      "linear_seconds": 54.7922,
+      "amg_setup_seconds": 2.95128,
+      "amg_solve_seconds": 32.9287,
+      "stage2_seconds": 3.70437,
+      "spmv_seconds": 2.6497,
+      "ortho_seconds": 2.61141,
+      "ijvec_seconds": 2.71831,
+      "stage2_setup_seconds": 5.30423,
+      "wall_seconds": 76.6055,
+      "amg_setups": 149,
+      "amg_applications": 51232,
+      "amg_cycles": 51232,
+      "amg_reuses": 1299,
+      "amg_reuse_aborts": 28
+    },
+    "wall_including_output": 536.72
+  },
+  "nvrs_amgx_fp64": {
+    "seconds": 43.1875,
+    "ranks": "1",
+    "solver": "CPR: AmgX AMG (FP32) + block-Jacobi, native FP64 operator",
+    "hardware": "GPU",
+    "breakdown": {
+      "assembly_seconds": 2.51331,
+      "linear_seconds": 22.4813,
+      "amg_setup_seconds": 1.67874,
+      "amg_solve_seconds": 12.1453,
+      "stage2_seconds": 2.50527,
+      "spmv_seconds": 0.897932,
+      "ortho_seconds": 1.90326,
+      "ijvec_seconds": 0,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 43.1875,
+      "amg_setups": 164,
+      "amg_applications": 38869,
+      "amg_cycles": 0,
+      "amg_reuses": 1236,
+      "amg_reuse_aborts": 63
+    },
+    "wall_including_output": 505.65
+  }
+}

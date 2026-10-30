@@ -1,0 +1,21 @@
+RUNSPEC
+ DIMENS
+ 4 3 2 /
+ FIELD
+GRID
+ DX
+ 24*300 /
+ DY
+ 24*300 /
+ DZ
+ 12*20 12*40 /
+ TOPS
+ 12*9000 /
+ PORO
+ 24*0.25 /
+ PERMX
+ 24*100 /
+ PERMY
+ 24*100 /
+ PERMZ
+ 24*10 /

@@ -1,0 +1,37 @@
+{
+  "opm": {
+    "seconds": 161.602,
+    "ranks": 1,
+    "hardware": "4x NVIDIA GB200 + 144 cores, unknown",
+    "solver": "gpuistl: gpubicgstab + OPMGPUILU0, FP32 factors (GPU, 1 rank)",
+    "breakdown": {
+      "setup": 0.92,
+      "simulation": 157.2,
+      "assembly": 40.58,
+      "linear": 69.38,
+      "linear_setup": 0.0,
+      "props": 42.81,
+      "prepost": 3.78,
+      "output": 0.27
+    }
+  },
+  "nvrs": {
+    "seconds": 38.674,
+    "ranks": 1,
+    "hardware": "4x NVIDIA GB200",
+    "solver": "CPR: FP32 HYPRE BoomerAMG + block-Jacobi, FP64 FGMRES (GPU)",
+    "breakdown": {
+      "assembly": 0.337929,
+      "linear": 33.1502,
+      "simulation": 35.5558,
+      "amg_setup": 7.16389,
+      "amg_solve": 14.1432,
+      "stage2": 0.290984,
+      "amg_setups": 232,
+      "amg_applications": 6582,
+      "amg_cycles": 6582,
+      "amg_reuses": 763,
+      "amg_reuse_aborts": 70
+    }
+  }
+}

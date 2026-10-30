@@ -1,0 +1,40 @@
+forward: cuda
+exe: build/nvrs_cuda
+deck: decks/RESERVOIR.DATA
+workdir: hm_work
+hypre_lib:
+grid:
+  nx: 46
+  ny: 112
+  nz: 22
+truth_csv: hm_work/observed_RSM.csv
+meas_types:
+- WOPR
+- WWPR
+noise_rel: 0.05
+noise_floor: 1.0
+truth_seed: 4242
+kmin: 5.0
+kmax: 500.0
+poro_min: 0.05
+poro_max: 0.3
+ln_mean: 3.9
+ln_std: 0.8
+corr_len: 8.0
+Ne: 100
+Termm: 12
+seed: 0
+outdir: HM_RESULTS
+n_gpus: 4
+ranks_per_member: 1
+device: cuda
+surrogate:
+  model_out: hm_work/surrogate.pt
+  n_train: 400
+  epochs: 200
+  batch: 8
+  width: 32
+  modes: 12
+  layers: 4
+  lr: 0.001
+surrogate_model: hm_work/surrogate.pt

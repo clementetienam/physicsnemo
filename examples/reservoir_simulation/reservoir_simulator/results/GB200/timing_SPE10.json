@@ -1,0 +1,84 @@
+{
+  "opm": {
+    "seconds": 0.0,
+    "ranks": 8,
+    "hardware": "4x NVIDIA GB200 + 144 cores, unknown",
+    "solver": "Flow default (CPU; GPU bridge needs blocksize 3)",
+    "breakdown": {}
+  },
+  "nvrs_amgx": {
+    "seconds": 53.0637,
+    "ranks": "1",
+    "solver": "CPR: AmgX AMG (FP32) + block-Jacobi",
+    "hardware": "GPU",
+    "deck": "decks/SPE10_MATCHED.DATA",
+    "breakdown": {
+      "assembly_seconds": 7.16345,
+      "linear_seconds": 28.1113,
+      "amg_setup_seconds": 8.27745,
+      "amg_solve_seconds": 12.4793,
+      "stage2_seconds": 2.01113,
+      "spmv_seconds": 1.32953,
+      "ortho_seconds": 2.64758,
+      "ijvec_seconds": 0,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 53.0637,
+      "amg_setups": 352,
+      "amg_applications": 13807,
+      "amg_cycles": 0,
+      "amg_reuses": 0,
+      "amg_reuse_aborts": 0
+    },
+    "wall_including_output": 58.292
+  },
+  "nvrs_hypre": {
+    "seconds": 99.2196,
+    "ranks": "1",
+    "solver": "CPR: HYPRE BoomerAMG (FP32) + block-Jacobi",
+    "hardware": "GPU",
+    "deck": "decks/SPE10_MATCHED.DATA",
+    "breakdown": {
+      "assembly_seconds": 8.35183,
+      "linear_seconds": 70.4779,
+      "amg_setup_seconds": 7.24597,
+      "amg_solve_seconds": 46.9223,
+      "stage2_seconds": 3.95638,
+      "spmv_seconds": 2.59155,
+      "ortho_seconds": 5.49787,
+      "ijvec_seconds": 0,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 99.2196,
+      "amg_setups": 133,
+      "amg_applications": 25821,
+      "amg_cycles": 25821,
+      "amg_reuses": 287,
+      "amg_reuse_aborts": 121
+    },
+    "wall_including_output": 104.337
+  },
+  "nvrs_amgx_fp64": {
+    "seconds": 52.8053,
+    "ranks": "1",
+    "solver": "CPR: AmgX AMG (FP32) + block-Jacobi, native FP64 operator",
+    "hardware": "GPU",
+    "deck": "decks/SPE10_MATCHED.DATA",
+    "breakdown": {
+      "assembly_seconds": 7.164,
+      "linear_seconds": 28.1712,
+      "amg_setup_seconds": 8.28196,
+      "amg_solve_seconds": 12.5303,
+      "stage2_seconds": 2.01176,
+      "spmv_seconds": 1.33012,
+      "ortho_seconds": 2.64722,
+      "ijvec_seconds": 0,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 52.8053,
+      "amg_setups": 352,
+      "amg_applications": 13807,
+      "amg_cycles": 0,
+      "amg_reuses": 0,
+      "amg_reuse_aborts": 0
+    },
+    "wall_including_output": 57.928
+  }
+}

@@ -1,0 +1,9 @@
+RUNSPEC
+ DIMENS
+ 5 5 2 /
+ FIELD
+GRID
+ PORO
+ 50*0.2 /
+ PERMX
+ 50*100 /

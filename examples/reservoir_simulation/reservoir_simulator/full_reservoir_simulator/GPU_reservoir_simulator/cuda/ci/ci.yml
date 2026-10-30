@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: Apache-2.0
+# Authors: Clement Etienam, Tsubasa Onishi, Oleg Ovcharenko,
+#          Nick Luiken, Issam Said
+#
+# GitHub Actions CI template for NVRS-CUDA.
+#
+# Move this file to  <repo-root>/.github/workflows/ci.yml  to enable it.
+# Building/running needs CUDA + MPI + a HYPRE install, so the real job targets a
+# *self-hosted* runner labelled `gpu` that has them (e.g. a GB200 node). The
+# smoke test itself degrades to build-only when no GPU is visible, so a plain
+# CPU runner with CUDA+HYPRE toolchains still gives you compile coverage.
+name: nvrs-cuda-ci
+
+on:
+  push:
+    paths: ["GPU_reservoir_simulator/cuda/**"]
+  pull_request:
+    paths: ["GPU_reservoir_simulator/cuda/**"]
+  workflow_dispatch:
+
+jobs:
+  build-and-smoke:
+    runs-on: [self-hosted, gpu]        # ← label a runner that has CUDA+MPI+HYPRE
+    defaults:
+      run:
+        working-directory: GPU_reservoir_simulator/cuda
+    env:
+      # Point at the FP32 HYPRE install produced by install_hypre_sm100.sh.
+      HYPRE_FP32_DIR: ${{ vars.HYPRE_FP32_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain versions
+        run: |
+          nvcc --version
+          mpicxx --show || true
+          cmake --version
+
+      - name: Build + smoke test
+        run: |
+          chmod +x scripts/ci_smoke_test.sh
+          ./scripts/ci_smoke_test.sh
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-output
+          path: |
+            GPU_reservoir_simulator/cuda/OUTPUT_SMOKE/**
+            /tmp/nvrs_*.log
+          if-no-files-found: ignore

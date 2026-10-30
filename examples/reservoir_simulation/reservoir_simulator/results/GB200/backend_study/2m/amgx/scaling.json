@@ -1,0 +1,52 @@
+[
+  {
+    "gpus": 1,
+    "wall": 39.3758,
+    "linear": 13.6965,
+    "setup": 4.83024,
+    "rest_of_linear": 8.86626,
+    "nonlinear": 25.679299999999998,
+    "newton": 694,
+    "krylov": 3186,
+    "rebuilds": 65,
+    "reuses": 629,
+    "cells": 2000000,
+    "host_staged": false
+  },
+  {
+    "gpus": 2,
+    "wall": 31.0497,
+    "linear": 9.81163,
+    "setup": 0.779797,
+    "rest_of_linear": 9.031832999999999,
+    "nonlinear": 21.23807,
+    "newton": 364,
+    "krylov": 4565,
+    "rebuilds": 53,
+    "reuses": 311,
+    "cells": 2000000,
+    "halo_calls": 10519,
+    "halo_seconds": 18.77,
+    "halo_gb": 1.25,
+    "host_staged": false,
+    "halo_mode": "device"
+  },
+  {
+    "gpus": 4,
+    "wall": 30.8377,
+    "linear": 10.4872,
+    "setup": 1.6827,
+    "rest_of_linear": 8.804499999999999,
+    "nonlinear": 20.350500000000004,
+    "newton": 366,
+    "krylov": 4688,
+    "rebuilds": 113,
+    "reuses": 253,
+    "cells": 2000000,
+    "halo_calls": 10783,
+    "halo_seconds": 18.57,
+    "halo_gb": 2.56,
+    "host_staged": false,
+    "halo_mode": "device"
+  }
+]

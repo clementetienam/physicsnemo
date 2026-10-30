@@ -3,268 +3,351 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reservoir Simulator</title>
+<title>NVRS-CUDA</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <style>
-  :root{
-    --bg:#f7f8fa; --panel:#fff; --ink:#15181d; --muted:#5b6472;
-    --line:#e3e7ec; --accent:#2f6df6; --accent-soft:#eaf0fe;
-    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#0e1116; --panel:#161a21; --ink:#e8ecf2; --muted:#98a2b3;
-      --line:#242a33; --accent:#6c9bff; --accent-soft:#1a2740;
-    }
-  }
-  :root[data-theme="dark"]{
-    --bg:#0e1116; --panel:#161a21; --ink:#e8ecf2; --muted:#98a2b3;
-    --line:#242a33; --accent:#6c9bff; --accent-soft:#1a2740;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
-       font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  header{padding:28px 0 18px;border-bottom:1px solid var(--line);background:var(--panel)}
-  .wrap{max-width:1180px;margin:0 auto;padding:0 16px}
-  h1{margin:0;font-size:21px;letter-spacing:-.01em}
-  header p{margin:6px 0 0;color:var(--muted);font-size:14px;max-width:72ch}
-  .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin:22px auto}
-  @media (max-width:900px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
-  .card h2{margin:0 0 4px;font-size:13px;text-transform:uppercase;
-           letter-spacing:.08em;color:var(--muted)}
-  .hint{margin:0 0 14px;color:var(--muted);font-size:13px}
-  label{display:block;margin:12px 0 5px;font-size:13px;font-weight:600}
-  select,input[type=text],input[type=number]{
-    width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
-    background:var(--bg);color:var(--ink);font:14px var(--mono)}
-  .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-  .note{margin-top:8px;font-size:12.5px;color:var(--muted)}
-  pre{margin:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;
-      padding:14px;overflow:auto;font:13px/1.5 var(--mono);max-height:430px}
-  .bar{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
-  button{border:1px solid var(--line);background:var(--panel);color:var(--ink);
-         border-radius:8px;padding:8px 13px;font:inherit;font-size:13.5px;cursor:pointer}
-  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  button:hover{border-color:var(--accent)}
-  .ok{color:var(--muted);font-size:13px}
-  table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:6px}
-  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
-  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
-  td.num{font:13px var(--mono);text-align:right}
-  .warn{background:var(--accent-soft);border:1px solid var(--accent);
-        border-radius:8px;padding:10px 12px;font-size:13px;margin-top:12px}
-  footer{color:var(--muted);font-size:13px;padding:26px 16px 40px;text-align:center}
+:root {
+  --bg:#f7f7f4; --panel:#ffffff; --ink:#1d2125; --mute:#5e666e; --line:#dcdfe0;
+  --accent:#1f6f54; --accent-ink:#ffffff; --code:#f0f1ed; --warn:#8a5a00; --bad:#a32d2d;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#14171a; --panel:#1c2024; --ink:#e7e9ea; --mute:#a0a7ad; --line:#30363b;
+  --accent:#58b793; --accent-ink:#08130e; --code:#262b30; --warn:#d9a441; --bad:#e58080;
+}}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink);
+  font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+header { background:var(--panel); border-bottom:1px solid var(--line); }
+.wrap { max-width:1060px; margin:0 auto; padding:0 20px; }
+.top { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 16px; padding:18px 0 10px; }
+h1 { font-size:20px; margin:0; font-weight:650; letter-spacing:-.01em; }
+.sub { color:var(--mute); font-size:13.5px; }
+nav { display:flex; flex-wrap:wrap; gap:2px; }
+nav button { all:unset; cursor:pointer; padding:9px 13px; color:var(--mute); font-size:14px;
+  border-bottom:2px solid transparent; }
+nav button:hover { color:var(--ink); }
+nav button:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+nav button.on { color:var(--ink); border-color:var(--accent); font-weight:600; }
+main { padding:24px 0 60px; }
+section { display:none; } section.on { display:block; }
+h2 { font-size:18px; margin:28px 0 8px; font-weight:650; } h2:first-child { margin-top:0; }
+h3 { font-size:14.5px; margin:18px 0 6px; font-weight:650; }
+p { margin:8px 0; max-width:74ch; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px 18px; margin:12px 0; }
+.math { overflow-x:auto; padding:6px 0; }
+code,pre { font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace; font-size:13px; }
+code { background:var(--code); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code); padding:10px 12px; border-radius:6px; overflow:auto; margin:8px 0; }
+table { border-collapse:collapse; width:100%; font-size:14px; }
+th,td { text-align:left; padding:6px 10px 6px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--mute); font-weight:600; font-size:13px; }
+td.n,th.n { text-align:right; font-variant-numeric:tabular-nums; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px 18px; }
+label { display:block; font-size:13px; color:var(--mute); margin-bottom:3px; }
+select,input[type=text],input[type=number] { width:100%; padding:7px 9px; font:inherit; font-size:14px;
+  color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; }
+.check { display:flex; align-items:center; gap:7px; font-size:14px; color:var(--ink); margin:0; }
+.btn { font:inherit; font-size:14px; font-weight:600; padding:8px 15px; border-radius:6px; cursor:pointer;
+  background:var(--accent); color:var(--accent-ink); border:1px solid var(--accent); }
+.btn.alt { background:transparent; color:var(--ink); border-color:var(--line); }
+.btn:disabled { opacity:.5; cursor:default; }
+.row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:14px; }
+#log { height:360px; white-space:pre-wrap; word-break:break-word; }
+.pill { display:inline-block; font-size:12.5px; padding:1px 8px; border-radius:99px; border:1px solid var(--line); color:var(--mute); }
+.pill.ok { color:var(--accent); border-color:var(--accent); }
+.pill.no { color:var(--warn); border-color:var(--warn); }
+.err { color:var(--bad); font-size:14px; }
+.media { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+figure { margin:0; } figure img { width:100%; border-radius:6px; border:1px solid var(--line); display:block; }
+figcaption { font-size:13px; color:var(--mute); margin-top:5px; }
+a { color:var(--accent); }
+iframe { width:100%; height:78vh; border:1px solid var(--line); border-radius:8px; background:#fff; }
+@media (max-width:560px) { .wrap { padding:0 16px; } }
 </style>
 </head>
 <body>
 <header><div class="wrap">
-  <h1>Reservoir Simulator</h1>
-  <p>Build a run configuration, read the deck it produces, and inspect a finished
-     run. The simulator is CUDA and runs on a GPU; this page prepares its input
-     and reads its output.</p>
+  <div class="top"><h1>NVRS-CUDA</h1><span class="sub">GPU-resident, fully implicit black-oil reservoir simulator</span>
+    <span class="sub" id="gpu"></span></div>
+  <nav id="tabs">
+    <button data-t="method" class="on">Method</button>
+    <button data-t="build">Build</button>
+    <button data-t="run">Run a deck</button>
+    <button data-t="cases">Benchmark cases</button>
+    <button data-t="results">Results</button>
+    <button data-t="manual">Manual</button>
+  </nav>
 </div></header>
+<main class="wrap">
 
-<div class="wrap grid">
+<section id="method" class="on">
+  <h2>The model</h2>
+  <p>Three-phase black oil with dissolved gas and vaporised oil. For each component <span class="tex">\alpha \in \{o,w,g\}</span> the mass balance over a control volume is</p>
+  <div class="math tex-d">\frac{\partial}{\partial t}\Bigl(\phi \sum_{\beta} c_{\alpha\beta}\, b_\beta S_\beta\Bigr) + \nabla\cdot\sum_{\beta} c_{\alpha\beta}\, b_\beta \mathbf{u}_\beta = q_\alpha,
+  \qquad \mathbf{u}_\beta = -\mathbf{K}\,\lambda_\beta\bigl(\nabla p_\beta - \rho_\beta g \nabla z\bigr),</div>
+  <p>with <span class="tex">b_\beta = 1/B_\beta</span>, <span class="tex">\lambda_\beta = k_{r\beta}/\mu_\beta</span>, <span class="tex">c_{\alpha\alpha}=1</span>, <span class="tex">c_{go}=R_s</span> and <span class="tex">c_{og}=R_v</span>. Two-point flux approximation on a Cartesian or corner-point grid gives, for the connection from <span class="tex">i</span> to <span class="tex">j</span>,</p>
+  <div class="math tex-d">F_{\beta} = T_{ij}\,\lambda_\beta^{\mathrm{up}}\,\Delta\Phi_\beta, \qquad \Delta\Phi_\beta = (p_{\beta,j}-p_{\beta,i}) - \bar\rho_\beta\, g\,(z_j - z_i).</div>
+  <p>Each implicit step solves <span class="tex">R(x)=0</span> by Newton, <span class="tex">J(x^k)\,\delta x = -R(x^k)</span>, with <span class="tex">b_s</span> primaries per cell: <span class="tex">(p,S_w)</span> for oil-water and <span class="tex">(p,S_w,x)</span> for three phases, where <span class="tex">x</span> is <span class="tex">S_g</span>, <span class="tex">R_s</span> or <span class="tex">R_v</span> by phase state.</p>
 
-  <section class="card">
-    <h2>Run configuration</h2>
-    <p class="hint">Every control here maps to one deck keyword.</p>
+  <h2>The linear solve</h2>
+  <p>The pressure block is close to elliptic and the transport block close to hyperbolic, so constrained pressure residual treats them apart. With restriction <span class="tex">\mathbf{R}_p</span> and decoupling weights <span class="tex">\mathbf{D}</span>,</p>
+  <div class="math tex-d">M^{-1} = M_2^{-1}\bigl(I - J M_1^{-1}\bigr) + M_1^{-1}, \qquad M_1^{-1} = \mathbf{R}_p^{\mathsf T}\, \widetilde{A_p^{-1}}\, \mathbf{R}_p \mathbf{D}, \qquad A_p = \mathbf{R}_p \mathbf{D} J \mathbf{R}_p^{\mathsf T},</div>
+  <p>where <span class="tex">\widetilde{A_p^{-1}}</span> is one multigrid V-cycle from AmgX, BoomerAMG or Ginkgo and <span class="tex">M_2</span> is a block-Jacobi sweep. Flexible GMRES accepts a preconditioner that changes between applications.</p>
 
-    <label for="model">Model</label>
-    <select id="model">
-      <option value="2">Two-phase oil and water (bs = 2)</option>
-      <option value="3" selected>Three-phase black oil (bs = 3)</option>
-    </select>
+  <h2>Precision</h2>
+  <p>The state, the residual and the Krylov recurrences stay in FP64, so the limit of the iteration does not depend on the precision of the preconditioner. Reduced precision changes only the rate, and single precision is admissible when</p>
+  <div class="math tex-d">\kappa(A_p)\, u_{32} \ll 1 .</div>
 
-    <label for="grid">Grid</label>
-    <select id="grid">
-      <option value="cart">Cartesian, fixed six-neighbour stencil</option>
-      <option value="cpg">Corner-point, connection list</option>
-    </select>
+  <h2>Tensor Core Jacobian (compile-time option)</h2>
+  <p>Built with <code>make TENSORCORE=1</code> and selected with <code>JACOBIAN TENSORCORE</code>. A connection residual is a product of eleven features <span class="tex">z = (\lambda_\beta, \Delta\Phi_\beta, b_\beta^{\mathrm{up}}, R_s^{\mathrm{up}}, R_v^{\mathrm{up}})</span>, so its Jacobian is the chain rule written as a matrix product,</p>
+  <div class="math tex-d">\frac{\partial R_{ij}}{\partial x_{ij}} = \underbrace{\frac{\partial R_{ij}}{\partial z}}_{L_{\mathrm{flux}}\ \in\ \mathbb{R}^{b_s\times 11}}\ \underbrace{\frac{\partial z}{\partial x_{ij}}}_{L_{\mathrm{props}}\ \in\ \mathbb{R}^{11\times 2b_s}},</div>
+  <p>padded to <span class="tex">16\times16</span> tiles and issued for all connections as one batched GEMM in TF32 with FP32 accumulation. The default build compiles none of this.</p>
+</section>
 
-    <label>Grid size (NX, NY, NZ)</label>
-    <div class="row">
-      <input id="nx" type="number" value="60" min="1">
-      <input id="ny" type="number" value="60" min="1">
-      <input id="nz" type="number" value="20" min="1">
+<section id="build">
+  <h2>Build</h2>
+  <div id="needserver1"></div>
+  <div class="card">
+    <table><thead><tr><th>Binary</th><th>Purpose</th><th>State</th></tr></thead><tbody id="bins"></tbody></table>
+  </div>
+  <div class="card">
+    <h3>Install everything</h3>
+    <p>Runs <code>./nvrs.sh install</code>: HYPRE, AmgX, Ginkgo, OPM Flow, Nsight Systems and the simulator. The CUDA architecture is detected from your GPU. Re-running resumes.</p>
+    <label class="check"><input type="checkbox" id="b_tc"> Also fetch CUTLASS and build <code>nvrs_cuda_tc</code> (the Tensor Core option)</label>
+    <div class="row"><button class="btn" id="b_go">Start install</button></div>
+    <div class="err" id="b_err"></div>
+  </div>
+</section>
+
+<section id="run">
+  <h2>Run a deck</h2>
+  <div id="needserver2"></div>
+  <div class="card">
+    <div class="grid">
+      <div><label for="r_deck">Deck</label><select id="r_deck"></select></div>
+      <div><label for="r_ranks">GPUs (MPI ranks)</label><input id="r_ranks" type="number" min="1" max="64" value="1"></div>
+      <div><label for="r_prec">Preconditioner precision</label><select id="r_prec">
+        <option value="mixed">Mixed: FP32 multigrid, FP64 Krylov</option>
+        <option value="fp64">Fully FP64</option></select></div>
+      <div><label for="k_LINSOLVER">Stage-1 multigrid</label><select id="k_LINSOLVER">
+        <option value="">As in the deck</option><option>AMGX</option><option>HYPRE</option><option>GINKGO</option></select></div>
+      <div><label for="k_GINKGOPREC">Ginkgo precision</label><select id="k_GINKGOPREC">
+        <option value="">As in the deck</option><option value="32">FP32</option><option value="16">FP16</option></select></div>
+      <div><label for="k_JACOBIAN">Jacobian</label><select id="k_JACOBIAN">
+        <option value="">As in the deck</option><option>ANALYTIC</option><option>NUMERICAL</option><option>TENSORCORE</option></select></div>
+      <div class="tc"><label for="k_TCPRECISION">Tensor Core arithmetic</label><select id="k_TCPRECISION">
+        <option>TF32</option><option>FP32</option></select></div>
+      <div class="tc"><label for="k_TCVALIDATE">Report difference from analytic</label><select id="k_TCVALIDATE">
+        <option value="1">Yes</option><option value="0">No</option></select></div>
+      <div><label for="k_AIM">Adaptive implicit</label><select id="k_AIM">
+        <option value="">As in the deck</option><option value="1">On</option><option value="0">Off</option></select></div>
+      <div><label for="k_CUDAGRAPH">CUDA Graphs for the Krylov tail</label><select id="k_CUDAGRAPH">
+        <option value="">As in the deck</option><option value="1">On</option><option value="0">Off</option></select></div>
+      <div><label for="k_BLOCKSPMV">Block SpMV</label><select id="k_BLOCKSPMV">
+        <option value="">As in the deck</option><option value="1">On</option><option value="0">Off</option></select></div>
+      <div><label for="k_TEND">End time, days</label><input id="k_TEND" type="text" placeholder="As in the deck"></div>
     </div>
+    <h3>What will run</h3>
+    <pre id="r_cmd"></pre>
+    <div class="row"><button class="btn" id="r_go">Run</button><button class="btn alt" id="r_stop" disabled>Stop</button><span class="pill" id="r_state">idle</span></div>
+    <div class="err" id="r_err"></div>
+  </div>
+  <h3>Console</h3>
+  <pre id="log" aria-live="polite"></pre>
+  <div id="r_art"></div>
+</section>
 
-    <label for="lin">LINSOLVER, the stage-1 multigrid</label>
-    <select id="lin">
-      <option value="AMGX" selected>AmgX</option>
-      <option value="HYPRE">HYPRE BoomerAMG</option>
-      <option value="GINKGO">Ginkgo</option>
-    </select>
-
-    <label for="jac">JACOBIAN</label>
-    <select id="jac">
-      <option value="ANALYTIC" selected>ANALYTIC, exact derivatives</option>
-      <option value="NUMERICAL">NUMERICAL, finite differences</option>
-      <option value="TENSORCORE">TENSORCORE, operator product</option>
-    </select>
-
-    <label for="prec">Preconditioner precision</label>
-    <select id="prec">
-      <option value="mixed" selected>MIXED, reduced precision in stage 1</option>
-      <option value="fp64">Full FP64</option>
-      <option value="emulate">EMULATE, double-word on FP32 pairs</option>
-    </select>
-
-    <div class="row" style="margin-top:12px">
-      <div><label for="mb">MBTOL</label><input id="mb" type="text" value="3.5e-5"></div>
-      <div><label for="cnv">CNVTOL</label><input id="cnv" type="text" value="1e-2"></div>
-      <div><label for="tend">TEND, days</label><input id="tend" type="number" value="3312"></div>
+<section id="cases">
+  <h2>Benchmark cases</h2>
+  <p>Each case fetches or generates its deck, runs the simulator against OPM Flow, profiles it and writes the report to <code>benchmark/runs/compare_CASE.html</code>.</p>
+  <div id="needserver3"></div>
+  <div class="card">
+    <div class="grid">
+      <div><label for="c_cmd">Step</label><select id="c_cmd"><option>all</option><option>get</option><option>run</option><option>profile</option><option>report</option></select></div>
+      <div><label for="c_case">Case</label><select id="c_case"><option>NORNE</option><option>SPE10</option><option>BENCH3P</option></select></div>
+      <div><label for="c_be">Backends</label><select id="c_be"><option value="">Default for the case</option><option>amgx</option><option>hypre</option><option>ginkgo</option><option>all</option></select></div>
+      <div><label class="check" style="margin-top:26px"><input type="checkbox" id="c_noopm"> Skip OPM Flow</label></div>
     </div>
+    <pre id="c_show"></pre>
+    <div class="row"><button class="btn" id="c_go">Start</button><span class="sub">The console is on the Run a deck tab.</span></div>
+    <div class="err" id="c_err"></div>
+  </div>
+</section>
 
-    <div id="tcnote" class="warn" hidden>
-      TENSORCORE forms the local connection Jacobians as one batched GEMM.
-      TF32 needs compute capability 8.0 or newer; below that the same path runs
-      in FP32 on CUDA cores.
-    </div>
-  </section>
+<section id="results">
+  <h2>Results</h2>
+  <p>Measured on GB200 and VR72. Norne, 247 report steps, one GPU, against OPM Flow on one rank with two host threads.</p>
+  <div class="card"><table>
+    <thead><tr><th>Run</th><th class="n">GB200</th><th class="n">VR72</th></tr></thead>
+    <tbody>
+      <tr><td>OPM Flow, GPU ILU(0)</td><td class="n">488.51 s</td><td class="n">243.88 s</td></tr>
+      <tr><td>NVRS-CUDA, AmgX FP32</td><td class="n"><b>44.95 s</b></td><td class="n"><b>35.73 s</b></td></tr>
+      <tr><td>Factor</td><td class="n">10.87x</td><td class="n">6.83x</td></tr>
+    </tbody></table>
+    <p class="sub">Given the whole node, Flow is fastest with its CPU CPR solver on 16 ranks and the factor is 3.5x on GB200 and 2.5x on VR72. The README gives every arm.</p>
+  </div>
+  <h2>SPE10 model 2</h2>
+  <div class="media" id="spe10"></div>
+  <h2>Movies</h2>
+  <div class="media" id="movies"></div>
+  <h2>Reports</h2>
+  <div class="grid"><div><label for="rep">Report</label><select id="rep"></select></div></div>
+  <div class="row"><a id="rep_open" target="_blank" rel="noopener">Open in its own tab</a></div>
+  <iframe id="rep_frame" title="Selected report" loading="lazy"></iframe>
+</section>
 
-  <section class="card">
-    <h2>Deck</h2>
-    <p class="hint">Save as <code>RUN.DATA</code> and pass it to the binary.</p>
-    <pre id="deck"></pre>
-    <div class="bar">
-      <button class="primary" id="copy">Copy deck</button>
-      <button id="dl">Download RUN.DATA</button>
-      <span class="ok" id="copied"></span>
-    </div>
-    <label style="margin-top:16px">Command</label>
-    <pre id="cmd" style="max-height:none"></pre>
-  </section>
-
-  <section class="card" style="grid-column:1/-1">
-    <h2>Run output</h2>
-    <p class="hint">Open a <code>summary.json</code> or a well-rate CSV written by a
-       finished run. Nothing is uploaded; the file is read in this browser.</p>
-    <input id="file" type="file" accept=".json,.csv,.txt">
-    <div id="out"></div>
-  </section>
-
-</div>
-
-<footer>Part of the reservoir simulator repository. Open this file directly in a browser; it needs no server.</footer>
+<section id="manual">
+  <h2>Manual</h2>
+  <p>Every keyword with its default, the methods, the benchmarks and troubleshooting. <a id="man_a" target="_blank" rel="noopener">Open the PDF</a>.</p>
+  <iframe id="man_f" title="User manual"></iframe>
+</section>
+</main>
 
 <script>
-(function(){
-  var $ = function(id){ return document.getElementById(id); };
-  var ids = ["model","grid","nx","ny","nz","lin","jac","prec","mb","cnv","tend"];
-  var NL = String.fromCharCode(10);
+const TOKEN = "__NVRS_TOKEN__";
+const LIVE = location.protocol !== "file:";
+const FILES = LIVE ? "/files/" : "../";
+const $ = id => document.getElementById(id);
+const REPORTS = ["results/GB200/compare_NORNE.html","results/GB200/compare_SPE10.html","results/GB200/compare_BENCH3P.html",
+  "results/VR72/compare_NORNE.html","results/VR72/compare_SPE10.html","results/VR72/compare_BENCH3P.html",
+  "results/GB200/backend_study/index.html","results/VR72/backend_study/index.html"];
+const MOVIES = [["full_reservoir_simulator/paper/figs/spe10_movie.gif","SPE10 model 2, OPM Flow against NVRS-CUDA on VR72"],
+  ["full_reservoir_simulator/paper/figs/norne_movie.gif","Norne, OPM Flow against NVRS-CUDA"],
+  ["full_reservoir_simulator/paper/figs/bench3p_movie.gif","BENCH3P, OPM Flow against NVRS-CUDA"]];
+const PURPOSE = {nvrs_cuda:"Mixed precision, the default", nvrs_cuda_fp64:"Fully FP64 preconditioner, for comparison",
+  nvrs_cuda_tc:"Default plus JACOBIAN TENSORCORE", nvrs_cuda_fp64_tc:"Fully FP64 plus JACOBIAN TENSORCORE"};
 
-  function deckText(){
-    var m = $("model").value, cpg = $("grid").value === "cpg", jac = $("jac").value;
-    var L = [];
-    L.push("-- Generated by the reservoir simulator configurator.");
-    L.push("TITLE   " + (m === "3" ? "THREE-PHASE BLACK OIL" : "TWO-PHASE OIL-WATER"));
-    L.push("");
-    L.push("NCOMP   " + m + "            -- must precede MODEL");
-    L.push("MODEL   BLACKOIL");
-    L.push("OUTDIR  OUTPUT_RUN");
-    L.push("");
-    L.push("NX      " + $("nx").value);
-    L.push("NY      " + $("ny").value);
-    L.push("NZ      " + $("nz").value);
-    if (cpg) L.push("GRIDTYPE CORNERPOINT   -- connection list, faults allowed");
-    L.push("");
-    L.push("LINSOLVER " + $("lin").value);
-    L.push("JACOBIAN  " + jac);
-    if (jac === "TENSORCORE") {
-      L.push("TCPRECISION TF32       -- FP32 below compute capability 8.0");
-      L.push("TCVALIDATE  0          -- 1 compares against the analytic assembly");
-    }
-    var p = $("prec").value;
-    L.push("MIXED     " + (p === "mixed" ? 1 : 0));
-    L.push("EMULATE   " + (p === "emulate" ? 1 : 0));
-    L.push("BLOCKSPMV 1");
-    L.push("CUDAGRAPH 1");
-    L.push("");
-    L.push("MBTOL     " + $("mb").value);
-    L.push("CNVTOL    " + $("cnv").value);
-    L.push("TEND      " + $("tend").value);
-    return L.join(NL) + NL;
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll("main section").forEach(s => s.classList.toggle("on", s.id === b.dataset.t));
+  if (location.hash !== "#" + b.dataset.t) history.replaceState(null, "", "#" + b.dataset.t);
+  if (b.dataset.t === "results" && !$("rep_frame").getAttribute("src")) showReport();
+  if (b.dataset.t === "manual" && !$("man_f").getAttribute("src")) $("man_f").src = $("man_a").href;
+});
+
+function tex() {
+  if (!window.katex) return;
+  document.querySelectorAll(".tex").forEach(e => katex.render(e.textContent, e, {throwOnError:false}));
+  document.querySelectorAll(".tex-d").forEach(e => katex.render(e.textContent, e, {throwOnError:false, displayMode:true}));
+}
+window.addEventListener("load", tex);
+window.addEventListener("hashchange", () => { const t = document.querySelector(`#tabs button[data-t="${location.hash.slice(1)}"]`); if (t) t.click(); });
+
+function showReport() { const u = FILES + $("rep").value; $("rep_frame").src = u; $("rep_open").href = u; }
+function fillReports(list) {
+  const cur = $("rep").value;
+  $("rep").innerHTML = list.map(r => `<option>${r}</option>`).join("");
+  if (list.includes(cur)) $("rep").value = cur;
+}
+fillReports(REPORTS);
+$("rep").onchange = showReport;
+const fig = ([u,c]) => `<figure><img loading="lazy" src="${FILES+u}" alt="${c}"><figcaption>${c}</figcaption></figure>`;
+$("movies").innerHTML = MOVIES.map(fig).join("");
+$("spe10").innerHTML = [["full_reservoir_simulator/paper/figs/spe10_perm.png","SPE10 permeability, mD"],
+  ["full_reservoir_simulator/paper/figs/spe10_poro.png","SPE10 porosity"]].map(fig).join("");
+$("man_a").href = FILES + "full_reservoir_simulator/GPU_reservoir_simulator/cuda/docs/manual.pdf";
+
+const NEEDS = `<div class="card"><p>Starting work needs the local server. From the project folder run:</p><pre>python3 gui/server.py</pre><p>then open <code>http://127.0.0.1:8765</code>. This page was opened from disk, so it can show the method, results and manual only.</p></div>`;
+if (!LIVE) ["needserver1","needserver2","needserver3"].forEach(i => $(i).innerHTML = NEEDS);
+
+async function post(path, body) {
+  const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({...body, token:TOKEN})});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || "request failed");
+  return j;
+}
+
+// --- Run a deck ---------------------------------------------------------------
+function overrides() {
+  const o = {};
+  ["LINSOLVER","GINKGOPREC","JACOBIAN","AIM","CUDAGRAPH","BLOCKSPMV","TEND"].forEach(k => {
+    const v = $("k_"+k).value.trim(); if (v) o[k] = v; });
+  if (o.JACOBIAN === "TENSORCORE") { o.TCPRECISION = $("k_TCPRECISION").value; o.TCVALIDATE = $("k_TCVALIDATE").value; }
+  if ($("r_prec").value === "fp64") { o.MIXED = "0"; o.EMULATE = "0"; } else o.MIXED = "1";
+  return o;
+}
+function binary() {
+  const fp64 = $("r_prec").value === "fp64", tc = $("k_JACOBIAN").value === "TENSORCORE";
+  return "nvrs_cuda" + (fp64 ? "_fp64" : "") + (tc ? "_tc" : "");
+}
+function preview() {
+  document.querySelectorAll(".tc").forEach(e => e.style.display = $("k_JACOBIAN").value === "TENSORCORE" ? "" : "none");
+  const o = overrides();
+  $("r_cmd").textContent = `cd full_reservoir_simulator/GPU_reservoir_simulator/cuda\n` +
+    `# decks/${$("r_deck").value}.DATA, with these lines added:\n` +
+    Object.entries(o).map(([k,v]) => `#   ${k} ${v}`).join("\n") +
+    `\nmpirun -n ${$("r_ranks").value} ./${binary()} <that deck>`;
+}
+document.querySelectorAll("#run select, #run input").forEach(e => { e.oninput = preview; });
+
+let job = null, offset = 0;
+function watch(j) {
+  job = j; offset = 0; $("log").textContent = ""; $("r_art").innerHTML = "";
+  document.querySelector('#tabs button[data-t="run"]').click();
+  poll();
+}
+async function poll() {
+  if (!job) return;
+  const r = await (await fetch(`/api/log?id=${job.id}&from=${offset}`)).json();
+  if (r.error) return;
+  if (r.text) {
+    offset = r.next;
+    const l = $("log"), end = l.scrollTop + l.clientHeight >= l.scrollHeight - 30;
+    l.textContent += r.text;
+    if (end) l.scrollTop = l.scrollHeight;
   }
+  const running = r.job.running;
+  $("r_state").textContent = running ? `running, ${r.job.seconds} s` : `finished, exit code ${r.job.code}, ${r.job.seconds} s`;
+  $("r_state").className = "pill " + (running ? "" : (r.job.code === 0 ? "ok" : "no"));
+  $("r_stop").disabled = !running;
+  $("r_go").disabled = running;
+  if (running || r.text.length) return void setTimeout(poll, running ? 1000 : 200);
+  if (r.job.artifacts.length)
+    $("r_art").innerHTML = "<h3>Files written</h3><ul>" + r.job.artifacts.map(a => `<li><a target="_blank" rel="noopener" href="/files/${a}">${a}</a></li>`).join("") + "</ul>";
+  refresh();
+}
+$("r_go").onclick = async () => {
+  $("r_err").textContent = "";
+  try { watch(await post("/api/run", {deck:$("r_deck").value, ranks:+$("r_ranks").value, binary:binary(), overrides:overrides()})); }
+  catch (e) { $("r_err").textContent = e.message; }
+};
+$("r_stop").onclick = () => job && post("/api/stop", {id:job.id});
 
-  function render(){
-    $("deck").textContent = deckText();
-    $("cmd").textContent = "mpirun -n 1 ./build/nvrs_cuda RUN.DATA";
-    $("tcnote").hidden = $("jac").value !== "TENSORCORE";
-    try {
-      var cfg = {};
-      ids.forEach(function(k){ cfg[k] = $(k).value; });
-      localStorage.setItem("rs-cfg", JSON.stringify(cfg));
-    } catch (e) {}
-  }
+// --- Benchmark cases ----------------------------------------------------------
+function noOpm() { return $("c_noopm").checked && ["run","all"].includes($("c_cmd").value); }
+function casePreview() {
+  $("c_show").textContent = `cd full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark\n./nvrs.sh ${$("c_cmd").value} ${$("c_case").value}` +
+    (noOpm() ? " --no-opm" : "") + ($("c_be").value ? ` --backend ${$("c_be").value}` : "");
+}
+document.querySelectorAll("#cases select, #cases input").forEach(e => { e.oninput = casePreview; });
+$("c_go").onclick = async () => {
+  $("c_err").textContent = "";
+  try { watch(await post("/api/nvrs", {command:$("c_cmd").value, case:$("c_case").value, backend:$("c_be").value, flags:noOpm() ? ["--no-opm"] : []})); }
+  catch (e) { $("c_err").textContent = e.message; }
+};
+$("b_go").onclick = async () => {
+  $("b_err").textContent = "";
+  try { watch(await post("/api/build", {tensorcore:$("b_tc").checked})); }
+  catch (e) { $("b_err").textContent = e.message; }
+};
 
-  try {
-    var saved = JSON.parse(localStorage.getItem("rs-cfg") || "null");
-    if (saved) ids.forEach(function(k){ if (saved[k] != null) $(k).value = saved[k]; });
-  } catch (e) {}
-
-  ids.forEach(function(k){
-    $(k).addEventListener("input", render);
-    $(k).addEventListener("change", render);
-  });
-  render();
-
-  $("copy").addEventListener("click", function(){
-    navigator.clipboard.writeText(deckText()).then(function(){
-      $("copied").textContent = "copied";
-      setTimeout(function(){ $("copied").textContent = ""; }, 1600);
-    });
-  });
-
-  $("dl").addEventListener("click", function(){
-    var b = new Blob([deckText()], {type:"text/plain"});
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(b);
-    a.download = "RUN.DATA";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  });
-
-  function table(rows, head){
-    var h = "<table><thead><tr>";
-    head.forEach(function(c){ h += "<th>" + c + "</th>"; });
-    h += "</tr></thead><tbody>";
-    rows.forEach(function(r){
-      h += "<tr>";
-      r.forEach(function(c, i){ h += "<td class='" + (i ? "num" : "") + "'>" + c + "</td>"; });
-      h += "</tr>";
-    });
-    return h + "</tbody></table>";
-  }
-
-  $("file").addEventListener("change", function(ev){
-    var f = ev.target.files && ev.target.files[0];
-    if (!f) return;
-    var rd = new FileReader();
-    rd.onload = function(){
-      var txt = String(rd.result), out = $("out");
-      if (/\.json$/i.test(f.name)) {
-        var o;
-        try { o = JSON.parse(txt); }
-        catch (e) { out.innerHTML = "<p class='note'>Not valid JSON: " + e.message + "</p>"; return; }
-        var rows = [];
-        Object.keys(o).forEach(function(k){
-          if (o[k] === null || typeof o[k] !== "object") rows.push([k, String(o[k])]);
-        });
-        out.innerHTML = rows.length ? table(rows, ["Field", "Value"])
-                                    : "<p class='note'>No scalar fields in this file.</p>";
-      } else {
-        var lines = txt.replace(/\r/g, "").split(NL).filter(function(l){ return l.length; });
-        if (!lines.length) { out.innerHTML = "<p class='note'>Empty file.</p>"; return; }
-        var head = lines[0].split(/[,;\t]/);
-        var rows = lines.slice(1, 201).map(function(l){ return l.split(/[,;\t]/); });
-        out.innerHTML = table(rows, head) +
-          "<p class='note'>" + rows.length + " row(s) shown.</p>";
-      }
-    };
-    rd.readAsText(f);
-  });
-})();
+// --- State --------------------------------------------------------------------
+async function refresh() {
+  if (!LIVE) return;
+  const s = await (await fetch("/api/status")).json();
+  $("gpu").textContent = s.gpu ? "GPU: " + s.gpu.split("\n")[0] : "no GPU found by nvidia-smi";
+  $("bins").innerHTML = Object.entries(s.binaries).map(([b,ok]) =>
+    `<tr><td><code>${b}</code></td><td>${PURPOSE[b]}</td><td><span class="pill ${ok ? "ok" : "no"}">${ok ? "built" : "not built"}</span></td></tr>`).join("");
+  const d = $("r_deck"), cur = d.value;
+  d.innerHTML = s.decks.map(n => `<option>${n}</option>`).join("");
+  if (s.decks.includes(cur)) d.value = cur; else if (s.decks.includes("SMOKE")) d.value = "SMOKE";
+  if (s.reports.length) fillReports(s.reports);
+  preview();
+}
+casePreview(); refresh(); preview();
+{ const t = document.querySelector(`#tabs button[data-t="${location.hash.slice(1)}"]`); if (t) t.click(); }
+if (!LIVE) { $("bins").innerHTML = Object.keys(PURPOSE).map(b => `<tr><td><code>${b}</code></td><td>${PURPOSE[b]}</td><td>Start the server to check</td></tr>`).join(""); ["r_go","b_go","c_go"].forEach(i => $(i).disabled = true); }
 </script>
 </body>
 </html>

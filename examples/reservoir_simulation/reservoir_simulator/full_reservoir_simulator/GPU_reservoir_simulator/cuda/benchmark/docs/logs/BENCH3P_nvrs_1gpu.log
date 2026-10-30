@@ -1,0 +1,96 @@
+******************************************************************************
+*                                                                            *
+*              N V R S   R E S E R V O I R   S I M U L A T O R               *
+*                                                                            *
+*        GPU-native black-oil and compositional reservoir simulation         *
+*        Mixed-precision CPR: HYPRE BoomerAMG + block-Jacobi on CUDA         *
+*                                                                            *
+*           C. Etienam  |  O. Ovcharenko  |  N. Luiken  |  I. Said           *
+*                                                                            *
+******************************************************************************
+  Launched : 2026-08-14 09:28:07 PDT
+  Host     : gpu-node
+  Parallel : 1 MPI rank, one GPU per rank
+  Precision: FP64 outer Krylov, FP32 CPR preconditioner
+  HYPRE    : v3.1.0, MPI, CUDA, GPU-aware MPI
+[rank 0/1] gpu-node local_rank=0/1 -> GPU 0 of 4 (NVIDIA GB200, sm_100)
+======================================================
+  NVRS-CUDA  —  BENCH3P
+------------------------------------------------------
+  Model        : BLACK-OIL (3-phase)
+  Grid         : 46 x 112 x 22  (113344 cells)
+  Cell size    : 43.4783 x 17.8571 x 2.72727 ft
+  Solver       : CPR  +  FGMRES  [mixed FP32 AMG, df64-emulated operator]
+  Wells        : 4 injectors, 3 producers
+  Time         : 0 → 2000 days, report every 100 days
+======================================================
+
+--- FORWARDING: 20 report steps of 100 days (to 2000 days) ---
+  Newton : tol 5.00e-03 (relative), max 20 iterations/step
+  Linear : tol 1.00e-02, max 200 iterations, FGMRES restart 30
+  Solver : CPR preconditioner, FP32 AMG (compile-time), df64-emulated FP64 operator
+  AMG    : hierarchy reused for up to 4 further Newton iterations, rebuilt early if Krylov exceeds 1.3x the fresh count (AMGREUSE)
+
+  step  time[d]    |R|_start      |R|_end         rel newt krylov wall[s]  progress
+  ------------------------------------------------------------------------------------------------
+  [chop] step 1 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 1 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 1 converged at dt = 25 days; starting the next step there
+  1       100.0   3.0374e+01   6.8903e-02   2.268e-03   48    281     4.0  [#-------------------]   5% 
+  [chop] step 2 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 2 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 2 converged at dt = 6.25 days; starting the next step there
+  2       200.0   2.7257e+01   1.5345e-03   5.630e-05   56    267     8.5  [##------------------]  10% 
+  [chop] step 3 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 3 converged at dt = 6.25 days; starting the next step there
+  3       300.0   2.2332e+01   1.4456e-03   6.473e-05   54    268    10.6  [###-----------------]  15% 
+  [dt] step 4 converged at dt = 12.5 days; starting the next step there
+  4       400.0   1.9309e+01   1.8825e-03   9.749e-05   31    181    11.7  [####----------------]  20% 
+  [dt] step 5 converged at dt = 25 days; starting the next step there
+  5       500.0   1.6681e+01   1.8617e-02   1.116e-03   25    148    12.5  [#####---------------]  25% 
+  [chop] step 6 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 6 converged at dt = 25 days; starting the next step there
+  6       600.0   1.5532e+01   2.3184e-03   1.493e-04   25    152    14.2  [######--------------]  30% 
+  [chop] step 7 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 7 converged at dt = 25 days; starting the next step there
+  7       700.0   1.5262e+01   3.3411e-02   2.189e-03   21    133    15.6  [#######-------------]  35% 
+  [chop] step 8 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 12.5 days in 8 sub-steps
+  [chop] step 8 did not converge; retrying with dt = 6.25 days in 16 sub-steps
+  [dt] step 8 converged at dt = 6.25 days; starting the next step there
+  8       800.0   1.6152e+01   4.2513e-02   2.632e-03   51    242    20.5  [########------------]  40% 
+  [dt] step 9 converged at dt = 12.5 days; starting the next step there
+  9       900.0   1.4977e+01   1.1640e-02   7.772e-04   24    136    21.3  [#########-----------]  45% 
+  [dt] step 10 converged at dt = 25 days; starting the next step there
+  10     1000.0   1.4008e+01   2.9300e-02   2.092e-03   20    111    22.0  [##########----------]  50% 
+  [chop] step 11 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 11 converged at dt = 25 days; starting the next step there
+  11     1100.0   1.3385e+01   5.3730e-02   4.014e-03   17    107    23.4  [###########---------]  55% 
+  [chop] step 12 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 12 converged at dt = 25 days; starting the next step there
+  12     1200.0   1.3059e+01   2.5151e-02   1.926e-03   24    150    24.9  [############--------]  60% 
+  [chop] step 13 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 13 converged at dt = 25 days; starting the next step there
+  13     1300.0   1.1724e+01   4.7526e-02   4.054e-03   19    139    26.6  [#############-------]  65% 
+  [chop] step 14 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 14 converged at dt = 25 days; starting the next step there
+  14     1400.0   1.0299e+01   1.0886e-03   1.057e-04   17    132    28.1  [##############------]  70% 
+  [chop] step 15 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 15 converged at dt = 25 days; starting the next step there
+  15     1500.0   8.8770e+00   7.2949e-04   8.218e-05   16    129    29.7  [###############-----]  75% 
+  [dt] step 16 converged at dt = 50 days; starting the next step there
+  16     1600.0   7.9248e+00   2.2356e-02   2.821e-03   19    148    30.5  [################----]  80% 
+  [chop] step 17 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [chop] step 17 did not converge; retrying with dt = 25 days in 4 sub-steps
+  [dt] step 17 converged at dt = 25 days; starting the next step there
+  17     1700.0   7.0721e+00   1.1896e-03   1.682e-04   14    114    32.8  [#################---]  85% 
+  [dt] step 18 converged at dt = 50 days; starting the next step there
+  18     1800.0   6.2467e+00   3.1957e-04   5.116e-05   11    131    33.5  [##################--]  90% 
+  [chop] step 19 did not converge; retrying with dt = 50 days in 2 sub-steps
+  [dt] step 19 converged at dt = 50 days; starting the next step there
+  19     1900.0   4.5202e+00   6.8175e-04   1.508e-04    8     87    35.0  [###################-]  95% 
+  20     2000.0   3.9531e+00   6.1512e-03   1.556e-03    8     90    35.6  [####################] 100% 
+  ------------------------------------------------------------------------------------------------
+  simulation finished in 35.56 s (1.78 s per report step)
+  AMG setup: 232 of 995 rebuilt (763 reused, 70 cut short by the growth guard), 30.9 ms each, 7.16 s total

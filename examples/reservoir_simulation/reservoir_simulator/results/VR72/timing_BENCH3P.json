@@ -1,0 +1,56 @@
+{
+  "opm": {
+    "seconds": 9.275,
+    "ranks": 1,
+    "hardware": "4x NVIDIA Graphics Device + 352 cores, unknown",
+    "solver": "gpuistl: gpubicgstab + OPMGPUILU0, FP32 factors (GPU, 1 rank)",
+    "breakdown": {
+      "setup": 0.07,
+      "simulation": 5.32,
+      "assembly": 0.58,
+      "linear": 4.1,
+      "linear_setup": 0.0,
+      "props": 0.48,
+      "prepost": 0.13,
+      "output": 0.03
+    }
+  },
+  "nvrs_amgx": {
+    "seconds": 4.669,
+    "ranks": 1,
+    "hardware": "4x NVIDIA Graphics Device",
+    "solver": "CPR: FP32 AmgX AMG + block-Jacobi, FP64 FGMRES (GPU)",
+    "breakdown": {
+      "assembly": 0.0478664,
+      "linear": 0.722505,
+      "simulation": 0.951317,
+      "amg_setup": 0.252864,
+      "amg_solve": 0.229912,
+      "stage2": 0.0198122,
+      "amg_setups": 24,
+      "amg_applications": 1279,
+      "amg_cycles": 0,
+      "amg_reuses": 215,
+      "amg_reuse_aborts": 0
+    }
+  },
+  "nvrs_hypre": {
+    "seconds": 7.102,
+    "ranks": 1,
+    "hardware": "4x NVIDIA Graphics Device",
+    "solver": "CPR: FP32 HYPRE BoomerAMG + block-Jacobi, FP64 FGMRES (GPU)",
+    "breakdown": {
+      "assembly": 0.0478891,
+      "linear": 3.1836,
+      "simulation": 3.44104,
+      "amg_setup": 0.787761,
+      "amg_solve": 1.59971,
+      "stage2": 0.0910373,
+      "amg_setups": 48,
+      "amg_applications": 6829,
+      "amg_cycles": 6829,
+      "amg_reuses": 216,
+      "amg_reuse_aborts": 33
+    }
+  }
+}

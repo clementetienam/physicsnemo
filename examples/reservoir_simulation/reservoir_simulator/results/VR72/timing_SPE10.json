@@ -1,0 +1,94 @@
+{
+  "opm": {
+    "seconds": 766.16,
+    "ranks": "1",
+    "solver": "--threads-per-process=2",
+    "hardware": "CPU/GPU per solver",
+    "breakdown": {
+      "setup": 7.0,
+      "simulation": 766.16,
+      "assembly": 113.35,
+      "linear": 530.94,
+      "linear_setup": 135.88,
+      "props": 101.32,
+      "prepost": 18.36,
+      "output": 0.86
+    },
+    "wall_including_output": 778.398
+  },
+  "nvrs_amgx": {
+    "seconds": 41.2079,
+    "ranks": "1",
+    "solver": "CPR: AmgX AMG (FP32) + block-Jacobi",
+    "hardware": "GPU",
+    "deck": "decks/SPE10_MATCHED.DATA",
+    "breakdown": {
+      "assembly_seconds": 5.83054,
+      "linear_seconds": 23.8558,
+      "amg_setup_seconds": 7.77278,
+      "amg_solve_seconds": 9.41646,
+      "stage2_seconds": 2.22936,
+      "spmv_seconds": 1.45485,
+      "ortho_seconds": 1.98623,
+      "ijvec_seconds": 0,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 41.2079,
+      "amg_setups": 355,
+      "amg_applications": 13926,
+      "amg_cycles": 0,
+      "amg_reuses": 0,
+      "amg_reuse_aborts": 0
+    },
+    "wall_including_output": 46.808
+  },
+  "nvrs_hypre": {
+    "seconds": 91.74,
+    "ranks": "1",
+    "solver": "CPR: HYPRE BoomerAMG (FP32) + block-Jacobi",
+    "hardware": "GPU",
+    "deck": "decks/SPE10_MATCHED.DATA",
+    "breakdown": {
+      "assembly_seconds": 5.37155,
+      "linear_seconds": 73.5363,
+      "amg_setup_seconds": 7.16,
+      "amg_solve_seconds": 51.4327,
+      "stage2_seconds": 4.27419,
+      "spmv_seconds": 2.81522,
+      "ortho_seconds": 4.18018,
+      "ijvec_seconds": 0,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 91.74,
+      "amg_setups": 126,
+      "amg_applications": 26411,
+      "amg_cycles": 26411,
+      "amg_reuses": 252,
+      "amg_reuse_aborts": 122
+    },
+    "wall_including_output": 97.087
+  },
+  "nvrs_amgx_fp64": {
+    "seconds": 41.1744,
+    "ranks": "1",
+    "solver": "CPR: AmgX AMG (FP32) + block-Jacobi, native FP64 operator",
+    "hardware": "GPU",
+    "deck": "decks/SPE10_MATCHED.DATA",
+    "breakdown": {
+      "assembly_seconds": 5.82852,
+      "linear_seconds": 23.8604,
+      "amg_setup_seconds": 7.77678,
+      "amg_solve_seconds": 9.41338,
+      "stage2_seconds": 2.22931,
+      "spmv_seconds": 1.45514,
+      "ortho_seconds": 1.98562,
+      "ijvec_seconds": 0,
+      "stage2_setup_seconds": 0,
+      "wall_seconds": 41.1744,
+      "amg_setups": 355,
+      "amg_applications": 13926,
+      "amg_cycles": 0,
+      "amg_reuses": 0,
+      "amg_reuse_aborts": 0
+    },
+    "wall_including_output": 46.585
+  }
+}
