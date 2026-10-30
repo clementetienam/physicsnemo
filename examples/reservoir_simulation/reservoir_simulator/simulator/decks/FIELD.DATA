@@ -1,0 +1,232 @@
+-- =====================================================================
+--  NVRS-CUDA — SINGLE-RUN REFERENCE CASE
+--
+--  This is the deck to run first.  It is a real three-phase black-oil
+--  waterflood on the 40 x 40 x 3 permeability field shipped in
+--  ../data/iglesias3.out (4800 values, 60.5 - 376.7 mD, one per cell in
+--  natural order), which is the same field behind the reference outputs
+--  in ../RESULTS/40403/.
+--
+--  Run it from the cuda/ directory:
+--
+--      ./build/nvrs_cuda decks/FIELD.DATA
+--
+--  PERMFILE below is relative to the working directory, so run from cuda/
+--  or pass an absolute path.
+--
+--  Expect ~20 report steps, a few Newton iterations each.  Output lands in
+--  OUTPUT_FIELD/ and is plotted automatically at the end of the run.
+-- =====================================================================
+
+TITLE    FIELD WATERFLOOD 40x40x3
+
+-- ---- MODEL / RUNSPEC ------------------------------------------------
+NCOMP    3             -- 3 = oil/water/gas.  Must precede MODEL.
+MODEL    BLACKOIL
+OUTDIR   OUTPUT_FIELD
+CASENAME FIELD         -- ECLIPSE base name: FIELD.EGRID/.INIT/.UNRST/.RSM
+
+-- ---- GRID -----------------------------------------------------------
+NX       40
+NY       40
+NZ       3
+DX       50            -- ft
+DY       50
+DZ       20
+KZMULT   0.2           -- Kz = KZMULT * Kx
+
+-- Real permeability field, one value per global cell (natural order).
+-- Porosity is mapped linearly from it onto [POROMIN, POROMAX].
+PERMFILE ../data/iglesias3.out
+POROMIN  0.05
+POROMAX  0.30
+
+-- ---- PROPS (fluid) --------------------------------------------------
+UW       1.0
+UO       2.5
+UG       0.02
+BW       1.0
+BO       1.2
+BG       0.005
+RHOW     1.0
+RHOO     0.8
+RHOG     0.01
+CFW      0.00001
+CFO      0.00001
+CT       0.00002
+SWI      0.1
+SWR      0.1
+PINIT    3000
+PBUB     3000
+PATM     14.6959
+SWINIT   0.2
+SGINIT   0.02
+SOINIT   0.78
+-- GRAVITY 0 matches the CuPy reference, whose pressure equation is
+--   -div(lambda_t K grad p) = q
+-- with no rho*g*z term at all.  With gravity on and rho_w = 1.0 vs rho_o = 0.8
+-- over three 20 ft layers, water slumps to the bottom layer and an areal (K)
+-- plot shows gravity segregation instead of the injector-driven front the
+-- reference produces.  Set GRAVITY 1 to re-enable the full potential.
+GRAVITY  0
+
+-- ---- SWOF: water-oil (Sw, Krow, Krw) --------------------------------
+SWOF
+ 0.00  1.0000 0.0000
+ 0.30  1.0000 0.0000
+ 0.35  0.5900 0.0100
+ 0.40  0.3200 0.0200
+ 0.45  0.1800 0.0340
+ 0.50  0.0800 0.0460
+ 0.55  0.0300 0.0680
+ 0.60  0.0100 0.0900
+ 0.65  0.0010 0.1280
+ 0.70  0.0001 0.1660
+ 0.75  0.0000 0.2000
+ 0.80  0.0000 0.2400
+ 1.00  0.0000 0.2400
+/
+
+-- ---- SGOF: gas-oil (Sg, Krog, Krg) ----------------------------------
+SGOF
+ 0.00  1.0000 0.0000
+ 0.03  0.7500 0.0000
+ 0.05  0.5900 0.0200
+ 0.10  0.3200 0.0900
+ 0.15  0.1800 0.1600
+ 0.20  0.0800 0.2400
+ 0.25  0.0300 0.3300
+ 0.30  0.0100 0.4300
+ 0.35  0.0010 0.5500
+ 0.40  0.0000 0.6700
+ 0.45  0.0000 0.8100
+ 0.50  0.0000 1.0000
+ 1.00  0.0000 1.0000
+/
+
+-- ---- SOLVER  (CPR is always the preconditioner) ---------------------
+KRYLOV   FGMRES        -- FGMRES (default) or BICGSTAB
+LINTOL   1e-6
+LINMAXIT 100
+RESTART  30
+MIXED    1             -- FP32 BoomerAMG preconditioner (mixed precision)
+EMULATE  1             -- double-word df64 FP64 operator; 0 = native FP64
+JACOBIAN ANALYTIC      -- exact 3-phase derivatives (NUMERICAL to cross-check)
+
+-- LINSOLVER: which library supplies the stage-1 pressure multigrid.
+-- AMGX (default), HYPRE, or GINKGO (an FP16 multigrid on one GPU;
+-- GINKGOPREC 16 or 32).  This chooses the multigrid ONLY.  The
+-- mixed-precision arrangement is identical either way: FP64 outer
+-- FGMRES over a df64-emulated FP64 operator, an FP32 multigrid inside
+-- the CPR preconditioner, and the same bs x bs block-Jacobi second
+-- stage.  A binary built without AmgX falls back to HYPRE and says so.
+LINSOLVER AMGX
+-- ---- AMG tuning (measured on one GB200, 200x200x25) ----------------
+-- A V-cycle here is dominated by per-level overhead rather than by
+-- arithmetic: level 0 is a few hundred microseconds of memory traffic
+-- inside a cycle costing several times that with no communication at all.
+-- So the win is in having fewer levels, not cheaper ones.  AMGFAST
+-- coarsens aggressively and keeps the coarsest grid on the device, taking
+-- seven levels at 2.07 ms per cycle down to three at 1.11 ms.
+AMGFAST  1
+-- Newton iterations that may reuse the hierarchy, and the Krylov growth
+-- that abandons it early.  A rebuild costs 42 ms on one GPU and 94 ms on
+-- two, against a V-cycle of about 1 ms, so it is worth tolerating a good
+-- many extra iterations to avoid one.  The old 4 and 1.3 rebuilt far too
+-- eagerly for that ratio.
+AMGREUSE 10
+AMGREUSEGROWTH 2.0
+-- DTMAX caps the internal timestep and is deck-specific: set it to the dt
+-- the run actually settles at.  Without it a deck whose DTREPORT is too
+-- large for the physics attempts that step, fails, and halves -- and every
+-- failed attempt runs NEWTONMAX Newtons of LINMAXIT Krylov iterations and
+-- is then discarded.  On MILLION that search was 10,688 AMG applies to
+-- produce an answer needing 1,830, and setting DTMAX to the value it was
+-- going to reach anyway took the run from 23.0 s to 5.4 s.  If a run
+-- prints no [chop] lines, DTMAX is not needed here.
+-- DTGROW: consecutive first-attempt successes before the step is
+-- doubled.  1 is the old behaviour, which lengthened after every
+-- success including ones that had just been chopped, so dt overshot,
+-- chopped back and overshot again.  On BENCH3P that cost a discarded
+-- attempt on 11 of 20 report steps.
+DTGROW   2
+
+
+-- ---- TIME / SCHEDULE ------------------------------------------------
+DTREPORT   100         -- days per report step
+TEND       2000        -- days  -> 20 report steps
+NEWTONMAX  20
+NEWTONTOL  5e-3
+
+-- ---- Flow-equivalent nonlinear and timestep controls ------------------
+-- The project standard.  This block is the same in every deck the
+-- repository ships and in every deck the generators write; decks/NORNE.DATA
+-- carries the long-form reasoning for each line, and the manual's
+-- "Timestep and convergence controls" section carries the rest.  Keeping it
+-- identical everywhere is the point: a deck that quietly omits one of these
+-- is not running the scheme the results were measured with, and the
+-- difference shows up as a timing or a conservation number nobody can
+-- reproduce.  Values a deck genuinely needs to differ on -- DPMAX for a
+-- long injector pressure climb, DSMAX where saturation is the unstable
+-- variable -- are overridden below this block, not by deleting a line.
+--
+-- Abandon a sub-step after this many Newton iterations that fail to reduce
+-- the residual.  A stalled attempt does not recover; the answer is a
+-- shorter step.
+NEWTONSTALLMAX 4
+-- Backtrack the fully implicit Newton update until the residual descends,
+-- halving alpha at most this many times.  The accepted trial is carried
+-- into the next Newton iteration, so a search that accepts alpha = 1 costs
+-- no extra assembly.
+LINESEARCH     6
+-- Flow's getReservoirConvergence: the signed component material balance and
+-- the local CNV bound, tested at every Newton iteration.  CNVRELAXPV and
+-- CNVRELAXED keep their code defaults of 0.03 and 1.0, which are Flow's.
+OPMCONV        1
+-- Carry one continuous timestep ACROSS report steps and rescale it from the
+-- Newton count of the last converged sub-step, as Flow's
+-- AdaptiveTimeStepping does, instead of resetting dt on a dyadic lattice at
+-- every report step.
+DTKEEP         1
+DTCONTROL      1
+-- Chop a saturation update that crosses a relperm endpoint so it lands just
+-- past it, rather than letting one iteration leap between mobility regimes.
+APPLEYARD      1
+-- Per-cell pressure and saturation change limits per Newton iteration.
+DPMAX        500
+DSMAX        0.2
+-- ---- end of the standard control block --------------------------------
+
+
+-- ---- OUTPUT ---------------------------------------------------------
+MAKECSV      1
+MAKESUMMARY  1
+ECLOUT       1         -- EGRID / INIT / UNRST / SMSPEC / UNSMRY / RSM
+AUTOPLOT     1         -- render figures at the end of the run
+
+-- ---- WELLS:  I  J  TYPE  RATE  RW  SKIN  PWF  PERF  NAME -------------
+--   TYPE:  1 = injector (RATE = STB/D water),  -1 = producer (BHP controlled)
+--   Five-spot: injectors at the corners, producers toward the centre.
+--
+--   RW must be well inside the Peaceman equivalent radius
+--   re = REFACTOR*DX = 0.2*50 = 10 ft, so a real 0.5 ft wellbore is used.
+--   (RW = 500 would make ln(re/rw) negative, flip the sign of the well index
+--   and turn producers into injectors; the simulator now rejects that.)
+--
+--   PWF is chosen for approximate voidage balance rather than maximum
+--   drawdown.  With WI = 2*pi*C*k*dz/ln(re/rw) ~ 9.6 at the mean 204 mD and
+--   an oil mobility of ~0.27, three perforated layers give
+--       q_o ~ 3 * 9.6 * 0.27 * (p - pwf)   STB/D per producer,
+--   so pwf = 2800 psia yields ~1570 STB/D per well, ~4700 STB/D total against
+--   4000 STB/D injected.  Draining the field harder (the pwf = 100 of the
+--   original decks gives ~68000 STB/D) empties the 7.5e6 bbl pore volume in
+--   about 110 days and the run diverges long before TEND.
+WELLS
+   8   8   1   1000   0.5   0.0  2800   all I1
+  33   8   1   1000   0.5   0.0  2800   all I2
+   8  33   1   1000   0.5   0.0  2800   all I3
+  33  33   1   1000   0.5   0.0  2800   all I4
+  20  20  -1     -1   0.5   0.0  2800   all P1
+  12  28  -1     -1   0.5   0.0  2800   all P2
+  28  12  -1     -1   0.5   0.0  2800   all P3
+/

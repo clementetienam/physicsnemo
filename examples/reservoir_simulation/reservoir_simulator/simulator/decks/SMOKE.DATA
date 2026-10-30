@@ -1,0 +1,143 @@
+-- =====================================================================
+--  NVRS-CUDA smoke-test deck — tiny 2-phase case for CI.
+--  Small grid + few steps so a full build+run completes in seconds.
+--  Exercises the ANALYTIC black-oil Jacobian path (bs = 2).
+-- =====================================================================
+TITLE   SMOKE TEST (2-phase, analytic Jacobian)
+
+NCOMP   2            -- must precede MODEL so BLACKOIL resolves to 2-phase
+MODEL   BLACKOIL
+OUTDIR  OUTPUT_SMOKE
+
+NX      8
+NY      8
+NZ      2
+DX      50
+DY      50
+DZ      20
+KZMULT  0.2
+PERMMIN 10
+PERMMAX 300
+POROMIN 0.08
+POROMAX 0.25
+
+UW      1.0
+UO      2.5
+BW      1.0
+BO      1.2
+SWI     0.1
+SWR     0.1
+CFO     0.00001
+PINIT   3000
+PBUB    3000
+PATM    14.6959
+SWINIT  0.2
+GRAVITY 1
+
+SWOF
+ 0.00 1.0000 0.0000
+ 0.30 1.0000 0.0000
+ 0.50 0.0800 0.0460
+ 0.70 0.0001 0.1660
+ 1.00 0.0000 0.2400
+/
+
+KRYLOV   FGMRES
+JACOBIAN ANALYTIC     -- exact 2-phase derivatives
+LINTOL   1e-6
+LINMAXIT 100
+
+-- ---- AMG tuning (measured on one GB200, 200x200x25) ----------------
+-- A V-cycle here is dominated by per-level overhead rather than by
+-- arithmetic: level 0 is a few hundred microseconds of memory traffic
+-- inside a cycle costing several times that with no communication at all.
+-- So the win is in having fewer levels, not cheaper ones.  AMGFAST
+-- coarsens aggressively and keeps the coarsest grid on the device, taking
+-- seven levels at 2.07 ms per cycle down to three at 1.11 ms.
+-- LINSOLVER: which library supplies the stage-1 pressure multigrid.
+-- AMGX (default), HYPRE, or GINKGO (an FP16 multigrid on one GPU;
+-- GINKGOPREC 16 or 32).  This chooses the multigrid ONLY.  The
+-- mixed-precision arrangement is identical either way: FP64 outer
+-- FGMRES over a df64-emulated FP64 operator, an FP32 multigrid inside
+-- the CPR preconditioner, and the same bs x bs block-Jacobi second
+-- stage.  A binary built without AmgX falls back to HYPRE and says so.
+LINSOLVER AMGX
+AMGFAST  1
+-- Newton iterations that may reuse the hierarchy, and the Krylov growth
+-- that abandons it early.  A rebuild costs 42 ms on one GPU and 94 ms on
+-- two, against a V-cycle of about 1 ms, so it is worth tolerating a good
+-- many extra iterations to avoid one.  The old 4 and 1.3 rebuilt far too
+-- eagerly for that ratio.
+AMGREUSE 10
+AMGREUSEGROWTH 2.0
+-- DTMAX caps the internal timestep and is deck-specific: set it to the dt
+-- the run actually settles at.  Without it a deck whose DTREPORT is too
+-- large for the physics attempts that step, fails, and halves -- and every
+-- failed attempt runs NEWTONMAX Newtons of LINMAXIT Krylov iterations and
+-- is then discarded.  On MILLION that search was 10,688 AMG applies to
+-- produce an answer needing 1,830, and setting DTMAX to the value it was
+-- going to reach anyway took the run from 23.0 s to 5.4 s.  If a run
+-- prints no [chop] lines, DTMAX is not needed here.
+-- DTGROW: consecutive first-attempt successes before the step is
+-- doubled.  1 is the old behaviour, which lengthened after every
+-- success including ones that had just been chopped, so dt overshot,
+-- chopped back and overshot again.  On BENCH3P that cost a discarded
+-- attempt on 11 of 20 report steps.
+DTGROW   2
+
+MIXED    1
+
+DTREPORT   50
+TEND       200        -- 4 report steps
+NEWTONMAX  15
+NEWTONTOL  5e-3
+
+-- ---- Flow-equivalent nonlinear and timestep controls ------------------
+-- The project standard.  This block is the same in every deck the
+-- repository ships and in every deck the generators write; decks/NORNE.DATA
+-- carries the long-form reasoning for each line, and the manual's
+-- "Timestep and convergence controls" section carries the rest.  Keeping it
+-- identical everywhere is the point: a deck that quietly omits one of these
+-- is not running the scheme the results were measured with, and the
+-- difference shows up as a timing or a conservation number nobody can
+-- reproduce.  Values a deck genuinely needs to differ on -- DPMAX for a
+-- long injector pressure climb, DSMAX where saturation is the unstable
+-- variable -- are overridden below this block, not by deleting a line.
+--
+-- Abandon a sub-step after this many Newton iterations that fail to reduce
+-- the residual.  A stalled attempt does not recover; the answer is a
+-- shorter step.
+NEWTONSTALLMAX 4
+-- Backtrack the fully implicit Newton update until the residual descends,
+-- halving alpha at most this many times.  The accepted trial is carried
+-- into the next Newton iteration, so a search that accepts alpha = 1 costs
+-- no extra assembly.
+LINESEARCH     6
+-- Flow's getReservoirConvergence: the signed component material balance and
+-- the local CNV bound, tested at every Newton iteration.  CNVRELAXPV and
+-- CNVRELAXED keep their code defaults of 0.03 and 1.0, which are Flow's.
+OPMCONV        1
+-- Carry one continuous timestep ACROSS report steps and rescale it from the
+-- Newton count of the last converged sub-step, as Flow's
+-- AdaptiveTimeStepping does, instead of resetting dt on a dyadic lattice at
+-- every report step.
+DTKEEP         1
+DTCONTROL      1
+-- Chop a saturation update that crosses a relperm endpoint so it lands just
+-- past it, rather than letting one iteration leap between mobility regimes.
+APPLEYARD      1
+-- Per-cell pressure and saturation change limits per Newton iteration.
+DPMAX        500
+DSMAX        0.2
+-- ---- end of the standard control block --------------------------------
+
+
+MAKECSV      1
+MAKEVTK      1
+MAKESUMMARY  1
+MAKEGASSMANN 0
+
+WELLS
+   2   2   1    500   0.5   0.0  2850   all I1
+   7   7  -1     -1   0.5   0.0  2850   all P1
+/

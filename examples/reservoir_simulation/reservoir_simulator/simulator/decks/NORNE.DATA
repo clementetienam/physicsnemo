@@ -1,0 +1,466 @@
+-- ===========================================================================
+-- NORNE -- the Equinor field model, run through NVRS-CUDA.
+--
+-- The field
+-- ---------
+-- Norne lies in blocks 6608/10 and 6508/1 in the southern Norwegian Sea, on
+-- the Nordland Ridge about 200 km off Helgeland, in roughly 380 m of water.
+-- Discovered in 1991, on stream in November 1997 from the Norne FPSO, and
+-- operated by Equinor (Statoil at first oil) on behalf of the licence.  It is
+-- the reason this deck exists as a public benchmark at all: in 2001 the
+-- operator and its partners released the full history-matched model, and it
+-- has been the open reference case for reservoir simulation ever since.  The
+-- deck read here is the version distributed with OPM.
+--
+-- Reservoir and rock
+-- ------------------
+-- The oil sits in Lower and Middle Jurassic sandstones, some 2,500-2,700 m
+-- subsea, in a tilted fault block.  Four formations carry it, and their
+-- contrast is the whole character of the model:
+--
+--   Garn      Middle Jurassic, the best of them -- clean, well sorted shallow
+--             marine sand, permeability into the darcies.
+--   Ile       beneath Garn, tidal to shoreface, good but more layered; the
+--             vertical barriers between its subunits steer where gas goes.
+--   Tofte     coarser, more heterogeneous, and the reason this deck carries
+--             per-layer PERMZ multipliers rather than one KZMULT.
+--   Tilje     the deepest, tidal and strongly heterolithic: thin sand-shale
+--             interbedding, and by far the poorest connected of the four.
+--
+-- Porosity runs roughly 25-30% in Garn and Ile and falls into the teens in
+-- Tilje; permeability spans about four orders of magnitude across the model.
+-- That range is not decoration -- it is what makes the pressure operator hard
+-- and what the multigrid in stage one of the CPR has to coarsen through.
+--
+-- Structure
+-- ---------
+-- The field is cut by a set of mostly N-S normal faults, 61 of them named in
+-- this deck.  They matter twice over.  Geometrically, a throw juxtaposes one
+-- column against parts of several others, so a cell can have any number of
+-- neighbours -- degree runs from 1 to 17 here, mean 5.81 -- which is why the
+-- assembly uses a general connection list and not a six-face stencil.
+-- Dynamically, the fault transmissibility multipliers and MULTREGT between
+-- fault blocks decide which parts of the field talk to each other at all:
+-- 13,479 connections are scaled by named faults, 12,992 more by MULTREGT, and
+-- 3,843 are sealed outright.
+--
+-- Production
+-- ----------
+-- Norne is produced by water injection with gas reinjection into the gas cap,
+-- through horizontal and near-horizontal wells -- 24 of the 36 here have
+-- horizontal sections.  The history in this deck runs from November 1997 to
+-- December 2006, 3,304 days over 247 report steps, and the wells are worked
+-- hard: C-1H, C-3H, C-4H and C-4AH alternate between water and gas injection
+-- repeatedly, which is why the run banners a change of role rather than
+-- logging it.  That alternation is the hardest thing in the schedule for a
+-- solver, and it is exactly the part a synthetic benchmark never has.
+--
+-- The grid, the faults, the wells and the initial state all come from the
+-- corner-point deck named by FIELDDECK.  That file is Equinor's own, read
+-- unmodified; nothing in it is converted or rewritten beforehand.  What this
+-- deck supplies is only what a corner-point deck states in tables NVRS does
+-- not yet interpret: the fluid properties, the saturation functions, and the
+-- solver settings.
+--
+-- Fetch the model first:
+--     ./benchmark/get_norne.sh
+--
+-- Then:
+--     NGPU=1 ./scripts/run.sh decks/NORNE.DATA
+--
+-- Always through run.sh: nvrs_cuda is an MPI program and launching it bare
+-- initialises no transport, so UCX complains and the process exits before it
+-- has looked at the deck.
+--
+-- Norne is METRIC.  NVRS works in field units internally and converts on the
+-- way in, then reports the answer back in the deck's own units -- so the
+-- pressures printed here are bar, not psi.
+-- ===========================================================================
+
+TITLE    NORNE (OPM open benchmark) -- corner-point, faulted, 36 wells
+
+FIELDDECK  dataset/NORNE/NORNE_ATW2013.DATA
+
+-- Phase pressure gradients, bar/m.  Equilibration cannot derive these without
+-- PVT tables and will not guess them, so they are stated.  These are the
+-- values Norne's own equilibration file documents in its header.
+GRADOIL    0.0706
+GRADWATER  0.1001
+GRADGAS    0.0186
+
+-- Connate water for the hydrocarbon columns.  Only a fallback now: with
+-- PROPSARRAYS below, the deck's own per-layer SWL is used instead, which runs
+-- from 0.04 in the top layer to 0.16 in Ile 1.1.
+SWCONNATE  0.1
+
+-- Take the field deck at its word.
+--
+-- PROPSARRAYS reads the per-cell arrays that live in PROPS and REGIONS, which
+-- the grid reader used to stop before.  That is what makes ENDSCALE's
+-- endpoints visible, and it also hands equilibration the deck's own SWL and
+-- EQLNUM -- Norne has five equilibration regions, and the field is initialised
+-- against the record each cell is assigned rather than against the first one.
+--
+-- USEENDSCALE then scales each cell's relative permeability onto its own
+-- endpoints, honouring SCALECRS YES (three-point).  This is the term that
+-- decides when water starts to flow: the deck sets SWCR = SWL + 0.08, so
+-- water is immobile below a saturation of 0.12 to 0.24 depending on the
+-- formation.  Without it every cell uses the table's own critical water, and
+-- water moves earlier than the deck says it should everywhere at once --
+-- which is what left NVRS producing 2.31x OPM's water and 0.69x its oil.
+PROPSARRAYS  1
+USEENDSCALE  1
+
+-- Drive the wells from the field deck's 247-step schedule.
+USESCHEDULE 1
+
+-- Flowing bottom-hole pressure for the producers [psi].
+--
+-- Norne is history matched: its WCONHIST records state what each well
+-- produced and default the bottom-hole pressure -- all 2,109 of them.  This
+-- simulator's producers are pressure controlled, so a value is needed, and
+-- without one those wells would be handed a BHP of zero and pull the entire
+-- reservoir pressure across every completion.
+--
+-- The FLOOR a producer may pull to, used only where the deck states no BHP
+-- limit of its own.  Norne's WCONHIST history records mostly do not, so this
+-- applies to nearly every producer.
+--
+-- It was 2900 psi, and that was throttling the whole field.  Against an
+-- initial 3774-4543 psi it leaves under 900 psi of drawdown, so the wells sat
+-- on the floor instead of on their rate targets -- visible in the report as a
+-- bottom-hole pressure pinned flat at 2900 across B-2H, B-3H, D-1H, E-1H,
+-- E-3AH and E-4AH while Flow's swings down to 500-2000.  A well held above
+-- its target under-delivers every phase at once, which is why oil, water and
+-- gas were all low together.
+--
+-- 500 psi is a floor rather than an operating point: the rate targets bind
+-- first, and this only catches a well that cannot meet one at all.
+PRODBHP  500
+
+-- Crossflow in a rate-controlled producer.
+--
+-- 0 (the default, and what this run uses): a producer's flowing pressure is
+-- solved so that only the completions above it carry the rate target; any
+-- completion below it is shut for the step.  This is OPM's own !allow_cf
+-- branch in StandardWell::computePerfRate.
+--
+-- 1 restores the previous behaviour: one division over every completion, which
+-- lets the ones below the flowing pressure subtract from the total.  That is
+-- neither of OPM's branches -- OPM's reverse-flow path uses TOTAL mobility
+-- distributed by the wellbore mixture, so what goes back in always carries the
+-- well's own composition.  Applying each phase's local formation mobility
+-- instead let B-4H and D-4H take oil in at one completion while pushing gas
+-- out of another, which is why they reported large negative oil beside large
+-- positive gas in the c755f1e comparison.
+--
+-- 2: allow reverse completion flow, as WELSPECS defaults to, but carry
+-- the wellbore's own mixture on it.  This is the physical OPM branch;
+-- unlike 1 it never pushes a cell's local phase composition backwards
+-- through a common wellbore.
+--
+-- Set to 1 to reproduce that run exactly.
+WELLXFLOW 2
+
+-- Pressure ceiling for an injector whose WCONINJE record defaults one.
+-- 600 bar = 8702 psia, which is what Norne's own records state for the
+-- wells that do give a limit.  Without it those wells inject their full
+-- stated rate whatever the cell pressure does: the gas residual then
+-- holds a term independent of the unknowns and Newton freezes on it.
+INJBHP   8702
+
+-- Matrix-free eliminated common-BHP coupling for rate-controlled wells.
+-- Mode 7 uses the complete [BHP, oil fraction, water fraction] block whenever
+-- reverse flow makes the wellbore mixture an active reservoir unknown.  On an
+-- all-forward well it uses the more robust frozen-mobility pressure column;
+-- there is then no reservoir-side mixture column to eliminate.
+-- Mode 8 is the earlier one-sided injector allocation experiment.  Mode 9,
+-- retained here, replaces it with Flow-style injector crossflow and eliminates
+-- the complete [BHP, oil fraction, water fraction] injector block.  A
+-- high-pressure completion can produce reservoir composition into the well;
+-- lower-pressure completions reinject the resulting wellbore mixture together
+-- with the scheduled wellhead stream.
+WELLSCHUR 9
+-- OPM-style black-oil primary switching: the third primary is Sg in a cell
+-- holding free gas, Rs once the gas has gone, Rv once the oil has gone.
+-- Corner-point (FIELDDECK) grids only; see the manual.
+PVSWITCH 1
+
+-- ---------------------------------------------------------------- fluids
+NCOMP    3
+MODEL    BLACKOIL
+OUTDIR   OUTPUT_NORNE
+CASENAME NORNE
+
+-- Which well curves the report draws.
+--
+--   WELLPLOT ALL                  every quantity
+--   WELLPLOT WOPR WWCT WGOR       only these
+--   WELLPLOT NONE                 skip the section
+--
+-- Known: WOPR (oil rate), WWPR (water rate), WGPR (gas rate), WWCT (water
+-- cut), WGOR (gas-oil ratio), WBHP (bottom-hole pressure).  One figure per
+-- quantity with every well overlaid, since the question these answer is which
+-- well is behind the field's behaviour.  Absent means ALL.
+WELLPLOT ALL
+
+-- Viscosities [cP] and formation volume factors, representative of Norne's
+-- PVT at reservoir conditions.
+--
+-- These are FALLBACKS.  With PVTCONST 0 below, the run reads PVTO, PVTG,
+-- PVTW and DENSITY out of the PROPS section of the deck FIELDDECK names, and
+-- these constants are then used only for the AIM throughput estimate.  Set
+-- PVTCONST 1 to ignore the tables and run on these numbers instead, which is
+-- what makes a table-versus-constant comparison a one-line edit.
+UW       0.32
+UO       1.20
+UG       0.02
+BW       1.0113
+BO       1.3360
+
+-- Bg in a FIELD deck is rb/scf, not the deck's own rm3/sm3.
+--
+-- Norne's PVTG gives about 0.00456 rm3/sm3 near reservoir pressure.  Putting
+-- that number here unconverted makes every scf of gas occupy 5.6 times the
+-- reservoir volume it should -- which for a gas injector at 1.4 million
+-- sm3/day into two completions is the difference between a hard step and an
+-- impossible one.
+--   0.00456 rm3/sm3 x (6.28981 rb/rm3) / (35.3147 scf/sm3) = 8.12e-4 rb/scf
+BG       0.000812
+
+-- Dissolved gas [scf/stb].  Norne's RSVD is about 120 sm3/sm3 at the datum;
+-- x 5.6146 gives scf/stb.  The tabulated saturated value at 4018 psi is 704,
+-- so this is a good constant -- but a constant is exactly the problem: with a
+-- frozen Rs, dRs/dp is zero, and injected gas can neither dissolve into the
+-- oil nor compress.  With the tables in play RS becomes the anchor for the
+-- UNDERSATURATED branch only: the Rs an oil keeps where no free gas exists
+-- to saturate it.  Where gas is present the bubble-point line sets it.
+RS       674
+
+-- PVTCONST picks the deck's constants over the built-in correlations, and
+-- must stay 1 here.  Clearing it does NOT enable the tables -- PVTTABLES does
+-- that -- it hands r.rs, r.bo, r.bg and r.ug to correlations tuned for a
+-- generic fluid, whose Rs is about 5650 SCF/STB against Norne's 674.  The
+-- constants above then stop describing this field, and the anchor for the
+-- undersaturated oil goes with them.
+PVTCONST 1
+
+-- Read PVTO/PVTG/PVTW from the PROPS section of the deck FIELDDECK names.
+-- 0 to ignore them and run on the constants above, which is what makes a
+-- table-versus-constant comparison a one-line edit.
+PVTTABLES 1
+
+-- Phase densities as SPECIFIC GRAVITIES, not lb/ft3.  The gravity term is
+-- GRAVGRAD * rho, and GRAVGRAD (0.4335 psi/ft) is already the gradient of
+-- water, so rho here is relative to water.  Norne's DENSITY record gives
+-- 1033 / 859.5 / 0.854 kg/m3, which divided by 1000 is:
+RHOW     1.033
+RHOO     0.8595
+RHOG     0.00085
+
+-- Total compressibility [1/psi]: rock plus fluid.
+--
+-- This is not a refinement, it is what makes the problem solvable.  With
+-- PVTCONST the formation volume factors are constants, so this is the only
+-- pressure dependence in the accumulation term.  Set it to zero and the
+-- reservoir is exactly incompressible -- and Norne's first year is depletion,
+-- three producers and no injector, which an incompressible closed reservoir
+-- simply cannot do.  The pressure operator degenerates to a singular Neumann
+-- Laplacian, the linear solve stalls at a fixed residual, and Newton fails at
+-- every timestep however small.
+--
+-- 2e-5 /psi is a normal total compressibility for a consolidated sandstone
+-- with live oil.
+CFO      0.00001
+-- Rock compressibility [1/psi].  With the tables in play this is what it
+-- says: the pore volume opening up.  With PVTCONST 1 it has to stand in for
+-- the fluids' compressibility too, and is then some nine times too small for
+-- gas -- Norne's tabulated gas gives 1.8e-4 /psi at 4200 psi.
+CT       0.00002
+-- SUPERSEDED for this case.  The field deck carries its own ROCK,
+-- 4.84e-5 /bar at 277 bar, which is 3.34e-6 /psi, and that is now read
+-- and used in place of the value above.  The run says so on startup.
+-- 2e-5 was a generic sandstone figure standing in for a number the deck
+-- had all along; it is six times too compressible for Norne, and OPM
+-- Flow has been using the deck's own value throughout.
+-- Global connate water and residual, used by the Newton saturation clamp and
+-- the Appleyard chop.  With PROPSARRAYS/USEENDSCALE these are OVERRIDDEN from
+-- the deck's own SWL and SWU arrays, because a single pair for the whole field
+-- contradicts them: SWI 0.10 against cells SWATINIT puts at 0.08 makes the
+-- clamp push those cells up every iteration while the equations pull them
+-- down, and Newton freezes.  Left here for the non-ENDSCALE path.
+SWI      0.10
+SWR      0.10
+PBUB     3900
+PATM     14.6959
+
+-- PINIT/SWINIT are the fallback only: with GRADIENTS given, the initial state
+-- is equilibrated from each region's datum instead.
+PINIT    3900
+SWINIT   0.20
+SGINIT   0.05
+SOINIT   0.75
+
+GRAVITY  1
+
+-- ------------------------------------------------------- saturation functions
+SWOF
+ 0.0000  1.0000  0.0000
+ 0.1000  1.0000  0.0000
+ 0.2000  0.6000  0.0050
+ 0.3000  0.3400  0.0180
+ 0.4000  0.1700  0.0450
+ 0.5000  0.0700  0.0900
+ 0.6000  0.0200  0.1600
+ 0.7000  0.0030  0.2500
+ 0.8000  0.0000  0.3600
+ 1.0000  0.0000  0.4000
+/
+
+SGOF
+ 0.0000  1.0000  0.0000
+ 0.0500  0.7000  0.0050
+ 0.1000  0.4500  0.0250
+ 0.2000  0.2000  0.1000
+ 0.3000  0.0700  0.2200
+ 0.4000  0.0150  0.4000
+ 0.5000  0.0000  0.6000
+ 0.9000  0.0000  1.0000
+/
+
+-- ------------------------------------------------------------ solver
+JACOBIAN  ANALYTIC       -- required by AIM, and exact for three-phase
+-- Fully implicit.
+--
+-- AIM decides which cells may run explicit in saturation from a throughput
+-- CFL measured on the state at the START of the step -- which is before the
+-- schedule has been applied.  On the step where C-4H becomes a gas injector
+-- the cells around it are still quiet when that measurement is taken, so they
+-- are marked explicit, and then 1.4e7 scf/day of gas arrives in them.  An
+-- explicit saturation cannot survive that, and chopping dt does not help
+-- because the next measurement is taken on the same pre-injection state.
+--
+-- AIM 1 restores it, and is sound for a field with no new injectors opening.
+AIM       0
+CONNLIST  1              -- forced anyway on a corner-point grid
+
+KRYLOV    FGMRES
+
+-- Inexact Newton.
+--
+-- The first run solved every linear system to 1e-6 while Newton's own
+-- tolerance is 1e-3, and spent 194 Krylov iterations per Newton doing it --
+-- 66,716 for a single report step, which was the entire cost of the run.
+-- There is no value in a Newton direction computed to six digits when the
+-- Newton iterate itself is three digits from the solution: the extra accuracy
+-- is discarded by the next residual evaluation.
+--
+-- 1e-4 keeps the direction good enough for Newton to converge at its usual
+-- rate at a fraction of the work.  Raise it towards 1e-6 only if the Newton
+-- count starts climbing.
+LINTOL    1e-4
+LINMAXIT  200
+
+-- FGMRES restart.
+--
+-- At 30, a solve that needs 194 iterations restarts six times and throws away
+-- the Krylov subspace each time -- precisely the regime where restarting hurts
+-- most.  A larger subspace costs memory (one vector of 133,293 doubles per
+-- unit, about 1 MB) and buys back the superlinear convergence that restarting
+-- destroys.
+RESTART   80
+MIXED     1              -- FP32 multigrid preconditioner
+EMULATE   1              -- df64 operator
+
+LINSOLVER AMGX
+AMGFAST   1
+AMGREUSE  10
+AMGREUSEGROWTH 2.0
+
+-- An injector must walk its cell pressure to wherever injectivity balances
+-- the requested rate -- where WI.lambda.(p_bhp - p) equals q -- and that
+-- target is set by the rate, not by the timestep, which is why chopping dt
+-- six times changed nothing at all.  For C-4H that is a climb of several
+-- thousand psi, and a low cap can abandon a direction which is still reducing
+-- the residual.  Twenty iterations was best while a zero-target history-well
+-- bug left an artificial water sink in the model.  Once that sink was removed,
+-- 30 reduced total Newton work from 3,406 to 3,069 and time from 41.29 to
+-- 40.25 s; 40 retained the same 35 chops but rose to 3,273 Newtons and
+-- 41.61 s.  NEWTONSTALLMAX still ends genuinely stalled attempts early.
+NEWTONMAX 30
+NEWTONTOL 1e-3
+-- Backtrack the fully implicit Newton update until the residual actually
+-- descends, halving alpha at most this many times.  Appleyard and DSMAX
+-- already make the update nonlinear in alpha, so each trial restarts from
+-- the same state rather than rescaling an already clipped one.  With the
+-- accepted trial carried into the next iteration (see main.cu) a search
+-- that accepts alpha = 1 costs no extra assembly at all.
+LINESEARCH 6
+
+-- Abandon a sub-step after this many Newton iterations that fail to reduce the
+-- residual.  A stalled attempt does not recover; the answer is a shorter step.
+NEWTONSTALLMAX 4
+
+-- ---- time integration, following OPM Flow ------------------------------
+-- Carry one continuous timestep ACROSS report steps and rescale it from the
+-- Newton count of the last converged sub-step, as Flow's AdaptiveTimeStepping
+-- does, instead of resetting dt on a dyadic lattice at every report step.
+DTKEEP    1
+DTCONTROL 1
+-- Remember a failed length but relax that ceiling after every successful
+-- substep, so one isolated switch cannot pin an entire report interval.
+DTFAILCAP 0.75
+DTCAPGROW 1.1
+
+-- Flow's getReservoirConvergence: exempt a fraction of the pore volume from
+-- the strict CNV bound so a handful of near-degenerate cells cannot hold the
+-- field hostage.
+--
+-- Full-history validated Flow-style convergence policy.  The relaxed CNV
+-- applies only to the default lowest 3% of pore volume.  With the complete
+-- mode-9 well block, 3.5e-5 is the last screened MB tolerance that preserves
+-- pressure, BHP, GOR, and phase-rate accuracy together; 4e-5 was rejected.
+OPMCONV   1
+MBTOL     3.5e-5
+CNVRELAXED 10.0
+
+-- These four match their code defaults exactly and are listed for reference
+-- only, deliberately commented out:
+--   DTRESTART 0.33   DTMAXGROW 3.0   DTGROWDAMP 3.2   DTDECAYDAMP 1.0
+-- Chop a saturation update that crosses a relperm endpoint so it lands just
+-- past it, rather than letting one iteration leap between mobility regimes.
+-- A gas front arriving in a cell at residual gas saturation is exactly the
+-- case this exists for.
+APPLEYARD 1
+
+-- Pressure and saturation change limits per Newton iteration.  DPMAX is
+-- generous because the injector has a long way to climb and every iteration
+-- it spends clamped is one it cannot spend converging; DSMAX stays tight
+-- because saturation is what actually goes unstable.
+DPMAX     1000
+DSMAX     0.15
+DTGROW    2
+-- DTRELAX  4            -- let a comfortable step recover several halvings at
+-- DTTARGET  8            --   once, not one.  Left off so this deck reproduces
+--                        --   the published Newton counts; see the manual.
+
+-- ------------------------------------------------------------- time
+-- Norne's history runs 6 NOV 1997 to 1 DEC 2006.
+--
+-- 3312 days, not 3304.  3304 is the span from the FIRST REPORT STEP
+-- (14 NOV 1997) to the last, which is what the schedule summary prints;
+-- TEND is measured from START, eight days earlier.  With TEND 3304 the
+-- last two of the schedule's 247 dates fell outside the run and the
+-- comparison against Flow was two steps short.
+--
+-- DTREPORT is not used here: REPORTDATES defaults on, so a field run
+-- reports at the schedule's own 247 dates.  It still governs a run with
+-- REPORTDATES 0, and a Cartesian deck, which has no schedule to follow.
+DTREPORT  30
+DTMAX     10
+TEND      3312
+
+-- ------------------------------------------------------------ output
+ECLOUT       1
+MAKECSV      1
+MAKESUMMARY  1

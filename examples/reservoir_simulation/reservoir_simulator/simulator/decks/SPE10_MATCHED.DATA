@@ -1,0 +1,114 @@
+-- NVRS wrapper for benchmark/runs/SPE10/SPE10_OPM.DATA.
+-- Both Flow and NVRS read that same generated Eclipse deck.
+TITLE SPE10 MATCHED TWO-PHASE FIM
+FIELDDECK benchmark/runs/SPE10/SPE10_OPM.DATA
+PROPSARRAYS 1
+-- SPE10 spans nearly eight orders of magnitude in transmissibility.  Flow
+-- retains every positive neighbor connection; a global relative cutoff
+-- fractures the low-permeability lower channels into artificial islands.
+TRANSDROP 0
+-- Flow interpolates the deck's SWOF table piecewise linearly; use that same
+-- table in the NVRS residual, Jacobian, well controls, and reporting.
+FIELDSATFUNC 1
+USESCHEDULE 1
+REPORTDATES 1
+
+NCOMP 2
+MODEL BLACKOIL
+OUTDIR benchmark/spe10_matched_nvrs/OUTPUT_SPE10_MATCHED
+CASENAME SPE10_MATCHED
+
+-- Fallback constants equal the Eclipse tables. PVTTABLES and ROCK from the
+-- FIELDDECK replace them on the device.
+PVTCONST 1
+PVTTABLES 1
+UW 0.3
+UO 3.0
+BW 1.01
+BO 1.01
+RS 0
+RHOW 1.025181
+RHOO 0.848978
+CFW 0
+CFO 0
+CT 4e-6
+SWI 0.2
+SWR 0.2
+PINIT 6000
+PBUB 6000
+PATM 14.6959
+SWINIT 0.2
+SGINIT 0
+SOINIT 0.8
+GRAVITY 1
+DARCY 1.127e-3
+REFACTOR 0.2
+LINSOLVER AMGX
+
+JACOBIAN ANALYTIC
+AIM 0
+KRYLOV FGMRES
+-- CPRW makes the eliminated rate-well/control block visible to the global
+-- pressure stage.  At 3e-2 the linear/nonlinear work is balanced: looser
+-- solves chop timesteps, while tighter solves overspend in FGMRES.
+CPRW 1
+LINTOL 3e-2
+LINMAXIT 300
+-- SPE10's late pressure systems stagnate after repeated short FGMRES cycles.
+-- With CGS1, a 60-vector basis cuts full-run linear applications by 55% and
+-- wall time by 38%; longer and shorter bases were both slower.
+RESTART 60
+-- This system retains the same accurate trajectory with CGS1 while avoiding
+-- CGS2's second projection, global reduction, and basis update.
+ORTHOPASSES 1
+AMGFAST 1
+AMGREUSE 0
+AMGREUSEGROWTH 2.0
+MIXED 1
+EMULATE 0
+STAGE2 JACOBI
+
+-- Flow starts this schedule at one day and carries adaptive dt thereafter.
+DTREPORT 1
+DTMAX 100
+TEND 1000
+NEWTONMAX 15
+DPMAXREL 0.3
+NEWTONSTALLMAX 4
+DTKEEP 1
+DTCONTROL 1
+OPMCONV 1
+MBTOL 1e-6
+CNVTOL 1e-2
+CNVRELAXPV 0.03
+CNVRELAXED 1.0
+NEWTONTOL 5e-3
+LINESEARCH 6
+DPMAX 500
+DSMAX 0.2
+MAXCHOP 12
+DTTARGET 10
+DTFAILCAP 0.7
+-- Once a post-startup step fails, do not relax its learned stability ceiling.
+-- This prevents the repeated grow/fail/chop loop seen early in SPE10.  After
+-- one cheap (at most two-Newton) accepted solve, cautiously probe a 25%
+-- larger ceiling; a failed probe restores the last proven value.  On SPE10
+-- this reduces 96 accepted substeps to 66 and improves the pressure and
+-- saturation match because the temporal discretisation is closer to Flow.
+DTCAPGROW 1.0
+DTCAPPROBE 1
+DTCAPPROBEITERS 2
+DTCAPPROBEFACTOR 1.25
+DTMAXGROW 1.5
+
+-- OPM permits completion crossflow. Use the mixture-preserving NVRS branch
+-- and the complete injector Schur mode.
+WELLXFLOW 2
+WELLSCHUR 9
+INJBHP 10000
+
+ECLOUT 1
+MAKECSV 1
+MAKESUMMARY 1
+AUTOPLOT 0
+WELLPLOT ALL
