@@ -20,17 +20,18 @@
 #   ./build_container.sh rebuild         # build from scratch, no layer cache
 #
 # Environment overrides:
-#   IMAGE=name:tag     image name           (default nvrs/gb200:cuda12.8)
+#   IMAGE=name:tag     image name           (default nvrs/cuda:12.8)
 #   NAME=container     running container    (default nvrs)
 #   GPUS=all|"0,1"     which GPUs to expose (default all)
 #   MOUNT=/path        host dir to mount    (default this repository)
+#   NVRS_GUI_PORT=n    port on this machine for gui/server.py (default 8765)
 #
 # The repository is MOUNTED, not copied.  An edit on the host is an edit in the
 # container, so rebuilding the simulator never means rebuilding the image.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE="${IMAGE:-nvrs/gb200:cuda12.8}"
+IMAGE="${IMAGE:-nvrs/cuda:12.8}"
 NAME="${NAME:-nvrs}"
 GPUS="${GPUS:-all}"
 MOUNT="${MOUNT:-$HERE}"
@@ -46,7 +47,10 @@ hr() { printf '=%.0s' {1..74}; echo; }
 # no container runtime at all, which is exactly where someone reads it first.
 DOCKER="${DOCKER:-}"
 need_runtime() {
-  [ -n "$DOCKER" ] && return 0
+  if [ -n "$DOCKER" ]; then
+    can_reach_daemon
+    return 0
+  fi
   if   command -v docker >/dev/null 2>&1; then DOCKER=docker
   elif command -v podman >/dev/null 2>&1; then DOCKER=podman
   else
@@ -56,6 +60,19 @@ need_runtime() {
     echo "    apptainer shell --nv -B \$PWD:/workspace/project nvrs.sif" >&2
     exit 1
   fi
+  can_reach_daemon
+}
+
+# A daemon that is down, or a user outside the docker group, otherwise surfaces
+# as "image not found" followed by a failed build, which names neither cause.
+can_reach_daemon() {
+  $DOCKER info >/dev/null 2>&1 && return 0
+  echo "ERROR: $DOCKER is installed but cannot reach its daemon." >&2
+  if [ "$DOCKER" = "docker" ]; then
+    echo "  Start it:           sudo systemctl start docker" >&2
+    echo "  Or join its group:  sudo usermod -aG docker \$USER   (then log out and in)" >&2
+  fi
+  exit 1
 }
 
 # --- GPU flags -------------------------------------------------------------
@@ -64,13 +81,26 @@ need_runtime() {
 # takes neither and wants a device instead.  Choosing here keeps the run
 # command below readable and keeps the failure -- "no GPU in the container" --
 # from being discovered halfway through a benchmark.
+#
+# The help text is captured before it is searched.  Under pipefail, grep -q
+# leaving the pipe early can kill the writer with SIGPIPE, which made this test
+# fail on a docker that does have --gpus and chose --runtime=nvidia instead.
 gpu_flags() {
+  local help
   if [ "$DOCKER" = "podman" ]; then
-    echo "--device nvidia.com/gpu=all --security-opt=label=disable"
-  elif $DOCKER run --help 2>/dev/null | grep -q -- '--gpus'; then
-    echo "--gpus ${GPUS}"
+    RUN_FLAGS+=(--device nvidia.com/gpu=all --security-opt=label=disable)
+    return 0
+  fi
+  if ! command -v nvidia-container-cli >/dev/null 2>&1 && \
+     ! command -v nvidia-ctk >/dev/null 2>&1; then
+    echo "WARNING: the NVIDIA Container Toolkit is not on PATH, so the container may not" >&2
+    echo "         see the GPU. Install nvidia-container-toolkit if this run fails." >&2
+  fi
+  help="$($DOCKER run --help 2>/dev/null || true)"
+  if [[ "$help" == *--gpus* ]]; then
+    RUN_FLAGS+=(--gpus "$GPUS")
   else
-    echo "--runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=${GPUS}"
+    RUN_FLAGS+=(--runtime=nvidia -e "NVIDIA_VISIBLE_DEVICES=$GPUS")
   fi
 }
 
@@ -78,16 +108,25 @@ image_exists() { $DOCKER image inspect "$IMAGE" >/dev/null 2>&1; }
 
 do_build() {
   local extra="${1:-}"
+  local context
+  # The Dockerfile copies nothing, because the repository is mounted.  An empty
+  # context keeps the results and any installed libraries from being sent to
+  # the daemon, which is several hundred megabytes before the first step.
+  context="$(mktemp -d)"
   hr
   echo " Building $IMAGE"
   echo "   runtime : $DOCKER"
-  echo "   context : $HERE"
   echo "   arch    : $(uname -m)"
   hr
   # UCX, PMIx and OpenMPI are all compiled from source here, so this is tens of
   # minutes on a first build and seconds afterwards from the layer cache.
   # shellcheck disable=SC2086
-  $DOCKER build $extra -t "$IMAGE" -f "$HERE/Dockerfile" "$HERE"
+  if ! $DOCKER build $extra -t "$IMAGE" -f "$HERE/Dockerfile" "$context"; then
+    rmdir "$context"
+    echo "ERROR: the image did not build. The first failing step is above." >&2
+    exit 1
+  fi
+  rmdir "$context"
   echo
   echo "Built $IMAGE"
 }
@@ -101,40 +140,71 @@ do_build() {
 #       worse, silently falls back to a slower transport.
 #   --cap-add=SYS_PTRACE, --security-opt seccomp=unconfined
 #       so that nsys, gdb and strace work inside the container.
+#   OMPI_ALLOW_RUN_AS_ROOT*
+#       the image has no unprivileged user, and mpirun otherwise refuses to start.
+#   GIT_CONFIG_*
+#       git refuses a repository owned by another user, which a mount is here.
+#
+# An array, so a folder with a space in its name stays one argument.
 run_flags() {
-  cat <<FLAGS
---rm
-$(gpu_flags)
---ipc=host
---ulimit memlock=-1
---ulimit stack=67108864
---cap-add=SYS_PTRACE
---security-opt seccomp=unconfined
--p 127.0.0.1:${NVRS_GUI_PORT:-8765}:8765
--v ${MOUNT}:${WORKDIR}
--w ${WORKDIR}
--e NVRS_IN_CONTAINER=1
-FLAGS
+  RUN_FLAGS=(--rm)
+  gpu_flags
+  RUN_FLAGS+=(--ipc=host --ulimit memlock=-1 --ulimit stack=67108864
+    --cap-add=SYS_PTRACE --security-opt seccomp=unconfined
+    -v "$MOUNT:$WORKDIR" -w "$WORKDIR"
+    -e NVRS_IN_CONTAINER=1
+    -e OMPI_ALLOW_RUN_AS_ROOT=1 -e OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+    -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e "GIT_CONFIG_VALUE_0=*")
+}
+
+# The browser interface's port.  Published only by the interactive shell, and
+# only when free, so that something already using it cannot stop the container.
+gui_port_flags() {
+  local port="${NVRS_GUI_PORT:-8765}"
+  if (: </dev/tcp/127.0.0.1/"$port") 2>/dev/null; then
+    echo "note: port $port is in use, so gui/server.py will not be reachable from this" >&2
+    echo "      machine. Set NVRS_GUI_PORT to a free port to publish it." >&2
+  else
+    RUN_FLAGS+=(-p "127.0.0.1:$port:8765")
+  fi
 }
 
 do_shell() {
+  local names inner
+  # A second terminal joins the running container rather than failing on its name.
+  names="$($DOCKER ps --format '{{.Names}}' 2>/dev/null || true)"
+  if printf '%s\n' "$names" | grep -qx -- "$NAME"; then
+    echo "Joining the running container $NAME"
+    exec $DOCKER exec -it -w "$WORKDIR" "$NAME" /bin/bash
+  fi
+  names="$($DOCKER ps -a --format '{{.Names}}' 2>/dev/null || true)"
+  if printf '%s\n' "$names" | grep -qx -- "$NAME"; then
+    $DOCKER rm "$NAME" >/dev/null
+  fi
   hr
   echo " $IMAGE"
   echo "   $MOUNT  ->  $WORKDIR   (mounted: edits on the host are live here)"
   echo
-  echo " Build the simulator:"
-  echo "   cd full_reservoir_simulator && ./quickstart.sh"
-  echo " Run Norne against OPM Flow:"
+  echo " Next:"
   echo "   cd full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark"
-  echo "   ./get_norne.sh && ./run_norne.sh"
+  echo "   ./nvrs.sh install"
+  echo "   ./nvrs.sh all NORNE"
   hr
-  # shellcheck disable=SC2046
-  exec $DOCKER run -it --name "$NAME" $(run_flags) "$IMAGE" /bin/bash
+  run_flags
+  gui_port_flags
+  # The container runs as root, so what it builds in the mounted folder belongs
+  # to root.  Hand it back on the way out, or git pull and rm fail on the host.
+  # Rootless podman maps root to the calling user already.
+  if [ "$DOCKER" = "docker" ] && [ "$(id -u)" != "0" ]; then
+    inner="/bin/bash; s=\$?; chown -R $(id -u):$(id -g) '$WORKDIR' 2>/dev/null; exit \$s"
+    exec $DOCKER run -it --name "$NAME" "${RUN_FLAGS[@]}" "$IMAGE" /bin/bash -c "$inner"
+  fi
+  exec $DOCKER run -it --name "$NAME" "${RUN_FLAGS[@]}" "$IMAGE" /bin/bash
 }
 
 do_run() {
-  # shellcheck disable=SC2046
-  exec $DOCKER run -i $(run_flags) "$IMAGE" /bin/bash -lc "$*"
+  run_flags
+  exec $DOCKER run -i "${RUN_FLAGS[@]}" "$IMAGE" /bin/bash -lc "$*"
 }
 
 # Prove the thing this image exists for, rather than assuming it.
@@ -143,8 +213,8 @@ do_run() {
 # nothing about a successful build says otherwise.  This asks the three
 # questions whose answers decide whether a multi-GPU number is meaningful.
 do_check() {
-  # shellcheck disable=SC2046
-  $DOCKER run -i $(run_flags) "$IMAGE" /bin/bash -lc '
+  run_flags
+  $DOCKER run -i "${RUN_FLAGS[@]}" "$IMAGE" /bin/bash -lc '
     set -e
     printf "\n== GPUs ==\n";        nvidia-smi -L || echo "  no GPUs visible!"
     printf "\n== nvcc ==\n";        nvcc --version | tail -2
@@ -196,7 +266,7 @@ case "${1:-default}" in
   run)     shift; need_runtime; image_exists || do_build; do_run "$@" ;;
   default) need_runtime; image_exists || do_build; do_shell ;;
   -h|--help|help)
-    sed -n '5,28p' "${BASH_SOURCE[0]}" | sed 's|^# \{0,1\}||'
+    sed -n '5,29p' "${BASH_SOURCE[0]}" | sed 's|^# \{0,1\}||'
     ;;
   *)
     echo "unknown command: $1  (try: build, rebuild, shell, run, check, help)" >&2

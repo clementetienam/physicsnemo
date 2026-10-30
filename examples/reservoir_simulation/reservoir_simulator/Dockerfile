@@ -2,7 +2,7 @@
 # Authors: Clement Etienam, Tsubasa Onishi, Oleg Ovcharenko,
 #          Nick Luiken, Issam Said
 #
-# The container the GB200 results in this repository were produced in.
+# The container the GB200 and VR72 results in this repository were produced in.
 #
 # CUDA 12.8 on Ubuntu 22.04, with UCX, PMIx and OpenMPI built from source so
 # that MPI is CUDA-aware and Slurm-aware.  That last part is the reason this
@@ -164,7 +164,12 @@ ENV OMPI_MCA_btl=^vader,tcp,openib,uct
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
 RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
 RUN apt update -y --fix-missing
-RUN apt install -y cmake=3.30.8-0kitware1ubuntu22.04.1 cmake-data=3.30.8-0kitware1ubuntu22.04.1
+# Not pinned to one release: Kitware's repository drops old patch releases, and a
+# pin to one that has gone stops the build here.  The newest 3.x is taken because
+# OPM's configure does not accept CMake 4.
+RUN CMAKE_V="$(apt-cache madison cmake | awk '{print $3}' | grep '^3\.' | head -1)" && \
+    test -n "$CMAKE_V" && \
+    apt install -y "cmake=$CMAKE_V" "cmake-data=$CMAKE_V"
 
 # The repository is mounted at /workspace/project by build_container.sh rather
 # than copied in, so an edit on the host is an edit in the container and a

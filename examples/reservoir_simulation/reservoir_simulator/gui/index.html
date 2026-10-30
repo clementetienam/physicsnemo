@@ -70,6 +70,7 @@ iframe { width:100%; height:78vh; border:1px solid var(--line); border-radius:8p
 <header><div class="wrap">
   <div class="top"><h1>NVRS-CUDA</h1><span class="sub">GPU-resident, fully implicit black-oil reservoir simulator</span>
     <span class="sub" id="gpu"></span></div>
+  <div class="sub" style="padding-bottom:8px">Clement Etienam, Tsubasa Onishi, Oleg Ovcharenko, Nick Luiken, Issam Said. <a href="https://doi.org/10.5281/zenodo.23669176" target="_blank" rel="noopener">Paper on Zenodo</a></div>
   <nav id="tabs">
     <button data-t="method" class="on">Method</button>
     <button data-t="build">Build</button>
@@ -246,7 +247,7 @@ const fig = ([u,c]) => `<figure><img loading="lazy" src="${FILES+u}" alt="${c}">
 $("movies").innerHTML = MOVIES.map(fig).join("");
 $("spe10").innerHTML = [["full_reservoir_simulator/paper/figs/spe10_perm.png","SPE10 permeability, mD"],
   ["full_reservoir_simulator/paper/figs/spe10_poro.png","SPE10 porosity"]].map(fig).join("");
-$("man_a").href = FILES + "full_reservoir_simulator/GPU_reservoir_simulator/cuda/docs/manual.pdf";
+$("man_a").href = FILES + "docs/manual.pdf";
 
 const NEEDS = `<div class="card"><p>Starting work needs the local server. From the project folder run:</p><pre>python3 gui/server.py</pre><p>then open <code>http://127.0.0.1:8765</code>. This page was opened from disk, so it can show the method, results and manual only.</p></div>`;
 if (!LIVE) ["needserver1","needserver2","needserver3"].forEach(i => $(i).innerHTML = NEEDS);

@@ -1,5 +1,26 @@
 # Mixed-Precision Reservoir Simulation on GB200 and VR72
 
+**Authors:** Clement Etienam, Tsubasa Onishi, Oleg Ovcharenko, Nick Luiken, Issam Said
+
+**Paper:** *A Mixed-Precision, GPU-Native Constrained-Pressure-Residual Solver for Fully Implicit Reservoir Simulation.* Available on [Zenodo](https://doi.org/10.5281/zenodo.23669176).
+
+Two companion studies of precision in a fully-implicit reservoir linear solve (an FGMRES solver
+with a two-stage **CPR** (Constrained Pressure Residual) preconditioner and benchmarked on a
+single **GB200**) plus the **full reservoir simulator** those solvers were built for. The
+multigrid inside CPR is **AmgX** (default) or **HYPRE BoomerAMG**, selected by one deck keyword;
+both run FP32 inside an FP64 Krylov, so the precision argument is the same either way.
+
+Both studies solve the *same* two-field (pressure–saturation) operator with the *same* solver.
+They differ in **one** thing: where the FP64 arithmetic comes from. The third folder takes that
+solver and wraps a complete black-oil and compositional reservoir simulator around it.
+
+```
+reservoir_simulator/
+├── mixed_precision_fp64_fp32/     ← Study 1: native FP64 operator + FP32 preconditioner
+├── mixed_precision_emmulation/    ← Study 2: FP64 operator EMULATED from FP32 slices
+└── full_reservoir_simulator/      ← The simulator: real physics on top of that solver
+```
+
 ## Walkthrough
 
 ![Download, compile, run and view](docs/demo.gif)
@@ -27,6 +48,11 @@ a shell at `/workspace/project`, which is this folder, mounted.
 ```bash
 ./build_container.sh
 ```
+
+It is CUDA 12.8 on Ubuntu 22.04 with UCX, PMIx and OpenMPI built from source, so MPI is
+CUDA-aware, and your folder is mounted rather than copied. Running it again in another
+terminal joins the same container. `./build_container.sh check` proves MPI can send a GPU
+buffer, and `./build_container.sh help` lists the rest.
 
 **3. Install everything.** This builds HYPRE, AmgX, Ginkgo, OPM Flow, Nsight
 Systems and `nvrs_cuda`. It is safe to re-run after a failure; it resumes.
@@ -88,7 +114,74 @@ starting work needs the server.
 NVRS_DECK=/path/to/MY.DATA ./nvrs.sh all MYFIELD
 ```
 
----
+### Every command
+
+| Command | What it does |
+|---|---|
+| `./nvrs.sh` | the menu: commands, options, and what is ready on this machine |
+| `./nvrs.sh install` | HYPRE, AmgX, Ginkgo, OPM Flow, Nsight and `nvrs_cuda` |
+| `./nvrs.sh cases` | every case, and whether its deck is ready |
+| `./nvrs.sh get <CASE>` | fetch or generate the deck and its data |
+| `./nvrs.sh run <CASE>` | the backends, against OPM Flow |
+| `./nvrs.sh profile <CASE>` | Nsight Systems, once per backend |
+| `./nvrs.sh report <CASE>` | the figures, folded into the HTML |
+| `./nvrs.sh all <CASE>` | all four of the above, in order |
+
+| Option | Applies to | Meaning |
+|---|---|---|
+| `--no-opm` | run, all | NVRS only; do not run OPM Flow |
+| `--backend <b>` | run, profile | `amgx`, `hypre`, or `both` (default both) |
+| `--ranks <n>` | run, profile | MPI ranks for NVRS |
+| `--no-profile` | all | skip the profiling step |
+| `--no-scaling` | run, all | one GPU only; skip the 2/4-GPU strong-scaling sweep |
+| `--scaling` | run, all | force the sweep on (SPE10 defaults to off) |
+| `--ncu` | profile, all | add Nsight Compute counters (~100x slower) |
+| `--fraction <f>` | profile, all | history to profile: `0.25`, or `all` (default `0.1`) |
+| `--tend <days>` | profile, all | profile exactly this many days instead |
+| `--steps <n>` | profile, all | **NORNE only**: report steps, or `all` |
+| `--heartbeat <s>` | profile, all | progress interval, `0` to silence |
+| `--deck <path>` | get, run, all | your own `.DATA`, for a case not under `decks/` |
+
+`--no-scaling` matters for the large cases. By default a run is repeated on 2,
+4 and however many GPUs are present, which is the point for the BENCH family
+and wasted time for SPE10: 1.12 million cells that exist to stress the solver,
+where each extra rank repeats a long run to answer a question the case was not
+chosen to ask. SPE10 therefore defaults to a single GPU, and `--scaling`
+overrides that.
+
+`--steps` is Norne-only on purpose: a report step is a fortnight there and
+something else in every other deck, so it is refused rather than quietly
+misapplied. Use `--fraction` or `--tend` elsewhere.
+
+Some worked examples:
+
+```bash
+./nvrs.sh all NORNE --no-opm              # skip Flow, NVRS only
+./nvrs.sh all NORNE --backend amgx        # one backend, faster
+./nvrs.sh all NORNE --steps all           # the whole 247-step history
+./nvrs.sh all SPE10 --fraction 0.5        # half of SPE10's history
+./nvrs.sh all MYFIELD --deck /path.DATA   # a deck of your own
+./nvrs.sh profile NORNE --ncu             # add the kernel counters
+./nvrs.sh report NORNE                    # rebuild the HTML only
+```
+
+### Newer GPUs, and machines without root
+
+Two things are handled automatically and are worth knowing about:
+
+**A GPU newer than any CUDA that can target it.** Vera Rubin reports compute
+capability 10.7 and no toolkit has an sm_107 target. The install scripts emit
+PTX for the newest architecture not newer than the device, which the driver
+JIT-compiles into native code at load. `CUDA_ARCH=100` pins it if you are
+cross-building. The first run pays the compile once; the benchmark scripts keep
+the JIT cache on the mounted filesystem so it is not paid again, and timings
+from a JIT-compiled machine are not comparable with a natively-built one.
+
+**No root inside the container.** `dpkg` needs to be root and `sudo` is
+usually not setuid, so missing dependencies are downloaded and unpacked into a
+prefix rather than installed. That prefix is *appended* to `LD_LIBRARY_PATH`,
+never prepended, because prepending it once shadowed the container's Open MPI and
+broke the launcher.
 
 ## Results on GB200 and VR72
 
@@ -329,7 +422,7 @@ on VR72, while beating BoomerAMG on both (1.02x and 1.49x).
 | Ginkgo FP16 + adaptive bJ | 0.64 ms | 0.36 ms | 0.893 | 0.911 |
 
 \* One producer, D-4AH, moved its water breakthrough in that run; the other 21
-wells match the other arms. The agreement measures used in the [arXiv paper](https://arxiv.org/abs/2610.31677)
+wells match the other arms. The agreement measures used in the [paper](https://doi.org/10.5281/zenodo.23669176)
 (range-normalised error, cumulative error, breakthrough offset) are reported
 there.
 
@@ -490,200 +583,7 @@ Reproduce a case with
 `cd full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark && ./nvrs.sh all NORNE`
 (or `SPE10`, or `BENCH3P`).
 
-## Start here: the container
-
-Everything in this repository was measured inside one image, and it is the
-supported way to build and run any of it.  From the repository root:
-
-```bash
-./build_container.sh
-```
-
-That builds the image if it does not exist and drops you into a shell already
-in `/workspace/project`, which **is** this repository, mounted rather than
-copied, so
-an edit on the host is an edit in the container, and rebuilding the simulator
-never means rebuilding the image.
-
-Then, inside the container:
-
-```bash
-cd full_reservoir_simulator && ./quickstart.sh
-```
-
-Before trusting any multi-GPU timing, prove the image is what it claims:
-
-```bash
-./build_container.sh check
-```
-
-A container can carry CUDA and an MPI and still not have **CUDA-aware** MPI,
-and a successful build says nothing either way.  `check` compiles and runs a
-two-rank `MPI_Send`/`MPI_Recv` on a `cudaMalloc`'d pointer and reports what
-actually happened.  It matters: NVRS ranks exchange *device* buffers directly,
-and a stock OpenMPI stages them through host memory. It still runs, and it is
-quietly several times slower, which is the worst kind of difference because
-nothing fails.
-
-[`Dockerfile`](./Dockerfile) is CUDA 12.8 on Ubuntu 22.04 with UCX
-1.18.1, PMIx 4.2.8 and OpenMPI 4.1.5 built from source (`--with-cuda
---with-ucx --with-pmix --with-slurm`).  UCX's own test programs are not built: they are not used here, and pinning
-them to one CUDA version is what broke the first build of this image.  The base image is multi-architecture,
-so it builds on x86_64 and on aarch64 (GB200) unchanged.  The first build
-compiles three libraries from source and takes tens of minutes; later builds
-come from the layer cache.
-
-[`build_container.sh`](./build_container.sh) also takes `build`,
-`rebuild`, `shell`, `run <cmd>` and `help`.  It uses `podman` when `docker` is
-absent, and where neither is permitted (common on a shared cluster) it prints
-the Apptainer equivalent.
-
----
-
-Two companion studies of precision in a fully-implicit reservoir linear solve (an FGMRES solver
-with a two-stage **CPR** (Constrained Pressure Residual) preconditioner and benchmarked on a
-single **GB200**) plus the **full reservoir simulator** those solvers were built for. The
-multigrid inside CPR is **AmgX** (default) or **HYPRE BoomerAMG**, selected by one deck keyword;
-both run FP32 inside an FP64 Krylov, so the precision argument is the same either way.
-
-Both studies solve the *same* two-field (pressure–saturation) operator with the *same* solver.
-They differ in **one** thing: where the FP64 arithmetic comes from. The third folder takes that
-solver and wraps a complete black-oil and compositional reservoir simulator around it.
-
-```
-reservoir_simulator/
-├── mixed_precision_fp64_fp32/     ← Study 1: native FP64 operator + FP32 preconditioner
-├── mixed_precision_emmulation/    ← Study 2: FP64 operator EMULATED from FP32 slices
-└── full_reservoir_simulator/      ← The simulator: real physics on top of that solver
-```
-
-**Want to run an actual reservoir simulation?** Go straight to
-[`full_reservoir_simulator/`](full_reservoir_simulator/) and run `./quickstart.sh`.
-
----
-
-## Then: one command
-
-`nvrs.sh` is the whole workflow behind one entry point. It does not replace any
-of the scripts below; it calls them in order and knows which one a given case
-needs, because that is where the steps were being lost: sourcing an environment
-file between two installers, or knowing that Norne is downloaded
-while SPE10 is generated and the BENCH cases are computed, or that the figures
-need a second command after the profile.
-
-```bash
-cd full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark
-
-./nvrs.sh                  # what is installed, what is ready, what to type
-./nvrs.sh install          # HYPRE, AmgX, Ginkgo, OPM Flow, Nsight, and nvrs_cuda
-./nvrs.sh all NORNE        # fetch it, run it, profile it, report it
-```
-
-That last line ends with `runs/compare_NORNE.html`: NVRS against OPM Flow, the
-field images, the animation, and the Nsight Systems figures for both multigrid
-backends, in one page.
-
-Any case works the same way:
-
-```bash
-./nvrs.sh cases            # every case, and whether its deck is ready
-./nvrs.sh all SPE10
-./nvrs.sh all BENCH3P
-NVRS_DECK=/path/to/MY.DATA ./nvrs.sh all MYFIELD
-```
-
-Or one step at a time, when a stage needs re-running on its own:
-
-| Command | What it does |
-|---|---|
-| `./nvrs.sh` | the menu: commands, options, and what is ready on this machine |
-| `./nvrs.sh install` | HYPRE, AmgX, Ginkgo, OPM Flow, Nsight and `nvrs_cuda` |
-| `./nvrs.sh cases` | every case, and whether its deck is ready |
-| `./nvrs.sh get <CASE>` | fetch or generate the deck and its data |
-| `./nvrs.sh run <CASE>` | the backends, against OPM Flow |
-| `./nvrs.sh profile <CASE>` | Nsight Systems, once per backend |
-| `./nvrs.sh report <CASE>` | the figures, folded into the HTML |
-| `./nvrs.sh all <CASE>` | all four of the above, in order |
-
-Options are flags, and every command prints the ones it takes when it starts,
-so there is nothing to memorise:
-
-```
-  in effect now         --backend amgx --no-opm
-  'profile' also takes  --backend  --fraction  --tend  --steps  --ncu  --deck
-  full list             ./nvrs.sh --help
-```
-
-| Option | Applies to | Meaning |
-|---|---|---|
-| `--no-opm` | run, all | NVRS only; do not run OPM Flow |
-| `--backend <b>` | run, profile | `amgx`, `hypre`, or `both` (default both) |
-| `--ranks <n>` | run, profile | MPI ranks for NVRS |
-| `--no-profile` | all | skip the profiling step |
-| `--no-scaling` | run, all | one GPU only; skip the 2/4-GPU strong-scaling sweep |
-| `--scaling` | run, all | force the sweep on (SPE10 defaults to off) |
-| `--ncu` | profile, all | add Nsight Compute counters (~100x slower) |
-| `--fraction <f>` | profile, all | history to profile: `0.25`, or `all` (default `0.1`) |
-| `--tend <days>` | profile, all | profile exactly this many days instead |
-| `--steps <n>` | profile, all | **NORNE only**: report steps, or `all` |
-| `--heartbeat <s>` | profile, all | progress interval, `0` to silence |
-| `--deck <path>` | get, run, all | your own `.DATA`, for a case not under `decks/` |
-
-`--no-scaling` matters for the large cases. By default a run is repeated on 2,
-4 and however many GPUs are present, which is the point for the BENCH family
-and wasted time for SPE10: 1.12 million cells that exist to stress the solver,
-where each extra rank repeats a long run to answer a question the case was not
-chosen to ask. SPE10 therefore defaults to a single GPU, and `--scaling`
-overrides that.
-
-`--steps` is Norne-only on purpose: a report step is a fortnight there and
-something else in every other deck, so it is refused rather than quietly
-misapplied. Use `--fraction` or `--tend` elsewhere.
-
-Some worked examples:
-
-```bash
-./nvrs.sh all NORNE --no-opm              # skip Flow, NVRS only
-./nvrs.sh all NORNE --backend amgx        # one backend, faster
-./nvrs.sh all NORNE --steps all           # the whole 247-step history
-./nvrs.sh all SPE10 --fraction 0.5        # half of SPE10's history
-./nvrs.sh all MYFIELD --deck /path.DATA   # a deck of your own
-./nvrs.sh profile NORNE --ncu             # add the kernel counters
-./nvrs.sh report NORNE                    # rebuild the HTML only
-```
-
-The older environment variables (`SKIP_OPM`, `NVRS_BACKENDS`, `PROF_FRACTION`
-and the rest) still work; the flags override them.
-
-Each install step is skipped when its output is already present, so
-`./nvrs.sh install` is safe to re-run after a failure and resumes rather than
-starting over. Nothing in it needs root.
-
-## Newer GPUs, and machines without root
-
-Two things are handled automatically and are worth knowing about:
-
-**A GPU newer than any CUDA that can target it.** Vera Rubin reports compute
-capability 10.7 and no toolkit has an sm_107 target. The install scripts emit
-PTX for the newest architecture not newer than the device, which the driver
-JIT-compiles into native code at load. `CUDA_ARCH=100` pins it if you are
-cross-building. The first run pays the compile once; the benchmark scripts keep
-the JIT cache on the mounted filesystem so it is not paid again, and timings
-from a JIT-compiled machine are not comparable with a natively-built one.
-
-**No root inside the container.** `dpkg` needs to be root and `sudo` is
-usually not setuid, so missing dependencies are downloaded and unpacked into a
-prefix rather than installed. That prefix is *appended* to `LD_LIBRARY_PATH`,
-never prepended, because prepending it once shadowed the container's Open MPI and
-broke the launcher.
-
-Everything installs in one command:
-
-```bash
-cd full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark && ./install_all.sh
-```
-
-## The two folders
+## The three folders
 
 ### 📁 [`mixed_precision_fp64_fp32/`](mixed_precision_fp64_fp32/): classical mixed precision
 
@@ -786,21 +686,12 @@ half the Krylov count on heterogeneous rock), aggregation on several (the one th
 In the ablation they took SPE10 from **861 s to 342 s** on one GB200, a 2.52× speed-up
 over the out-of-the-box configuration. On the matched SPE10 deck (1000 days) SPE10 model 2 completes in **53.06 s** on one GB200 and **41.21 s** on one VR72 under AmgX, 18.5× faster than OPM Flow on the VR72 host, with a mean per-well R² of 0.999.
 
-📘 **[`cuda/docs/manual.pdf`](full_reservoir_simulator/GPU_reservoir_simulator/cuda/docs/manual.pdf):
-the 100-page user reference manual**: every deck keyword with its admissible values and defaults,
+📘 **[`docs/manual.pdf`](docs/manual.pdf):
+the user reference manual**: every deck keyword with its admissible values and defaults,
 the numerical formulation, adaptive implicit, parallel execution, output formats, verification,
 a tuning guide and troubleshooting, with a clickable keyword index.  It carries a complete
 Norne/OPM parity chapter: schedule semantics, metric-unit conversions, well-rate and history-RESV
 mathematics, group controls, water accounting, the per-producer R² table of the version 2 results, regression gates and a reproducible Git-LFS installation/runbook.
-
-### Current Norne result (version 2)
-
-The 247-step run uses the same metric Norne field deck for OPM Flow and all six NVRS solver arms. On one GB200, OPM Flow took **488.51 s**, NVRS-AmgX **44.95 s** (10.87× faster), NVRS-Ginkgo FP16 **80.55 s** (6.06×) and NVRS-HYPRE **71.51 s** (6.83×); on one VR72, 243.88 s, 35.73 s (6.83×), 50.02 s (4.88×) and 73.54 s (3.32×). The arms produce coincident reservoir and well curves (five of six within 0.015 in mean per-well R² on each machine; the sixth moved one well's breakthrough), so the differences between them are the multigrid
-and nothing else.
-
-Cumulative oil over the history is 425.07 M STB against Flow's 422.78 (0.54 %), the recovery
-factor 41.5 % against 41.8 %, and the oil balance closes at 100 % of what the rates report.
-**19 of the 22 producers match Flow at R² >= 0.70 on all four rate quantities**, 21 on water cut and all 22 on gas rate; every producer's score is in the table at the top of this page.
 
 ### Aligned Norne run on a development workstation
 
@@ -842,13 +733,6 @@ The study's own report, as it renders in a browser (the interactive page is
 
 **Question answered:** does the mixed-precision CPR result hold up on a full nonlinear reservoir
 problem (real relative permeability, PVT, wells, and Newton) not just one linear system?
-
-```bash
-cd full_reservoir_simulator
-./quickstart.sh          # builds HYPRE + the simulator, runs a 40×40×3 waterflood
-# then, for the default AmgX backend:
-cd GPU_reservoir_simulator/cuda && ./benchmark/install_amgx.sh
-```
 
 | | |
 |---|---|
@@ -912,300 +796,29 @@ Both studies share the same problem setup and infrastructure:
 - **Build recipes**: `scripts/docker/` in each folder (HYPRE and AMGX for `sm_100`, container
   build, pipeline driver).
 
-## Quick start
+## Paper and documentation
 
-### Run a reservoir simulation
+- **Paper:** Clement Etienam, Tsubasa Onishi, Oleg Ovcharenko, Nick Luiken and Issam Said, *A Mixed-Precision, GPU-Native Constrained-Pressure-Residual Solver for Fully Implicit Reservoir Simulation*, 2026. [Zenodo](https://doi.org/10.5281/zenodo.23669176).
+- **User manual:** [`docs/manual.pdf`](docs/manual.pdf), every deck keyword with its defaults, the methods, the benchmarks and troubleshooting.
+- **The mathematics in full:** [`full_reservoir_simulator/README.md`](full_reservoir_simulator/README.md).
+- **Verification against OPM Flow and profiling with Nsight:** [`benchmark/README.md`](full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark/README.md).
+- **Tests:** [`tests/README.md`](full_reservoir_simulator/GPU_reservoir_simulator/cuda/tests/README.md).
 
-```bash
-cd full_reservoir_simulator
-./quickstart.sh
+## Citation
+
+```bibtex
+@misc{etienam2026mixed,
+  title  = {A Mixed-Precision, GPU-Native Constrained-Pressure-Residual Solver for Fully Implicit Reservoir Simulation},
+  author = {Etienam, Clement and Onishi, Tsubasa and Ovcharenko, Oleg and
+            Luiken, Nick and Said, Issam},
+  year   = {2026},
+  doi    = {10.5281/zenodo.23669176}
+}
 ```
 
-That builds **both solver libraries** (HYPRE and AmgX) then the simulator, then runs a
-three-phase black-oil waterflood on a real 40×40×3 permeability field. Figures, an HTML report
-and ECLIPSE output land in `GPU_reservoir_simulator/cuda/OUTPUT_FIELD/`.
+## License
 
-### The same four steps by hand
-
-**1. HYPRE**: `CUDA_ARCH`: 70 V100, 80 A100, 90 H100, 100 GB200.
-
-```bash
-cd full_reservoir_simulator/Mixed_precision
-CUDA_ARCH=100 ./scripts/docker/install_hypre_sm100.sh
-source hypre_env.sh                      # sets HYPRE_FP32_DIR
-```
-
-**2. AmgX**: supplies the default stage-1 multigrid.
-
-```bash
-cd ../GPU_reservoir_simulator/cuda
-./benchmark/install_amgx.sh              # clone, build, install
-source ../../amgx-install/amgx_env.sh    # sets AMGX_DIR
-```
-
-**3. The simulator, against both.**
-
-```bash
-cmake -S . -B build   -DHYPRE_DIR=$HYPRE_FP32_DIR   -DAMGX_DIR=$AMGX_DIR   -DCMAKE_CUDA_ARCHITECTURES=100
-cmake --build build -j
-```
-
-**`make` and `cmake` produce different binaries, and the benchmarks use the
-Makefile one.** `make -j` writes `cuda/nvrs_cuda`; `cmake --build build` writes
-`cuda/build/nvrs_cuda`. Every script here runs the first and prints
-`note : ignoring older .../cuda/build/nvrs_cuda` when the second exists. They
-also find AmgX differently, since cmake is handed `-DAMGX_DIR` while make reads
-the environment, so one build can have AmgX and the other not. If you build
-both, build with `make` last.
-
-Either way, read the AmgX line: `AmgX: /path/...` is good, `AmgX: not found --
-HYPRE only` means the benchmark will measure BoomerAMG under a label that says
-AmgX. `FORCE_AMGX=1 ./benchmark/install_all.sh` repairs the usual cause, a
-prefix with the library but not `include/amgx_c.h`.
-
-Or, with both `env.sh` files sourced, the direct nvcc path is one word:
-
-```bash
-make -j
-```
-
-**4. Run.** The banner names the backend it used, so a log can never mislabel itself:
-
-```bash
-NGPU=1 ./scripts/run.sh decks/FIELD.DATA
-```
-
-```
-*      Mixed-precision CPR: AmgX aggregation AMG + block-Jacobi on CUDA      *
-  Linear   : stage-1 multigrid from AmgX
-```
-
-Switch backend per deck with `LINSOLVER AMGX` (default) or `LINSOLVER HYPRE`.
-
-**AmgX is optional.** Skip step 2 (or `SKIP_AMGX=1 ./quickstart.sh`) and everything still builds
-and runs on HYPRE BoomerAMG, a deck asking for `LINSOLVER AMGX` then gets HYPRE *and a warning
-saying so*, rather than a silent substitution. It is worth having: on the Norne field deck AmgX is
-**1.60× faster** than BoomerAMG and 1.56× faster than the best Ginkgo arm on one GB200, and it is the backend that keeps scaling past one GPU.
-
-```bash
-NGPU=1 ./scripts/run.sh decks/FIELD.DATA
-```
-
-`CUDA_ARCH`: 70 (V100), 80 (A100), 90 (H100), 100 (GB200). Multi-GPU is `NGPU=4 ./quickstart.sh`.
-
-### Run a precision benchmark
-
-From inside the project container on a GB200 node, at the repository root of either study:
-
-```bash
-FULL=1 ./run_bench.sh
-```
-
-One command from a cold checkout to finished plots: it builds the PhysicsNeMo venv and both HYPRE
-installs (FP64 and FP32) for `sm_100`, compiles the solver variants, runs the sweep, and writes
-the solve-time and convergence figures. Re-runs afterwards are a plain `./run_bench.sh`.
-
-In `mixed_precision_emmulation/` this builds and runs **three** variants, `fp64`, `mixed`, and
-the emulated `mixed-emu`. Full installation, flags and troubleshooting are in
-[its README, §8](mixed_precision_emmulation/README.md#8-gpu-installation-and-running-the-study).
-
-## Documentation
-
-The method and its measurement are in [arXiv:2610.31677](https://arxiv.org/abs/2610.31677). The user reference manual is [`manual.pdf`](full_reservoir_simulator/GPU_reservoir_simulator/cuda/docs/manual.pdf).
-
-## Profiling: Nsight Systems (and Nsight Compute if you want it)
-
-Run these from `full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark`
-(and `scripts/backend_study.sh` from `full_reservoir_simulator/GPU_reservoir_simulator/cuda`).
-
-`nsys` answers *where the time goes*, independently of the wall-clock split the
-run claims for itself. That independence is the point: a phase boundary drawn
-in the wrong place inside the code produces a self-consistent table that is
-wrong, and only an outside measurement catches it.
-
-Any benchmark profiles itself if asked. `NVRS_PROFILE=1` adds **Nsight
-Systems** only:
-
-```bash
-NVRS_PROFILE=1 ./run_norne.sh                      # Norne
-NVRS_PROFILE=1 ./run_comparison.sh BENCH2P BENCH3P # the generated cases
-NVRS_PROFILE=1 ./scripts/backend_study.sh all      # every arm of the study
-```
-
-Or standalone, on **any deck**, without re-running a benchmark:
-
-```bash
-./profile_case.sh SPE1                 # nsys, first 10% of that deck's history
-./profile_case.sh SPE10 both           # add the kernel counters
-./profile_case.sh NORNE                # any case under decks/
-./profile_case.sh                      # lists the decks it can see
-NVRS_DECK=/path/to/MY.DATA ./profile_case.sh MYFIELD
-```
-
-The case name picks the deck (`decks/<CASE>.DATA`, unless `NVRS_DECK` names
-one) and decides where the output goes. Nothing else differs between cases:
-one implementation, so profiling a new field cannot quietly behave differently
-from profiling Norne.
-
-How much of the history to cover:
-
-```bash
-PROF_FRACTION=0.25 ./profile_case.sh SPE1  # a quarter of the deck's TEND
-PROF_FRACTION=all  ./profile_case.sh SPE1  # the deck as written
-PROF_TEND=140      ./profile_case.sh SPE1  # exactly 140 days
-```
-
-A **fraction**, not a step count, because a step count means nothing without
-knowing how long a step is and that varies by deck. Norne's are a fortnight;
-`profile_norne.sh` is a thin wrapper that keeps `PROF_STEPS` for the one deck
-where the answer is known:
-
-```bash
-./profile_norne.sh                     # nsys, 24 report steps
-PROF_STEPS=10 ./profile_norne.sh       # shorter
-PROF_STEPS=all ./profile_norne.sh      # all 247 steps
-```
-
-Both backends, kept side by side rather than one overwriting the other:
-
-```bash
-./profile_case.sh SPE1                        # amgx
-NVRS_BACKEND=hypre ./profile_case.sh SPE1     # hypre, alongside it
-```
-
-Then the figures and the report:
-
-```bash
-python3 profile_plots.py --case SPE1  # draws them
-python3 compare.py --case SPE1        # folds them into compare_SPE1.html
-```
-
-Everything lands in `runs/<CASE>/profile/<backend>/`, and the figures go into
-the **same** `runs/compare_<CASE>.html` as the field images and the animation.
-There is no separate profiling report. The field images come from the full
-unprofiled benchmark runs; only the profile figures come from here.
-
-With more than one backend profiled, each figure is drawn once per backend and
-named for it, `profile_timeline_amgx.png` beside `profile_timeline_hypre.png`
-, and the report captions say which is which. `profile_cpr.png` is drawn once,
-because it comes from the run's own timers and already shows both together.
-
-### What each figure needs
-
-| Figure | Needs | Answers |
-|---|---|---|
-| `profile_cpr.png` | **no profiler** | how the linear solve divides: AMG setup, V-cycles, stage-2, operator SpMV, CGS2 |
-| `profile_timeline.png` | nsys | *when* each phase runs, the whole run above, the busiest window below |
-| `profile_time.png` | nsys | *how much* GPU time each phase and kernel takes |
-| `profile_roofline.png` | ncu | where each kernel sits against the roofline |
-| `profile_limiters.png` | ncu | what limits each kernel: bandwidth, compute, or latency |
-
-The first needs no profiler because the solver times its own CPR phases and
-writes them to `meta.json`. That is the only way to tell a multigrid V-cycle
-from the operator apply in the Krylov loop: they are the same sparse kernel, and
-no trace can separate them from outside.
-
-In `profile_timeline.png`, each row of the upper panel is shaded against **its
-own** busiest moment, so colours show when a phase is active and are **not**
-comparable between rows. Use `profile_time.png` for relative size.
-
-### Nsight Compute, when you want it
-
-Off by default and asked for explicitly, because it serialises and replays every
-kernel and is roughly **100x slower per kernel**:
-
-```bash
-./profile_case.sh NORNE both         # timeline + counters
-./profile_case.sh NORNE ncu          # counters only
-NCU_COUNT=40 ./profile_case.sh NORNE ncu   # fewer, faster
-```
-
-Bounded by `NCU_SKIP` (launches to skip past cold start-up, default 200) and
-`NCU_COUNT` (launches to profile, default 120) rather than let loose on a run.
-`NCU_CLOCK` defaults to `--clock-control none`: pinning the GPU to base clocks
-needs a privilege a container usually lacks, and refusing to profile is worse
-than absolute rates that depend on where the clocks were. Nothing here quotes an
-absolute rate, the counters give ratios, the wall clock comes from unprofiled
-runs.
-
-### Watching it, and what it is doing
-
-The run's own output goes to the terminal and to `nsys_run.log`, and a heartbeat
-prints elapsed time and GPU utilisation every 20 seconds (`NVRS_HEARTBEAT=0` to
-silence, or a different interval):
-
-```
-  [profile] profiling ...   40s   util 87 %, device mem 3565 MiB in use
-```
-
-A GPU at 90% is working. A GPU at 0% for minutes is worth interrupting. The
-memory figure is the **whole device**, CUDA context, library workspaces, every
-process on it, not this run's arrays.
-
-The heartbeat also covers the phase after the run, where `nsys stats` builds a
-SQLite database from the report in silence. On a long trace that takes as long
-as the run did.
-
-When it finishes, the heaviest kernels are printed without opening anything:
-
-```
-  [profile] top 3 kernels by GPU time (of 46 distinct), over 140 days:
-  [profile]   1.  41.2%    12345.7 ms     48231 x  amgx::spmv_kernel
-```
-
-`NVRS_TOPK` changes how many.
-
-### The profiler options
-
-The defaults are copied from a configuration that produces working reports on
-this hardware, not derived:
-
-```
---trace=cuda,nvtx --cuda-memory-usage=true --wait=all --mpi-impl=openmpi
-```
-
-`--mpi-impl` is passed only when the launcher was detected as Open MPI, and both
-it and `--wait` are checked against `nsys profile --help` first, so an older
-build is never handed an option it will reject. `NSYS_OPTS` replaces the set
-entirely, useful for narrowing a profiler problem by hand, and setting it also
-suppresses the automatic retry described below.
-
-A profiled deck sets `AUTOPLOT 0`. At the end of a run the simulator shells out
-to `plot_results.py`, and under a profiler that Python process is a traced
-child; with `--wait=all` nsys will not finalise until it exits, so a four-second
-simulation ends up held open by matplotlib for minutes. It reads as a hang, and
-interrupting it aborts nsys before it flushes, which is how a run that launched
-thousands of kernels produces a report containing none. `PROF_PLOTS=1` draws
-them afterwards instead, with the profiler detached.
-
-### The trace, and its size
-
-`profile_timeline.png` is drawn from `cuda_gpu_trace`, one row per kernel launch.
-A full 247-step Norne run launches on the order of ten million, so the trace is
-**sampled, not truncated**: every Nth launch, with N derived from the launch
-count in the kernel summary so that it fits `PROF_TRACE_ROWS` (default 400 000).
-Truncating would keep the opening minutes and draw them as though they were the
-history. The stride is stated in the figure whenever it is not 1.
-
-```bash
-PROF_TRACE_ROWS=2000000 ./profile_case.sh SPE1    # finer, larger file
-PROF_TIMELINE=0 ./profile_case.sh SPE1            # skip the trace entirely
-```
-
-`PROF_TRACE_ROWS` applies to `profile_plots.py` as well, so set it on both when
-you raise it.
-
-### If it captures no kernels
-
-The script prints `nsys_run.log` and the program's own output at the point of
-failure, then retries once with a minimal option set. An empty kernel table
-means nsys wrote no kernel rows, which happens both when a process launches none
-and when the profiler cannot attach or the process dies before the buffers
-flush, so read the logs rather than assuming either.
-
-A profiled run is deliberately **shortened**. The kernel *mix* is the
-benchmark's, since the same assembly, V-cycle and SpMV run at every step; the
-wall-clock *total* is not, and neither the report nor the paper quotes it as one.
+Apache-2.0. See the SPDX headers in each source file.
 
 ## References
 
@@ -1280,5 +893,5 @@ methods and cases behind every number above.
   differential equations*, ICLR, 2021.
 
 The full bibliography, with the derivations that use it, is in the user manual
-(`full_reservoir_simulator/GPU_reservoir_simulator/cuda/docs/manual.pdf`,
+(`docs/manual.pdf`,
 Chapter "References").

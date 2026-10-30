@@ -168,4 +168,4 @@ precision reduction in the isolated linear solve.
 Local evidence:
 
 - [Current Norne comparison](../../../../results/GB200/compare_NORNE.html)
-- [NVRS-CUDA user manual](manual.pdf)
+- [NVRS-CUDA user manual](../../../../docs/manual.pdf)
