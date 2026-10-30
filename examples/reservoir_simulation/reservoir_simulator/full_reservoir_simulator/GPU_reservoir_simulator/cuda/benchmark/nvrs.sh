@@ -91,6 +91,12 @@ nvrs_backendcheck() {
   # back to AmgX and label AmgX numbers as the FP16 arm.
   local _b
   for _b in $BACKENDS; do
+    if [[ "$_b" == amgx_tensorcore && ! -x "${exe}_tc" ]]; then
+      echo "ERROR: --backend asks for amgx_tensorcore, and ${exe}_tc is not built." >&2
+      echo "       Build it:        TENSORCORE=1 ./nvrs.sh install" >&2
+      echo "       Or leave it out: --backend amgx,amgx_fp64amg" >&2
+      return 1
+    fi
     if arm_needs_ginkgo "$_b" && ! ldd "$exe" 2>/dev/null | grep -qi ginkgo; then
       echo "ERROR: this nvrs_cuda was built without Ginkgo, and --backend asks for it." >&2
       echo "       It would fall back to AmgX and label AmgX as the FP16 arm." >&2
@@ -458,6 +464,8 @@ case_backends() {
       [[ "$b" == amgx_fp64 && "$CASE" != SPE10 ]] && continue
       # So does the all-FP64 arm (FP64 multigrid as well as operator).
       [[ "$b" == amgx_fp64amg && "$CASE" != SPE10 ]] && continue
+      # And the Tensor Core arm.
+      [[ "$b" == amgx_tensorcore && "$CASE" != SPE10 ]] && continue
       out="${out:+$out }$b"
     done
     echo "$out"
@@ -543,6 +551,7 @@ DESC = {
     "ginkgo_abj": "CPR: Ginkgo PGM AMG (FP16) + Ginkgo adaptive-precision block-Jacobi",
     "amgx_fp64": "CPR: AmgX AMG (FP32) + block-Jacobi, native FP64 operator",
     "amgx_fp64amg": "CPR: AmgX AMG (FP64) + block-Jacobi, native FP64 operator: everything FP64",
+    "amgx_tensorcore": "CPR: AmgX AMG (FP32) + block-Jacobi, Tensor Core Jacobian",
 }
 for arm in arms:
     metas = glob.glob(os.path.join(rd, "nvrs_" + arm, "1gpu", "OUTPUT", "**", "meta.json"),
@@ -790,7 +799,7 @@ usage() {
   printf '    %-18s %-16s %s\n' "OPTION" "APPLIES TO" "MEANING"
   printf '    %-18s %-16s %s\n' "------" "----------" "-------"
   printf '    %-18s %-16s %s\n' "--no-opm" "run, all" "NVRS only; do not run OPM Flow"
-  printf '    %-18s %-16s %s\n' "--backend <b>" "run, profile" "amgx hypre ginkgo ginkgo32 ginkgo_abj amgx_fp64 amgx_fp64amg (all FP64), a,b list, all (default: every one built)"
+  printf '    %-18s %-16s %s\n' "--backend <b>" "run, profile" "amgx hypre ginkgo ginkgo32 ginkgo_abj amgx_fp64 amgx_fp64amg (all FP64) amgx_tensorcore, a,b list, all (default: every one built)"
   printf '    %-18s %-16s %s\n' "--ranks <n>" "run, profile" "MPI ranks for NVRS"
   printf '    %-18s %-16s %s\n' "--no-profile" "all" "skip the profiling step"
   printf '    %-18s %-16s %s\n' "--no-scaling"    "run, all"      "one GPU only; skip the 2/4-GPU sweep"

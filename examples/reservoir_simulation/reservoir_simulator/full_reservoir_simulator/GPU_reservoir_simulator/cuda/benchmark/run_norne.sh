@@ -520,8 +520,10 @@ DESC = {
     "ginkgo32": "CPR: Ginkgo PGM AMG (FP32) + block-Jacobi",
     "ginkgo_abj": "CPR: Ginkgo PGM AMG (FP16) + Ginkgo adaptive-precision block-Jacobi",
     "amgx_fp64": "CPR: AmgX AMG (FP32) + block-Jacobi, native FP64 operator",
+    "amgx_fp64amg": "CPR: AmgX AMG (FP64) + block-Jacobi, native FP64 operator: everything FP64",
+    "amgx_tensorcore": "CPR: AmgX AMG (FP32) + block-Jacobi, Tensor Core Jacobian",
 }
-for arm in ("amgx", "hypre", "ginkgo", "ginkgo32", "ginkgo_abj", "amgx_fp64"):
+for arm in ("amgx", "hypre", "ginkgo", "ginkgo32", "ginkgo_abj", "amgx_fp64", "amgx_fp64amg", "amgx_tensorcore"):
     key, secs, desc = "nvrs_" + arm, SECS.get(arm, ""), DESC[arm]
     if secs:
         bd = nvrs_breakdown(key)

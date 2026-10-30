@@ -144,7 +144,7 @@ NVRS_DECK=/path/to/MY.DATA ./nvrs.sh all MYFIELD
 | Option | Applies to | Meaning |
 |---|---|---|
 | `--no-opm` | run, all | NVRS only; do not run OPM Flow |
-| `--backend <b>` | run, profile | `amgx`, `hypre`, or `both` (default both) |
+| `--backend <b>` | run, profile | any of `amgx`, `hypre`, `ginkgo`, `ginkgo32`, `ginkgo_abj`, `amgx_fp64`, `amgx_fp64amg`, `amgx_tensorcore`, as a comma list, or `both`, `all` |
 | `--ranks <n>` | run, profile | MPI ranks for NVRS |
 | `--no-profile` | all | skip the profiling step |
 | `--no-scaling` | run, all | one GPU only; skip the 2/4-GPU strong-scaling sweep |
@@ -236,12 +236,29 @@ TENSORCORE=1 ./nvrs.sh install      # also fetches CUTLASS and builds nvrs_cuda_
 | `TCVALIDATE` | `0` (default), `1` | report the difference from the analytic blocks |
 
 It covers two-phase and three-phase black oil on Cartesian and corner-point grids.
-Run a deck both ways, and test the factorisation against all the analytic kernels:
+
+**Compare mixed precision, fully FP64 and Tensor Core with AmgX.** From this folder, on the host
+or in the container. It starts the container if needed, builds what is missing and prints a table:
 
 ```bash
-./run_tensorcore.sh                 # SMOKE and RESERVOIR, analytic then Tensor Core
-./run_tensorcore.sh NORNE           # or any deck in decks/
-cd .. && make TENSORCORE=1 test_tc_jacobian && ./test_tc_jacobian tf32
+./run_compar_tensor_core.sh                 # RESERVOIR
+./run_compar_tensor_core.sh NORNE           # or SPE10_MATCHED, or any deck in decks/
+REPEATS=3 ./run_compar_tensor_core.sh       # median of three runs of each
+```
+
+**As a backend** of `nvrs.sh`, where it is the arm `amgx_tensorcore`. Like `amgx_fp64amg`, it runs only
+when its binary is built, and by default only on Norne and SPE10:
+
+```bash
+cd full_reservoir_simulator/GPU_reservoir_simulator/cuda/benchmark
+./nvrs.sh run SPE10 --no-opm --backend amgx,amgx_tensorcore,amgx_fp64amg
+```
+
+**Test the factorisation** against all the analytic kernels:
+
+```bash
+cd full_reservoir_simulator/GPU_reservoir_simulator/cuda
+make TENSORCORE=1 test_tc_jacobian && ./test_tc_jacobian tf32
 ```
 
 **The method.** For an oriented connection $(i,j)$ the residual is a product of

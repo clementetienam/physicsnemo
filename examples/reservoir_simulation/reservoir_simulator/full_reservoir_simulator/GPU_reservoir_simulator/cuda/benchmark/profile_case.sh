@@ -154,6 +154,9 @@ if [[ "$BACKEND" != "amgx" ]] || ! grep -qE "^[[:space:]]*LINSOLVER[[:space:]]+A
   # plain substitution silently did nothing on a deck without LINSOLVER, and
   # SPE10's "hypre" profile then ran AmgX under the HYPRE label.
   arm_apply_deck "$DECK" "$WORKDECK" "$BACKEND"
+  # The deck decides the binary, as everywhere else: profile the one that runs it.
+  NVRS_EXE="$(nvrs_pick_exe "${NVRS_EXE:-$CUDA_DIR/nvrs_cuda}" "$WORKDECK")" || exit 1
+  export NVRS_EXE
   _LS="$(arm_keywords "$BACKEND" | awk '$1=="LINSOLVER"{print $2}')"
   # And confirm it took: this failing quietly produced two identical profiles
   # under two different labels.

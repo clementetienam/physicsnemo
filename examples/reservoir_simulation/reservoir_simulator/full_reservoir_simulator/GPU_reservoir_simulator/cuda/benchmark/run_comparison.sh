@@ -578,6 +578,8 @@ DESC = {
     "ginkgo32": "CPR: FP32 Ginkgo PGM AMG + block-Jacobi, FP64 FGMRES (GPU)",
     "ginkgo_abj": "CPR: FP16 Ginkgo PGM AMG + adaptive block-Jacobi (GPU)",
     "amgx_fp64": "CPR: FP32 AmgX AMG + block-Jacobi, native FP64 operator (GPU)",
+    "amgx_fp64amg": "CPR: FP64 AmgX AMG + block-Jacobi, native FP64 operator (GPU)",
+    "amgx_tensorcore": "CPR: FP32 AmgX AMG + block-Jacobi, Tensor Core Jacobian (GPU)",
 }
 t = {}
 if opm_s and float(opm_s) > 0:

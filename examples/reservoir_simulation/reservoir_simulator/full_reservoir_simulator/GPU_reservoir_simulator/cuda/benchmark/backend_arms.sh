@@ -24,12 +24,15 @@
 #               operator, run on nvrs_cuda_fp64.  Against amgx it measures
 #               what the FP32 preconditioner buys.  Only when nvrs_cuda_fp64
 #               is built (./nvrs.sh install, or make FP64_PRECOND=1).
+#   amgx_tensorcore LINSOLVER AMGX, JACOBIAN TENSORCORE         FP32 AMG, connection
+#               blocks by the Tensor Core operator product, run on nvrs_cuda_tc.
+#               Only when nvrs_cuda_tc is built (TENSORCORE=1 ./nvrs.sh install).
 #
-NVRS_ALL_ARMS="amgx hypre ginkgo ginkgo32 ginkgo_abj amgx_fp64 amgx_fp64amg"
+NVRS_ALL_ARMS="amgx hypre ginkgo ginkgo32 ginkgo_abj amgx_fp64 amgx_fp64amg amgx_tensorcore"
 
 arm_known() {
   case "$1" in
-    amgx|hypre|ginkgo|ginkgo32|ginkgo_abj|amgx_fp64|amgx_fp64amg) return 0 ;;
+    amgx|hypre|ginkgo|ginkgo32|ginkgo_abj|amgx_fp64|amgx_fp64amg|amgx_tensorcore) return 0 ;;
   esac
   return 1
 }
@@ -64,6 +67,7 @@ arm_label() {
     ginkgo_abj) echo "Ginkgo FP16 + adaptive block-Jacobi" ;;
     amgx_fp64)  echo "AmgX FP32, native FP64 operator" ;;
     amgx_fp64amg) echo "AmgX FP64 (all FP64: multigrid and operator)" ;;
+    amgx_tensorcore) echo "AmgX FP32, Tensor Core Jacobian" ;;
     *)          echo "$1" ;;
   esac
 }
@@ -99,6 +103,7 @@ arm_keywords() {
     ginkgo_abj) printf 'LINSOLVER GINKGO\nGINKGOPREC 16\nSTAGE2 GINKGO\n' ;;
     amgx_fp64)  printf 'LINSOLVER AMGX\nEMULATE 0\n' ;;
     amgx_fp64amg) printf 'LINSOLVER AMGX\nMIXED 0\nEMULATE 0\n' ;;
+    amgx_tensorcore) printf 'LINSOLVER AMGX\nJACOBIAN TENSORCORE\nTCPRECISION %s\nTCVALIDATE 0\n' "${NVRS_TCPRECISION:-TF32}" ;;
     *)          return 1 ;;
   esac
 }
@@ -117,6 +122,7 @@ arm_apply_deck() {
   [[ "$arm" == ginkgo_abj ]] && re="$re|STAGE2"
   [[ "$arm" == amgx_fp64 ]] && re="$re|EMULATE"
   [[ "$arm" == amgx_fp64amg ]] && re="$re|EMULATE|MIXED"
+  [[ "$arm" == amgx_tensorcore ]] && re="$re|JACOBIAN|TCPRECISION|TCVALIDATE"
   if [[ "$arm" == hypre ]]; then
     [[ -n "${NVRS_HYPRE_AMGFAST:-}" ]]  && re="$re|AMGFAST"
     [[ -n "${NVRS_HYPRE_AMGREUSE:-}" ]] && re="$re|AMGREUSE"
@@ -133,10 +139,12 @@ arm_defaults() {
   if command -v ldd >/dev/null 2>&1 && ldd "$exe" 2>/dev/null | grep -qi ginkgo; then
     arms="$NVRS_ALL_ARMS"
   else
-    arms="amgx hypre amgx_fp64 amgx_fp64amg"
+    arms="amgx hypre amgx_fp64 amgx_fp64amg amgx_tensorcore"
   fi
   # The all-FP64 arm needs its own binary; without it the arm is left out.
   [[ -x "${exe%_fp64}_fp64" ]] || arms="${arms/ amgx_fp64amg/}"
+  # So does the Tensor Core arm.
+  [[ -x "${exe%_fp64}_tc" ]] || arms="${arms/ amgx_tensorcore/}"
   echo "$arms"
 }
 
@@ -145,20 +153,31 @@ arm_defaults() {
 # preconditioner (AmgX dFFI), nvrs_cuda_fp64 (make FP64_PRECOND=1, built by
 # ./nvrs.sh install) the FP64 one (AmgX dDDI).  So a deck that says MIXED 0
 # runs on the _fp64 sibling of EXE and any other deck on EXE: the deck
-# keyword is what chooses.  The last MIXED line wins, as in deck.cpp.  Prints
-# the path, or an error naming the build command and returns 1.
+# keyword is what chooses.  JACOBIAN TENSORCORE likewise needs the _tc sibling
+# (make TENSORCORE=1).  The last line of each wins, as in deck.cpp.  Prints the
+# path, or an error naming the build command and returns 1.
 nvrs_pick_exe() {
-  local exe="${1%_fp64}" deck="$2" m
+  local exe="${1%_tc}" deck="$2" m j
+  exe="${exe%_fp64}"
   m="$(awk '{ sub(/--.*/, "") } NF >= 2 && toupper($1) == "MIXED" { v = $2 }
             END { print v }' "$deck" 2>/dev/null)"
+  j="$(awk '{ sub(/--.*/, "") } NF >= 2 && toupper($1) == "JACOBIAN" { v = toupper($2) }
+            END { print v }' "$deck" 2>/dev/null)"
   if [[ "$m" == 0 ]]; then
-    if [[ ! -x "${exe}_fp64" ]]; then
+    if [[ ! -x "${exe}_fp64" && "$j" != TENSORCORE && "$j" != TC && "$j" != 2 ]]; then
       echo "ERROR: $deck sets MIXED 0 (FP64 preconditioner), and ${exe}_fp64 is not built." >&2
       echo "       cd $(dirname "$exe") && make FP64_PRECOND=1     (or ./nvrs.sh install)" >&2
       return 1
     fi
-    echo "${exe}_fp64"
-  else
-    echo "$exe"
+    exe="${exe}_fp64"
   fi
+  if [[ "$j" == TENSORCORE || "$j" == TC || "$j" == 2 ]]; then
+    if [[ ! -x "${exe}_tc" ]]; then
+      echo "ERROR: $deck sets JACOBIAN TENSORCORE, and ${exe}_tc is not built." >&2
+      echo "       cd $(dirname "$exe")/benchmark && TENSORCORE=1 ./nvrs.sh install" >&2
+      return 1
+    fi
+    exe="${exe}_tc"
+  fi
+  echo "$exe"
 }

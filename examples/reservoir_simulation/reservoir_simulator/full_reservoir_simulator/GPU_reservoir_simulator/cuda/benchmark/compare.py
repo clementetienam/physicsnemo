@@ -291,7 +291,9 @@ def find_nvrs_bases(rundir):
                        ("nvrs_ginkgo32", "NVRS-CUDA (Ginkgo FP32)"),
                        ("nvrs_ginkgo_abj",
                         "NVRS-CUDA (Ginkgo FP16 + adaptive bJ)"),
-                       ("nvrs_amgx_fp64", "NVRS-CUDA (AmgX, FP64 operator)")):
+                       ("nvrs_amgx_fp64", "NVRS-CUDA (AmgX, FP64 operator)"),
+                       ("nvrs_amgx_fp64amg", "NVRS-CUDA (AmgX, all FP64)"),
+                       ("nvrs_amgx_tensorcore", "NVRS-CUDA (AmgX, Tensor Core Jacobian)")):
         hits = sorted(glob.glob(os.path.join(rundir, sub, "**", "*.EGRID"),
                                 recursive=True))
         if hits:
@@ -3908,6 +3910,9 @@ BACKEND_ARMS = [
      "Ginkgo FP16 + adaptive bJ"),
     ("nvrs_amgx_fp64", "NVRS-CUDA (AmgX, FP64 operator)",
      "AmgX FP32, FP64 operator"),
+    ("nvrs_amgx_fp64amg", "NVRS-CUDA (AmgX, all FP64)", "AmgX FP64"),
+    ("nvrs_amgx_tensorcore", "NVRS-CUDA (AmgX, Tensor Core Jacobian)",
+     "AmgX FP32, Tensor Core Jacobian"),
 ]
 
 
@@ -4136,6 +4141,8 @@ def process_run(rundir, workers, keep_panels):
                     ("nvrs_ginkgo32", "NVRS-CUDA (GINKGO FP32)"),
                     ("nvrs_ginkgo_abj", "NVRS-CUDA (GINKGO FP16 + ADAPTIVE BJ)"),
                     ("nvrs_amgx_fp64", "NVRS-CUDA (AMGX, FP64 OPERATOR)"),
+                    ("nvrs_amgx_fp64amg", "NVRS-CUDA (AMGX, ALL FP64)"),
+                    ("nvrs_amgx_tensorcore", "NVRS-CUDA (AMGX, TENSOR CORE JACOBIAN)"),
                     # A single unnamed run: its solver is whatever the deck
                     # selected, so it is not labelled as either backend.
                     ("nvrs", "NVRS-CUDA")):
