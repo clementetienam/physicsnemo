@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Horvitz-Thompson weights for unbiased sums. The sample is spread over the
   mesh, the same in every pose, bitwise the same from run to run on CPU and
   on CUDA, and compiles to one graph.
+- Groups experimental scalar and field GP heads under `experimental.uq.gp`.
+  Both this namespace and `experimental.uq` expose the heads without `gpytorch`;
+  constructing a head raises an installation error if it is missing.
 - Adds `GeoTransolver.forward_with_geometry_features` for predictions and detached
   geometry tokens in one pass, preserving the existing `forward` API.
 - Strata depthwise conditioning convolutions automatically size vmap chunks
@@ -355,6 +358,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
+- `EnsembleMetrics`, the base class of `Mean`, `Variance`, and `Histogram`, is
+  renamed `StreamingStatistic`. `EnsembleMetrics` remains an alias of the same
+  class, so existing subclasses and `isinstance` checks keep working; importing
+  it emits a `LegacyFeatureWarning`.
 - `weighted_multinomial` and `WeightedMultinomial` moved from
   `physicsnemo.nn.functional` to `physicsnemo.utils`. Importing them from
   `physicsnemo.nn.functional` still works but emits `LegacyFeatureWarning`.
@@ -371,6 +378,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   used. Instead of `export_to_onnx_stream`, call
   `torch.onnx.export` with an `io.BytesIO` target; instead of
   `run_onnx_inference`, run the result in an `onnxruntime.InferenceSession`.
+- The `physicsnemo.experimental.uq.variational_gp_head` and
+  `physicsnemo.experimental.uq.field_variational_gp_head` modules. Import the
+  heads from `physicsnemo.experimental.uq` as before, or from
+  `physicsnemo.experimental.uq.gp`.
 - `physicsnemo.experimental.models.globe.utilities`, whose TensorDict helpers
   GLOBE no longer uses.
 - `physicsnemo.mesh.fields`: `RankSpecDict`, `flatten_rank_spec`,
@@ -452,6 +463,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Mesh.clean()`, `clean_mesh`, `merge_duplicate_points`, and `validate()` find
   every duplicate point in clusters of more than 100 coincident points. Before,
   some duplicates were missed and stayed in the cleaned mesh.
+- `Mesh.merge` treats a list of one mesh like a longer list. It checks its
+  input and stacks `global_data` along a new dimension. Before, it returned a
+  copy of the mesh.
+- `Mesh.pad` and `Mesh.pad_to_next_power` place padding cells on a padding
+  point when they also pad points. Before, padding cells touched the last real
+  point and changed results there, such as `cell_data_to_point_data`.
+- `DomainMesh.rotate`, `scale`, and `transform` work when the meshes of a
+  domain differ in float dtype, such as a float64 interior with float32
+  boundaries, where they raised before.
+- `repair_mesh` also removes the degenerate cells that its merge of duplicate
+  points creates. Before, its output could fail `validate()`.
 - `fill_holes` works on meshes with point or cell data, where it raised before.
   The new points and faces hold NaN in floating-point fields and 0 in others.
 - `compute_mesh_statistics` reports the mean and standard deviation of the
@@ -573,6 +595,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `text_1d_2d` outlines are closed loops; before, each ended in a zero-length
   edge. `text_2d_2d` fills curved glyphs fully: thin rings such as U+25CB lost
   part of their area.
+- `text_2d_2d` fills glyphs with slanted edges, such as 'A' and 'V', without
+  flat triangles or hanging vertices, so `text_2d_3d` of ordinary text is
+  watertight. It also leaves the counter of a nested glyph empty: '®' was 3%
+  too large.
+- `cone`, `disk` and `plane` work when torch's default dtype is float64, where
+  they raised before.
 - Unified external aero recipe: GLOBE-volume trains on all the requested
   vehicle surface cells, not about 4% of them.
 - Seeded `DomainMeshReader` subsamples select the same rows from Zarr stores
@@ -594,6 +622,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Mesh.draw` with matplotlib colors 2D curves by their scalars and honors
   `alpha_edges`. It also draws 1D meshes in view, vertex cells as colored
   markers, and integer vector scalars, where it failed before.
+- `Mesh.draw` with matplotlib fits the view to every mesh drawn on `ax` and,
+  in 2D, keeps limits the caller fixed; before, it showed only the last mesh.
+  Meshes far from the origin no longer shrink to a speck in the view.
 - `Mesh.draw` with PyVista lets `backend_options` set the edge color, line
   width and scalar bar, where it raised before.
 - GLOBE DrivAerML postprocessing reports correct Cd, Cl, and Cs on subsampled
